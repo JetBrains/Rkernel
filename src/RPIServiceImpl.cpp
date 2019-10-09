@@ -105,6 +105,18 @@ Status RPIServiceImpl::graphicsDump(ServerContext* context, const Empty*, Server
   return executeCommand(context, ".Call(\".jetbrains_ther_device_dump\")", writer);
 }
 
+Status RPIServiceImpl::graphicsRescale(ServerContext* context, const GraphicsRescaleRequest* request, ServerWriter<CommandOutput>* writer) {
+  auto arguments = std::vector<std::string> {
+    "'.jetbrains_ther_device_rescale'",
+    std::to_string(request->snapshotnumber()),
+    std::to_string(request->newwidth()),
+    std::to_string(request->newheight())
+  };
+  auto command = buildCallCommand(".Call", joinToString(arguments));
+  std::cerr << "graphics rescale command: " << command << std::endl;
+  return executeCommand(context, command, writer);
+}
+
 Status RPIServiceImpl::graphicsReset(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) {
   return executeCommand(context, "dev.off()", writer);
 }

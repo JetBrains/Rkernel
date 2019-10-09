@@ -71,6 +71,7 @@ public:
 
   Status graphicsInit(ServerContext* context, const GraphicsInitRequest* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsDump(ServerContext* context, const Empty* request, ServerWriter<CommandOutput>* writer) override;
+  Status graphicsRescale(ServerContext* context, const GraphicsRescaleRequest* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsReset(ServerContext* context, const Empty* request, ServerWriter<CommandOutput>* writer) override;
 
   Status htmlViewerInit(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;

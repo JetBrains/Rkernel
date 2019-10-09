@@ -21,7 +21,7 @@
 #include <iostream>
 
 #ifndef NDEBUG
-#define DEVICE_TRACE do { std::cerr << __FUNCTION__ << std::endl; } while(0)
+#define DEVICE_TRACE do { std::cerr << __FUNCTION__ << " (" << __FILE__ << ":" << __LINE__ << ")\n"; } while(0)
 #else
 #define DEVICE_TRACE
 #endif

@@ -29,13 +29,18 @@ using namespace Rcpp;
 // [[Rcpp::export]]
 SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution, double scaleFactor) {
   auto path = as<std::string>(snapshotDir[0]);
-  jetbrains::ther::device::master::init(path.c_str(), width, height, resolution, scaleFactor);
+  jetbrains::ther::device::master::init(path, { width, height, resolution }, scaleFactor);
   return R_NilValue;
 }
 
 using namespace Rcpp;
 
 SEXP jetbrains_ther_device_dump() {
-    jetbrains::ther::device::slave::trueDump();
+    jetbrains::ther::device::master::dumpAndMoveNext();
     return R_NilValue;
+}
+
+SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double height) {
+  jetbrains::ther::device::master::rescale(snapshotNumber, width, height);
+  return R_NilValue;
 }

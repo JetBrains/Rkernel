@@ -18,12 +18,18 @@
 #ifndef MASTER_DEVICE_H
 #define MASTER_DEVICE_H
 
+#include <string>
+
+#include "ScreenParameters.h"
+
 namespace jetbrains {
 namespace ther {
 namespace device {
 namespace master {
 
-void init(const char *snapshotDir, double width, double height, int resolution, double scaleFactor);
+void init(const std::string& snapshotDirectory, ScreenParameters screenParameters, double scaleFactor);
+void dumpAndMoveNext();
+void rescale(int snapshotNumber, double width, double height);
 
 } // master
 } // device

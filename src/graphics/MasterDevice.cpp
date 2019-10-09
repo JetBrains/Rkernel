@@ -21,6 +21,8 @@
 #include "Evaluator.h"
 #include "MasterDevice.h"
 #include "SlaveDevice.h"
+#include "devices/RLazyGraphicsDevice.h"
+#include "devices/REagerGraphicsDevice.h"
 
 namespace jetbrains {
 namespace ther {
@@ -31,36 +33,48 @@ namespace {
 const std::string NAME = "TheRPlugin_Device";
 
 std::string currentSnapshotDir = ".";
-double currentWidth = 640.0;
-double currentHeight = 480.0;
-int currentResolution = 75;
+ScreenParameters currentScreenParameters = { 640.0, 480.0, 75 };
 double currentScaleFactor = 1.0;
+int currentSnapshotNumber = 0;
+
+auto currentDevices = std::vector<Ptr<devices::RGraphicsDevice>> {
+  Ptr<devices::RGraphicsDevice>()
+};
 
 pGEDevDesc INSTANCE = NULL;
 
 pDevDesc getSlaveDevDesc() {
-  return slave::instance(currentSnapshotDir, currentWidth, currentHeight, currentResolution)->dev;
+  return slave::instance(currentSnapshotDir, currentScreenParameters)->dev;
+}
+
+bool hasCurrentDevice() {
+  return currentDevices[currentSnapshotNumber] != nullptr;
+}
+
+Ptr<devices::RGraphicsDevice> getCurrentDevice() {
+  if (!hasCurrentDevice()) {
+    auto newDevice = makePtr<devices::RLazyGraphicsDevice>(currentSnapshotDir, currentSnapshotNumber, currentScreenParameters);
+    currentDevices[currentSnapshotNumber] = newDevice;
+  }
+  return currentDevices[currentSnapshotNumber];
 }
 
 void circle(double x, double y, double r, const pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->circle(x, y, r, context, slaveDevDesc);
+  getCurrentDevice()->drawCircle({ x, y }, r, context);
 }
 
 void clip(double x1, double x2, double y1, double y2, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->clip(x1, x2, y1, y2, slaveDevDesc);
+  getCurrentDevice()->clip({ x1, y1 }, { x2, y2 });
 }
 
 void close(pDevDesc) {
   DEVICE_TRACE;
 
-  slave::dump();
-
+  getCurrentDevice()->close();
   delete INSTANCE->dev;
   INSTANCE->dev = NULL;
 
@@ -70,8 +84,7 @@ void close(pDevDesc) {
 void line(double x1, double y1, double x2, double y2, const pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->line(x1, y1, x2, y2, context, slaveDevDesc);
+  getCurrentDevice()->drawLine({ x1, y1 }, { x2, y2 }, context);
 }
 
 void metricInfo(int character,
@@ -82,52 +95,48 @@ void metricInfo(int character,
                 pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->metricInfo(character, context, ascent, descent, width, slaveDevDesc);
+  auto info = getCurrentDevice()->metricInfo(character, context);
+  *ascent = info.ascent;
+  *descent = info.descent;
+  *width = info.width;
 }
 
 void mode(int mode, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-
-  if (slaveDevDesc->mode != NULL) {
-    slaveDevDesc->mode(mode, slaveDevDesc);
-  }
-
-  if (mode == 0) {
-    slave::dump();
-  }
+  getCurrentDevice()->setMode(mode);
 }
 
 void newPage(const pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
 
-  slave::newPage();
-
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->newPage(context, slaveDevDesc);
+  getCurrentDevice()->newPage(context);
 }
 
 void polygon(int n, double *x, double *y, const pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->polygon(n, x, y, context, slaveDevDesc);
+  auto points = std::vector<devices::Point>();
+  for (auto i = 0; i < n; i++) {
+    points.push_back({ x[i], y[i] });
+  }
+  getCurrentDevice()->drawPolygon(points, context);
 }
 
 void polyline(int n, double *x, double *y, const pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->polyline(n, x, y, context, slaveDevDesc);
+  auto points = std::vector<devices::Point>();
+  for (auto i = 0; i < n; i++) {
+    points.push_back({ x[i], y[i] });
+  }
+  getCurrentDevice()->drawPolyline(points, context);
 }
 
 void rect(double x1, double y1, double x2, double y2, const pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->rect(x1, y1, x2, y2, context, slaveDevDesc);
+  getCurrentDevice()->drawRect({ x1, y1 }, { x2, y2 }, context);
 }
 
 void path(double *x,
@@ -139,8 +148,18 @@ void path(double *x,
           pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->path(x, y, npoly, nper, winding, context, slaveDevDesc);
+  auto numPoints = 0;
+  for (auto i = 0; i < npoly; i++) {
+    numPoints += nper[i];
+  }
+
+  auto points = std::vector<devices::Point>();
+  for (auto i = 0; i < numPoints; i++) {
+    points.push_back({ x[i], y[i] });
+  }
+  auto numPointsPerPolygon = std::vector<int>(nper, nper + npoly);
+
+  getCurrentDevice()->drawPath(points, numPointsPerPolygon, winding, context);
 }
 
 void raster(unsigned int *raster,
@@ -156,26 +175,23 @@ void raster(unsigned int *raster,
             pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->raster(
-      raster, w, h, x, y, width, height, rot, interpolate, context, slaveDevDesc
-  );
+  auto pixels = makePtr<std::vector<unsigned>>(raster, raster + w * h);
+  getCurrentDevice()->drawRaster({ pixels, w, h }, { x, y }, width, height, rot, interpolate, context);
 }
 
 void size(double *left, double *right, double *bottom, double *top, pDevDesc) {
   DEVICE_TRACE;
-
   *left = 0.0;
-  *right = currentWidth / currentScaleFactor;
-  *bottom = currentHeight / currentScaleFactor;
+  *right = currentScreenParameters.width / currentScaleFactor;
+  *bottom = currentScreenParameters.height / currentScaleFactor;
   *top = 0.0;
+  std::cerr << "width = " << *right << ", height = " << *bottom << std::endl;
 }
 
 double strWidth(const char *str, const pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  return slaveDevDesc->strWidth(str, context, slaveDevDesc);
+  return getCurrentDevice()->widthOfStringUtf8(str, context);
 }
 
 void text(double x,
@@ -187,8 +203,7 @@ void text(double x,
           pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-  slaveDevDesc->text(x, y, str, rot, hadj, context, slaveDevDesc);
+  getCurrentDevice()->drawTextUtf8(str, { x, y }, rot, hadj, context);
 }
 
 void textUTF8(double x,
@@ -200,74 +215,16 @@ void textUTF8(double x,
               pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-
-  if (slaveDevDesc->textUTF8 != NULL) {
-    slaveDevDesc->textUTF8(x, y, str, rot, hadj, context, slaveDevDesc);
-  } else {
-    slaveDevDesc->text(x, y, str, rot, hadj, context, slaveDevDesc);
-  }
+  getCurrentDevice()->drawTextUtf8(str, { x, y }, rot, hadj, context);
 }
 
 double strWidthUTF8(const char *str, const pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
 
-  const pDevDesc slaveDevDesc = getSlaveDevDesc();
-
-  if (slaveDevDesc->strWidthUTF8 != NULL) {
-    return slaveDevDesc->strWidthUTF8(str, context, slaveDevDesc);
-  } else {
-    return slaveDevDesc->strWidth(str, context, slaveDevDesc);
-  }
+  return getCurrentDevice()->widthOfStringUtf8(str, context);
 }
 
-int holdFlush(pDevDesc, int) {
-    DEVICE_TRACE;
-    return 0;
-}
-
-void activate(pDevDesc) {
-    DEVICE_TRACE;
-}
-
-void deactivate(pDevDesc) {
-    DEVICE_TRACE;
-}
-
-Rboolean locator(double*, double*, pDevDesc) {
-    DEVICE_TRACE;
-    return TRUE;  // RStudio has a more complicated behaviour, I'm not sure whether it's necessary
-}
-
-SEXP cap(pDevDesc devDesc) {
-    DEVICE_TRACE;
-    auto slaveDevDesc = getSlaveDevDesc();
-    return slaveDevDesc->cap(devDesc);
-}
-
-void onExit(pDevDesc devDesc) {
-    DEVICE_TRACE;
-}
-
-Rboolean newFrameConfirm(pDevDesc devDesc) {
-    DEVICE_TRACE;
-    return FALSE;
-}
-
-} // anonymous
-
-void init(const char *snapshotDir, double width, double height, int resolution, double scaleFactor) {
-  DEVICE_TRACE;
-
-  currentSnapshotDir = snapshotDir;
-  currentWidth = width;
-  currentHeight = height;
-  currentResolution = resolution;
-  currentScaleFactor = scaleFactor;
-
-  pDevDesc masterDevDesc = new DevDesc;
-  pDevDesc slaveDevDesc = getSlaveDevDesc();
-
+void setMasterDeviceSize(pDevDesc masterDevDesc) {
   size(
       &(masterDevDesc->left),
       &(masterDevDesc->right),
@@ -280,6 +237,79 @@ void init(const char *snapshotDir, double width, double height, int resolution, 
   masterDevDesc->clipRight = masterDevDesc->right;
   masterDevDesc->clipBottom = masterDevDesc->bottom;
   masterDevDesc->clipTop = masterDevDesc->top;
+}
+
+} // anonymous
+
+void dumpAndMoveNext() {
+  if (hasCurrentDevice()) {
+    auto current = getCurrentDevice();
+    if (current->dump()) {
+      auto clone = current->clone();
+      currentDevices.push_back(clone);
+      currentSnapshotNumber++;
+      std::cerr << "Current snapshot number after dump: " << currentSnapshotNumber << std::endl;
+    } else {
+      std::cerr << "Current device is empty. Skip dump\n";
+    }
+  } else {
+    std::cerr << "Current device is null. Skip dump\n";
+  }
+}
+
+void rescale(int snapshotNumber, double width, double height) {
+  currentScreenParameters.width = width;
+  currentScreenParameters.height = height;
+  setMasterDeviceSize(INSTANCE->dev);
+  auto device = (snapshotNumber >= 0) ? currentDevices[snapshotNumber] : getCurrentDevice();
+  if (!device) {
+    std::cerr << "Device for snapshot number = " << snapshotNumber << " was null\n";
+    throw std::runtime_error("Device was null");
+  }
+  auto previousParameters = device->screenParameters();
+  device->rescale(width, height);
+  if (snapshotNumber >= 0) {
+    auto current = getCurrentDevice();
+    if (current->isBlank()) {
+      current->rescale(width, height);
+    }
+  }
+  auto isSuccessful = device->dump();
+  if (isSuccessful) {
+    if (snapshotNumber < 0) {
+      // Imitate dump and move next
+      auto clone = device->clone();
+      currentDevices.push_back(clone);
+      currentSnapshotNumber++;
+      std::cerr << "Rescaled current snapshot #" << currentSnapshotNumber << " to " << int(width) << "x" << int(height)
+                << " (previously was " << int(previousParameters.width) << "x" << int(previousParameters.height)
+                << ")\n";
+      std::cerr << "Current snapshot number after dump: " << currentSnapshotNumber << std::endl;
+    } else {
+      std::cerr << "Rescaled snapshot #" << snapshotNumber << " to " << int(width) << "x" << int(height)
+                << " (previously was " << int(previousParameters.width) << "x" << int(previousParameters.height)
+                << ")\n";
+    }
+  } else {
+    if (snapshotNumber < 0) {
+      std::cerr << "Current device was empty. Skip dump\n";
+    } else {
+      std::cerr << "Snapshot #" << snapshotNumber << " was empty. Skip dump\n";
+    }
+  }
+}
+
+void init(const std::string& snapshotDirectory, ScreenParameters screenParameters, double scaleFactor) {
+  DEVICE_TRACE;
+
+  currentSnapshotDir = snapshotDirectory;
+  currentScreenParameters = screenParameters;
+  currentScaleFactor = scaleFactor;
+
+  pDevDesc masterDevDesc = new DevDesc;
+  pDevDesc slaveDevDesc = getSlaveDevDesc();
+
+  setMasterDeviceSize(masterDevDesc);
 
   masterDevDesc->xCharOffset = slaveDevDesc->xCharOffset;
   masterDevDesc->yCharOffset = slaveDevDesc->yCharOffset;
@@ -312,12 +342,12 @@ void init(const char *snapshotDir, double width, double height, int resolution, 
   masterDevDesc->canGenKeybd = FALSE;
   masterDevDesc->gettingEvent = FALSE;
 
-  masterDevDesc->activate = activate;  // NULL
+  masterDevDesc->activate = nullptr;  // NULL
   masterDevDesc->circle = circle;
   masterDevDesc->clip = clip;
   masterDevDesc->close = close;
-  masterDevDesc->deactivate = deactivate;  // NULL
-  masterDevDesc->locator = locator;  // NULL
+  masterDevDesc->deactivate = nullptr;  // NULL
+  masterDevDesc->locator = nullptr;  // NULL
   masterDevDesc->line = line;
   masterDevDesc->metricInfo = metricInfo;
   masterDevDesc->mode = mode;
@@ -327,14 +357,14 @@ void init(const char *snapshotDir, double width, double height, int resolution, 
   masterDevDesc->rect = rect;
   masterDevDesc->path = path;
   masterDevDesc->raster = raster;
-  masterDevDesc->cap = cap;  // NULL
+  masterDevDesc->cap = nullptr;  // NULL
   masterDevDesc->size = size;
   masterDevDesc->strWidth = strWidth;
   masterDevDesc->text = text;
-  masterDevDesc->onExit = onExit;  // NULL
+  masterDevDesc->onExit = nullptr;  // NULL
   masterDevDesc->getEvent = NULL;
 
-  masterDevDesc->newFrameConfirm = newFrameConfirm;  // NULL
+  masterDevDesc->newFrameConfirm = nullptr;  // NULL
   masterDevDesc->hasTextUTF8 = TRUE;
   masterDevDesc->textUTF8 = textUTF8;
   masterDevDesc->strWidthUTF8 = strWidthUTF8;
@@ -343,7 +373,7 @@ void init(const char *snapshotDir, double width, double height, int resolution, 
 
   masterDevDesc->eventEnv = R_NilValue;
   masterDevDesc->eventHelper = NULL;
-  masterDevDesc->holdflush = holdFlush;  // Previously was NULL
+  masterDevDesc->holdflush = nullptr;  // Previously was NULL
 
   masterDevDesc->haveTransparency = 2;
   masterDevDesc->haveTransparentBg = 2;
@@ -353,12 +383,24 @@ void init(const char *snapshotDir, double width, double height, int resolution, 
 
   memset(masterDevDesc->reserved, 0, 64);
 
+  slave::trueDump();
   pGEDevDesc masterDevice = GEcreateDevDesc(masterDevDesc);
   GEaddDevice2(masterDevice, NAME.c_str());
 
   Rf_selectDevice(Rf_ndevNumber(masterDevice->dev));
 
   INSTANCE = masterDevice;
+
+  auto& current = currentDevices[currentSnapshotNumber];
+  if (current) {
+    if (current->isBlank()) {
+      current = nullptr;
+    } else {
+      std::cerr << "Failed to null current device: it's not blank\n";
+      currentDevices.push_back(nullptr);
+      currentSnapshotNumber++;
+    }
+  }
 }
 
 } // master

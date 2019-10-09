@@ -60,35 +60,36 @@ static std::string getResolutionString(int resolution) {
   }
 }
 
-std::string calculateInitCommand(const std::string &snapshotDir, double width, double height, int resolution) {
+// TODO [mine]: enormous code duplication with devices::REagerGraphicsDevice
+std::string calculateInitCommand(const std::string &snapshotDir, ScreenParameters screenParameters) {
   std::stringstream ss;
 
   ss << "png" <<
       "(" <<
       "\"" << snapshotDir << "/snapshot_" << snapshotNumber << ".png" << "\"" << ", " <<
-      width << ", " <<
-      height << ", " <<
-      "res = " << getResolutionString(resolution) <<
+      screenParameters.width << ", " <<
+      screenParameters.height << ", " <<
+      "res = " << getResolutionString(screenParameters.resolution) <<
       ")";
 
   return ss.str();
 }
 
-pGEDevDesc init(const std::string &snapshotDir, double width, double height, int resolution) {
+pGEDevDesc init(const std::string &snapshotDir, ScreenParameters screenParameters) {
   InitHelper helper; // helper backups and restores active device and copies its display list to slave device
 
-  evaluator::evaluate(calculateInitCommand(snapshotDir, width, height, resolution));
+  evaluator::evaluate(calculateInitCommand(snapshotDir, screenParameters));
 
   return GEcurrentDevice();
 }
 
 } // anonymous
 
-pGEDevDesc instance(const std::string &snapshotDir, double width, double height, int resolution) {
+pGEDevDesc instance(const std::string &snapshotDir, ScreenParameters screenParameters) {
   DEVICE_TRACE;
 
   if (INSTANCE == NULL) {
-    INSTANCE = init(snapshotDir, width, height, resolution);
+    INSTANCE = init(snapshotDir, screenParameters);
   }
 
   return INSTANCE;

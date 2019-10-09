@@ -23,12 +23,14 @@
 #include "Rinternals.h"
 #include <R_ext/GraphicsEngine.h>
 
+#include "ScreenParameters.h"
+
 namespace jetbrains {
 namespace ther {
 namespace device {
 namespace slave {
 
-pGEDevDesc instance(const std::string &snapshotDir, double width, double height, int resolution);
+pGEDevDesc instance(const std::string &snapshotDir, ScreenParameters screenParameters);
 
 void newPage();
 

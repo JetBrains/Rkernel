@@ -119,6 +119,21 @@ add_executable(
         src/graphics/MasterDevice.cpp
         src/graphics/ScopeProtector.cpp
         src/graphics/SlaveDevice.cpp
+        src/graphics/devices/RLazyGraphicsDevice.cpp
+        src/graphics/devices/REagerGraphicsDevice.cpp
+        src/graphics/devices/actions/RCircleAction.cpp
+        src/graphics/devices/actions/RClipAction.cpp
+        src/graphics/devices/actions/RLineAction.cpp
+        src/graphics/devices/actions/RModeAction.cpp
+        src/graphics/devices/actions/RNewPageAction.cpp
+        src/graphics/devices/actions/RPolygonAction.cpp
+        src/graphics/devices/actions/RPolylineAction.cpp
+        src/graphics/devices/actions/RRectAction.cpp
+        src/graphics/devices/actions/RPathAction.cpp
+        src/graphics/devices/actions/RRasterAction.cpp
+        src/graphics/devices/actions/RTextAction.cpp
+        src/graphics/devices/actions/RTextUtf8Action.cpp
+        src/graphics/devices/actions/util/RescaleUtil.cpp
         src/base64/base64.cpp
         src/base64/base64r.cpp
         src/RPIServiceMethods.cpp
