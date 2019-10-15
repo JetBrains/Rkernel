@@ -13,6 +13,12 @@
 #include "Rectangle.h"
 
 namespace devices {
+  enum class SnapshotType {
+    NORMAL,
+    ZOOMED,
+    EXPORT,
+  };
+
   struct MetricInfo {
     double ascent;
     double descent;
@@ -42,7 +48,7 @@ namespace devices {
     virtual ScreenParameters screenParameters() = 0;
     virtual double widthOfStringUtf8(const char* text, pGEcontext context) = 0;
     virtual void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context) = 0;
-    virtual bool dump() = 0;
+    virtual bool dump(SnapshotType type) = 0;
     virtual void rescale(double newWidth, double newHeight) = 0;
     virtual Ptr<RGraphicsDevice> clone() = 0;
     virtual bool isBlank() = 0;

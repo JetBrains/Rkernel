@@ -244,7 +244,7 @@ void setMasterDeviceSize(pDevDesc masterDevDesc) {
 void dumpAndMoveNext() {
   if (hasCurrentDevice()) {
     auto current = getCurrentDevice();
-    if (current->dump()) {
+    if (current->dump(devices::SnapshotType::NORMAL)) {
       auto clone = current->clone();
       currentDevices.push_back(clone);
       currentSnapshotNumber++;
@@ -258,38 +258,27 @@ void dumpAndMoveNext() {
 }
 
 void rescale(int snapshotNumber, double width, double height) {
-  currentScreenParameters.width = width;
-  currentScreenParameters.height = height;
-  setMasterDeviceSize(INSTANCE->dev);
   auto device = (snapshotNumber >= 0) ? currentDevices[snapshotNumber] : getCurrentDevice();
   if (!device) {
     std::cerr << "Device for snapshot number = " << snapshotNumber << " was null\n";
     throw std::runtime_error("Device was null");
   }
-  auto previousParameters = device->screenParameters();
-  device->rescale(width, height);
-  if (snapshotNumber >= 0) {
-    auto current = getCurrentDevice();
-    if (current->isBlank()) {
-      current->rescale(width, height);
-    }
-  }
-  auto isSuccessful = device->dump();
+  auto isSuccessful = device->dump(devices::SnapshotType::ZOOMED);
   if (isSuccessful) {
     if (snapshotNumber < 0) {
       // Imitate dump and move next
       auto clone = device->clone();
       currentDevices.push_back(clone);
       currentSnapshotNumber++;
-      std::cerr << "Rescaled current snapshot #" << currentSnapshotNumber << " to " << int(width) << "x" << int(height)
-                << " (previously was " << int(previousParameters.width) << "x" << int(previousParameters.height)
-                << ")\n";
+      std::cerr << "Rescaled current snapshot #" << currentSnapshotNumber << " to " << int(width) << "x" << int(height) << std::endl;
       std::cerr << "Current snapshot number after dump: " << currentSnapshotNumber << std::endl;
     } else {
-      std::cerr << "Rescaled snapshot #" << snapshotNumber << " to " << int(width) << "x" << int(height)
-                << " (previously was " << int(previousParameters.width) << "x" << int(previousParameters.height)
-                << ")\n";
+      std::cerr << "Rescaled snapshot #" << snapshotNumber << " to " << int(width) << "x" << int(height) << std::endl;
     }
+    auto previousParameters = device->screenParameters();
+    device->rescale(width, height);
+    device->dump(devices::SnapshotType::NORMAL);
+    std::cerr << "(previously was " << int(previousParameters.width) << "x" << int(previousParameters.height) << ")\n";
   } else {
     if (snapshotNumber < 0) {
       std::cerr << "Current device was empty. Skip dump\n";

@@ -158,7 +158,7 @@ namespace devices {
     getSlave()->textUTF8(at.x, at.y, text, rotation, heightAdjustment, context, getSlave());
   }
 
-  bool REagerGraphicsDevice::dump() {
+  bool REagerGraphicsDevice::dump(SnapshotType type) {
     shutdownSlaveDevice();
     return true;
   }

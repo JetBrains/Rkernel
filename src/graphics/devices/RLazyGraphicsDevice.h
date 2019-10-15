@@ -50,7 +50,7 @@ namespace devices {
     ScreenParameters screenParameters() override;
     double widthOfStringUtf8(const char* text, pGEcontext context) override;
     void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context) override;
-    bool dump() override;
+    bool dump(SnapshotType type) override;
     void rescale(double newWidth, double newHeight) override;
     Ptr<devices::RGraphicsDevice> clone() override;
     bool isBlank() override;

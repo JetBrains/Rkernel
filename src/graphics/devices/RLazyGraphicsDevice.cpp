@@ -25,6 +25,21 @@ namespace devices {
   namespace {
     const auto NORMAL_SUFFIX = "normal";
     const auto SKETCH_SUFFIX = "sketch";
+    const auto ZOOMED_SUFFIX = "zoomed";
+    const auto EXPORT_SUFFIX = "export";
+
+    const char* getSuffixBySnapshotType(SnapshotType type) {
+      switch (type) {
+        case SnapshotType::NORMAL:
+          return NORMAL_SUFFIX;
+        case SnapshotType::ZOOMED:
+          return ZOOMED_SUFFIX;
+        case SnapshotType::EXPORT:
+          return EXPORT_SUFFIX;
+        default:
+          throw std::runtime_error("Unsupported snapshot type #" + std::to_string(int(type)));
+      }
+    }
 
     bool isClose(double x, double y, double epsilon = 1e-3) {
       return fabs(x - y) < epsilon;
@@ -178,11 +193,11 @@ namespace devices {
     actions.push_back(makePtr<actions::RTextUtf8Action>(text, at, rotation, heightAdjustment, context));
   }
 
-  bool RLazyGraphicsDevice::dump() {
+  bool RLazyGraphicsDevice::dump(SnapshotType type) {
     DEVICE_TRACE;
     shutdownSlaveDevice();
     if (!actions.empty()) {
-      getSlave(NORMAL_SUFFIX);
+      getSlave(getSuffixBySnapshotType(type));
       std::cerr << "<!> " << actions.size() << " actions (+ " << previousActions.size() << " previous actions) will be applied <!>\n";
       applyActions(previousActions);
       applyActions(actions);
