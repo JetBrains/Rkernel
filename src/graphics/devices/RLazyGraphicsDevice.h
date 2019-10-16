@@ -10,6 +10,12 @@
 namespace devices {
   class RLazyGraphicsDevice : public RGraphicsDevice {
   private:
+    // Note: might be extended in future
+    enum class Status {
+      NORMAL,
+      LARGE_MARGINS,
+    };
+
     using ActionList = std::vector<Ptr<actions::RGraphicsAction>>;
 
     ActionList actions;
@@ -20,11 +26,12 @@ namespace devices {
     ScreenParameters parameters;
     Ptr<RGraphicsDevice> slave;
     Rectangle artBoard;
+    Status status;
 
     ActionList copyActions();
     void applyActions(const ActionList& actionList);
-    Ptr<RGraphicsDevice> getSlave(const char* suffix = nullptr);
-    std::string buildSnapshotPath(const char* suffix);
+    Ptr<RGraphicsDevice> getSlave(const char* typeSuffix = nullptr);
+    std::string buildSnapshotPath(const char* typeSuffix, const char* errorSuffix = nullptr);
     Ptr<RGraphicsDevice> initializeSlaveDevice(const std::string& path);
     void shutdownSlaveDevice();
     static Rectangle buildCanvas(double width, double height);

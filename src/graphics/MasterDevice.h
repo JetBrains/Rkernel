@@ -29,7 +29,7 @@ namespace master {
 
 void init(const std::string& snapshotDirectory, ScreenParameters screenParameters, double scaleFactor);
 void dumpAndMoveNext();
-void rescale(int snapshotNumber, double width, double height);
+bool rescale(int snapshotNumber, double width, double height);
 
 } // master
 } // device

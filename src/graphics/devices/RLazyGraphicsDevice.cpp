@@ -3,6 +3,7 @@
 #include <cmath>
 #include <algorithm>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 
 #include "../Common.h"
@@ -27,6 +28,7 @@ namespace devices {
     const auto SKETCH_SUFFIX = "sketch";
     const auto ZOOMED_SUFFIX = "zoomed";
     const auto EXPORT_SUFFIX = "export";
+    const auto MARGIN_SUFFIX = "margin";
 
     const char* getSuffixBySnapshotType(SnapshotType type) {
       switch (type) {
@@ -56,7 +58,7 @@ namespace devices {
 
   RLazyGraphicsDevice::RLazyGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters)
     : snapshotDirectory(std::move(snapshotDirectory)), snapshotNumber(snapshotNumber), snapshotVersion(0), parameters(parameters), slave(nullptr),
-      artBoard(buildCurrentCanvas())
+      artBoard(buildCurrentCanvas()), status(Status::NORMAL)
   {
     DEVICE_TRACE;
   }
@@ -103,11 +105,14 @@ namespace devices {
     return buildCanvas(parameters.width, parameters.height);
   }
 
-  std::string RLazyGraphicsDevice::buildSnapshotPath(const char* suffix) {
+  std::string RLazyGraphicsDevice::buildSnapshotPath(const char* typeSuffix, const char* errorSuffix) {
     DEVICE_TRACE;
     auto sout = std::ostringstream();
-    sout << snapshotDirectory << "/snapshot_" << suffix << "_" << snapshotNumber << "_" << snapshotVersion;
-    sout << ".png";
+    sout << snapshotDirectory << "/snapshot_" << typeSuffix;
+    if (errorSuffix) {
+      sout << "_" << errorSuffix;
+    }
+    sout << "_" << snapshotNumber << "_" << snapshotVersion << ".png";
     return sout.str();
   }
 
@@ -195,25 +200,40 @@ namespace devices {
 
   bool RLazyGraphicsDevice::dump(SnapshotType type) {
     DEVICE_TRACE;
-    shutdownSlaveDevice();
-    if (!actions.empty()) {
-      getSlave(getSuffixBySnapshotType(type));
-      std::cerr << "<!> " << actions.size() << " actions (+ " << previousActions.size() << " previous actions) will be applied <!>\n";
-      applyActions(previousActions);
-      applyActions(actions);
-      std::cerr << "<!> Done <!>\n";
-      shutdownSlaveDevice();
-      snapshotVersion++;
-      return true;
-    } else {
-      std::cerr << "<!> No actions to apply. Abort <!>\n";
-      return false;
+    switch (status) {
+      case Status::NORMAL: {
+        shutdownSlaveDevice();
+        if (!actions.empty()) {
+          getSlave(getSuffixBySnapshotType(type));
+          std::cerr << "<!> " << actions.size() << " actions (+ " << previousActions.size() << " previous actions) will be applied <!>\n";
+          applyActions(previousActions);
+          applyActions(actions);
+          std::cerr << "<!> Done <!>\n";
+          shutdownSlaveDevice();
+          snapshotVersion++;
+          return true;
+        } else {
+          std::cerr << "<!> No actions to apply. Abort <!>\n";
+          return false;
+        }
+      }
+      case Status::LARGE_MARGINS: {
+        auto path = buildSnapshotPath(getSuffixBySnapshotType(type), MARGIN_SUFFIX);
+        auto fout = std::ofstream(path);
+        fout.close();
+        snapshotVersion++;
+        return true;
+      }
+      default: {
+        std::cerr << "<!> Unhandled status #" << int(status) << " <!>\n";
+        throw std::runtime_error("Unhandled lazy graphics device status");
+      }
     }
   }
 
-  Ptr<RGraphicsDevice> RLazyGraphicsDevice::getSlave(const char* suffix) {
+  Ptr<RGraphicsDevice> RLazyGraphicsDevice::getSlave(const char* typeSuffix) {
     if (!slave) {
-      slave = initializeSlaveDevice(buildSnapshotPath(suffix != nullptr ? suffix : SKETCH_SUFFIX));
+      slave = initializeSlaveDevice(buildSnapshotPath(typeSuffix != nullptr ? typeSuffix : SKETCH_SUFFIX));
     }
     return slave;
   }
@@ -229,21 +249,26 @@ namespace devices {
         newCanvas.from + deltaFrom,
         newCanvas.to + deltaTo
       };
-      auto xScale = newArtBoard.width() / artBoard.width();
-      auto yScale = newArtBoard.height() / artBoard.height();
-      auto rescaleInfo = actions::RescaleInfo {
-        artBoard, newArtBoard, Point { xScale, yScale }
-      };
-      for (auto& action : previousActions) {
-        action->rescale(rescaleInfo);
+      if (newArtBoard.height() > 0 && newArtBoard.width() > 0) {
+        status = Status::NORMAL;
+        auto xScale = newArtBoard.width() / artBoard.width();
+        auto yScale = newArtBoard.height() / artBoard.height();
+        auto rescaleInfo = actions::RescaleInfo {
+          artBoard, newArtBoard, Point { xScale, yScale }
+        };
+        for (auto& action : previousActions) {
+          action->rescale(rescaleInfo);
+        }
+        for (auto& action : actions) {
+          action->rescale(rescaleInfo);
+        }
+        parameters.width = newWidth;
+        parameters.height = newHeight;
+        artBoard = newArtBoard;
+        shutdownSlaveDevice();
+      } else {
+        status = Status::LARGE_MARGINS;
       }
-      for (auto& action : actions) {
-        action->rescale(rescaleInfo);
-      }
-      parameters.width = newWidth;
-      parameters.height = newHeight;
-      artBoard = newArtBoard;
-      shutdownSlaveDevice();
     }
   }
 

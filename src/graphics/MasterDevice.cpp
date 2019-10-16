@@ -257,7 +257,7 @@ void dumpAndMoveNext() {
   }
 }
 
-void rescale(int snapshotNumber, double width, double height) {
+bool rescale(int snapshotNumber, double width, double height) {
   auto device = (snapshotNumber >= 0) ? currentDevices[snapshotNumber] : getCurrentDevice();
   if (!device) {
     std::cerr << "Device for snapshot number = " << snapshotNumber << " was null\n";
@@ -279,12 +279,14 @@ void rescale(int snapshotNumber, double width, double height) {
     device->rescale(width, height);
     device->dump(devices::SnapshotType::NORMAL);
     std::cerr << "(previously was " << int(previousParameters.width) << "x" << int(previousParameters.height) << ")\n";
+    return true;
   } else {
     if (snapshotNumber < 0) {
       std::cerr << "Current device was empty. Skip dump\n";
     } else {
       std::cerr << "Snapshot #" << snapshotNumber << " was empty. Skip dump\n";
     }
+    return false;
   }
 }
 

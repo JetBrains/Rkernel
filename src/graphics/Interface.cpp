@@ -41,6 +41,6 @@ SEXP jetbrains_ther_device_dump() {
 }
 
 SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double height) {
-  jetbrains::ther::device::master::rescale(snapshotNumber, width, height);
-  return R_NilValue;
+  auto isRescaled = jetbrains::ther::device::master::rescale(snapshotNumber, width, height);
+  return Rcpp::wrap(isRescaled);
 }
