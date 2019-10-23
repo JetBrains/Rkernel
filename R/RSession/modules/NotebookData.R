@@ -87,7 +87,7 @@
 
     x <- as.data.frame(head(x, max.print))
 
-    write.table(x, file = output, sep = '\t', col.names = FALSE)
+    write.table(x, file = output, sep = '\t', col.names = TRUE, row.names = FALSE)
 
 #    .Call("rs_recordData", output, list(classes = className,
 #                                        nrow = nRow,
