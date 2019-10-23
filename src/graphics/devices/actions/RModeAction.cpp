@@ -25,5 +25,9 @@ namespace devices {
       sout << "RModeAction {mode = " << mode << "}";
       return sout.str();
     }
+
+    bool RModeAction::isVisible() {
+      return false;
+    }
   }
 }

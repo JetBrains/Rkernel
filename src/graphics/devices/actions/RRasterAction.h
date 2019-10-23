@@ -24,6 +24,7 @@ namespace devices {
       void perform(Ptr<RGraphicsDevice> device) override;
       Ptr<RGraphicsAction> clone() override;
       std::string toString() override;
+      bool isVisible() override;
     };
   }
 }

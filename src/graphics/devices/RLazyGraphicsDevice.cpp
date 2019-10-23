@@ -279,6 +279,11 @@ namespace devices {
   }
 
   bool RLazyGraphicsDevice::isBlank() {
-    return actions.empty();
+    for (auto& action : actions) {
+      if (action->isVisible()) {
+        return false;
+      }
+    }
+    return true;
   }
 }

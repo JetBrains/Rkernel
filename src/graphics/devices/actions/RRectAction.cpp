@@ -29,5 +29,9 @@ namespace devices {
       sout << "RRectAction {from = " << from << ", to = " << to << "}";
       return sout.str();
     }
+
+    bool RRectAction::isVisible() {
+      return true;
+    }
   }
 }

@@ -37,8 +37,13 @@ ScreenParameters currentScreenParameters = { 640.0, 480.0, 75 };
 double currentScaleFactor = 1.0;
 int currentSnapshotNumber = 0;
 
-auto currentDevices = std::vector<Ptr<devices::RGraphicsDevice>> {
-  Ptr<devices::RGraphicsDevice>()
+struct DeviceInfo {
+  Ptr<devices::RGraphicsDevice> device;
+  bool hasZoomed = false;
+};
+
+auto currentDeviceInfos = std::vector<DeviceInfo> {
+  DeviceInfo()
 };
 
 pGEDevDesc INSTANCE = NULL;
@@ -48,15 +53,20 @@ pDevDesc getSlaveDevDesc() {
 }
 
 bool hasCurrentDevice() {
-  return currentDevices[currentSnapshotNumber] != nullptr;
+  return currentDeviceInfos[currentSnapshotNumber].device != nullptr;
 }
 
 Ptr<devices::RGraphicsDevice> getCurrentDevice() {
   if (!hasCurrentDevice()) {
     auto newDevice = makePtr<devices::RLazyGraphicsDevice>(currentSnapshotDir, currentSnapshotNumber, currentScreenParameters);
-    currentDevices[currentSnapshotNumber] = newDevice;
+    currentDeviceInfos[currentSnapshotNumber].device = newDevice;
   }
-  return currentDevices[currentSnapshotNumber];
+  return currentDeviceInfos[currentSnapshotNumber].device;
+}
+
+DeviceInfo& getCurrentDeviceInfo() {
+  getCurrentDevice();  // Create default device if absent
+  return currentDeviceInfos[currentSnapshotNumber];
 }
 
 void circle(double x, double y, double r, const pGEcontext context, pDevDesc) {
@@ -246,7 +256,7 @@ void dumpAndMoveNext() {
     auto current = getCurrentDevice();
     if (current->dump(devices::SnapshotType::NORMAL)) {
       auto clone = current->clone();
-      currentDevices.push_back(clone);
+      currentDeviceInfos.push_back(DeviceInfo { clone, false });
       currentSnapshotNumber++;
       std::cerr << "Current snapshot number after dump: " << currentSnapshotNumber << std::endl;
     } else {
@@ -258,17 +268,21 @@ void dumpAndMoveNext() {
 }
 
 bool rescale(int snapshotNumber, double width, double height) {
-  auto device = (snapshotNumber >= 0) ? currentDevices[snapshotNumber] : getCurrentDevice();
+  auto& deviceInfo = (snapshotNumber >= 0) ? currentDeviceInfos[snapshotNumber] : getCurrentDeviceInfo();
+  auto device = deviceInfo.device;
   if (!device) {
     std::cerr << "Device for snapshot number = " << snapshotNumber << " was null\n";
     throw std::runtime_error("Device was null");
   }
-  auto isSuccessful = device->dump(devices::SnapshotType::ZOOMED);
-  if (isSuccessful) {
+  if (!device->isBlank()) {
+    if (!deviceInfo.hasZoomed) {
+      device->dump(devices::SnapshotType::ZOOMED);
+      deviceInfo.hasZoomed = true;
+    }
     if (snapshotNumber < 0) {
       // Imitate dump and move next
       auto clone = device->clone();
-      currentDevices.push_back(clone);
+      currentDeviceInfos.push_back(DeviceInfo { clone, false });
       currentSnapshotNumber++;
       std::cerr << "Rescaled current snapshot #" << currentSnapshotNumber << " to " << int(width) << "x" << int(height) << std::endl;
       std::cerr << "Current snapshot number after dump: " << currentSnapshotNumber << std::endl;
@@ -382,13 +396,13 @@ void init(const std::string& snapshotDirectory, ScreenParameters screenParameter
 
   INSTANCE = masterDevice;
 
-  auto& current = currentDevices[currentSnapshotNumber];
+  auto& current = currentDeviceInfos[currentSnapshotNumber].device;
   if (current) {
     if (current->isBlank()) {
       current = nullptr;
     } else {
       std::cerr << "Failed to null current device: it's not blank\n";
-      currentDevices.push_back(nullptr);
+      currentDeviceInfos.push_back(DeviceInfo { nullptr, false });
       currentSnapshotNumber++;
     }
   }

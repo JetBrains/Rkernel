@@ -30,5 +30,9 @@ namespace devices {
       sout << "RCircleAction {center = " << center << ", r = " << radius << "}";
       return sout.str();
     }
+
+    bool RCircleAction::isVisible() {
+      return true;
+    }
   }
 }

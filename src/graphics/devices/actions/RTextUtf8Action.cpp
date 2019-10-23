@@ -28,5 +28,9 @@ namespace devices {
       sout << "RTextAction {text = '" << text << "', at = " << at << ", rot = " << rot << ", hadj = " << hadj << "}";
       return sout.str();
     }
+
+    bool RTextUtf8Action::isVisible() {
+      return true;
+    }
   }
 }

@@ -30,5 +30,9 @@ namespace devices {
       sout << "RClipAction {from = " << from << ", to = " << to << "}";
       return sout.str();
     }
+
+    bool RClipAction::isVisible() {
+      return false;
+    }
   }
 }

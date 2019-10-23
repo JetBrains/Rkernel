@@ -23,6 +23,7 @@ namespace devices {
       virtual void perform(Ptr<RGraphicsDevice> device) = 0;
       virtual Ptr<RGraphicsAction> clone() = 0;
       virtual std::string toString() = 0;
+      virtual bool isVisible() = 0;
 
       virtual ~RGraphicsAction() = default;
     };

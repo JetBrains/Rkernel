@@ -25,5 +25,9 @@ namespace devices {
     std::string RPolylineAction::toString() {
       return "RPolylineAction {}";
     }
+
+    bool RPolylineAction::isVisible() {
+      return true;
+    }
   }
 }

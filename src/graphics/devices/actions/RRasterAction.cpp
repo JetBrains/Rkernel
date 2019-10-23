@@ -34,5 +34,9 @@ namespace devices {
       sout << "RRasterAction {at = " << at << ", width = " << width << ", height = " << height << "}";
       return sout.str();
     }
+
+    bool RRasterAction::isVisible() {
+      return true;
+    }
   }
 }

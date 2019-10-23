@@ -33,5 +33,9 @@ namespace devices {
       sout << "RPathAction {winding = " << winding << "}";
       return sout.str();
     }
+
+    bool RPathAction::isVisible() {
+      return true;
+    }
   }
 }

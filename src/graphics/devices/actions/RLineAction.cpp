@@ -29,5 +29,9 @@ namespace devices {
       sout << "RLineAction {from = " << from << ", to = " << to << "}";
       return sout.str();
     }
+
+    bool RLineAction::isVisible() {
+      return true;
+    }
   }
 }

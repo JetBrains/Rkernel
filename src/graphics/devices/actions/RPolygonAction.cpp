@@ -25,5 +25,9 @@ namespace devices {
     std::string RPolygonAction::toString() {
       return "RPolygonAction {}";
     }
+
+    bool RPolygonAction::isVisible() {
+      return true;
+    }
   }
 }

@@ -21,5 +21,9 @@ namespace devices {
     std::string RNewPageAction::toString() {
       return "RNewPageAction {}";
     }
+
+    bool RNewPageAction::isVisible() {
+      return false;
+    }
   }
 }
