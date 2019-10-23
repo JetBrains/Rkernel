@@ -83,10 +83,10 @@ struct RObjects {
 
   Rcpp::Function evalWithVisible = evalCode("function(exprs, env) {\n"
                                             "  for (expr in exprs) {\n"
-                                            "    v = withVisible(eval(expr, env))\n"
-                                            "    if (v$visible) print(v$value)\n"
+                                            "    v = base::withVisible(base::eval(expr, env))\n"
+                                            "    if (v$visible) base::print(v$value)\n"
                                             "  }"
-                                            "}", baseEnv);
+                                            "}", globalEnv);
 
   Rcpp::Environment compiler = loadNamespace("compiler");
   Rcpp::Function compilerEnableJIT = compiler["enableJIT"];
