@@ -113,7 +113,7 @@ public:
 
 private:
   WithOutputConsumer defaultConsumer;
-  BlockingQueue<ReplEvent> replEvents;
+  BlockingQueue<ReplEvent> replEvents{1};
 
   GetInfoResponse infoResponse;
   State rState = REPL_BUSY;

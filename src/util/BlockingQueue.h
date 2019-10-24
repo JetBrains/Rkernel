@@ -25,11 +25,15 @@
 template <typename T>
 class BlockingQueue {
 public:
+  explicit BlockingQueue(size_t maxSize = 0): maxSize(maxSize) {
+  }
+
   void push(T const& value) {
-    {
-      std::unique_lock<std::mutex> lock(mutex);
-      queue.push_front(value);
+    std::unique_lock<std::mutex> lock(mutex);
+    if (maxSize != 0) {
+      condVar.wait(lock, [&] { return queue.size() < maxSize; });
     }
+    queue.push_front(value);
     condVar.notify_one();
   }
 
@@ -38,6 +42,7 @@ public:
     condVar.wait(lock, [&] { return !queue.empty(); });
     T result(std::move(queue.back()));
     queue.pop_back();
+    condVar.notify_one();
     return result;
   }
 
@@ -45,6 +50,7 @@ private:
   std::deque<T> queue;
   std::mutex mutex;
   std::condition_variable condVar;
+  size_t maxSize;
 };
 
 #endif //RWRAPPER_BLOCKING_QUEUE_H
