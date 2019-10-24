@@ -29,9 +29,9 @@ inline std::string escapeStringCharacters(std::string const& s) {
   std::string t;
   for (char c : s) {
     switch (c) {
-    case '\b':
-      t += "\\b";
-      break;
+      case '\b':
+        t += "\\b";
+        break;
       case '\t':
         t += "\\t";
         break;
@@ -49,6 +49,7 @@ inline std::string escapeStringCharacters(std::string const& s) {
         break;
       case '\\':
         t += "\\\\";
+        break;
       default:
         t += c;
     }
