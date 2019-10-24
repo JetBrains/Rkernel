@@ -6,6 +6,7 @@
 
 #include "RGraphicsDevice.h"
 #include "actions/RGraphicsAction.h"
+#include "actions/RTextAction.h"
 
 namespace devices {
   class RLazyGraphicsDevice : public RGraphicsDevice {
@@ -16,10 +17,23 @@ namespace devices {
       LARGE_MARGINS,
     };
 
+    struct LabelInfo {
+      int actionIndex;
+      bool isFromPreviousActions;
+    };
+
+    struct LabelGroup {
+      std::vector<LabelInfo> labels;
+      double gap;
+    };
+
     using ActionList = std::vector<Ptr<actions::RGraphicsAction>>;
+    using TextActionList = std::vector<Ptr<actions::RTextAction>>;
+    using LabelGroups = std::vector<LabelGroup>;
 
     ActionList actions;
     ActionList previousActions;
+    LabelGroups labelGroups;
     std::string snapshotDirectory;
     int snapshotNumber;
     int snapshotVersion;
@@ -27,8 +41,10 @@ namespace devices {
     Ptr<RGraphicsDevice> slave;
     Rectangle artBoard;
     Status status;
+    bool hasDrawnLine;
 
     ActionList copyActions();
+    LabelGroups copyLabels();
     void applyActions(const ActionList& actionList);
     Ptr<RGraphicsDevice> getSlave(const char* typeSuffix = nullptr);
     std::string buildSnapshotPath(const char* typeSuffix, const char* errorSuffix = nullptr);
@@ -36,8 +52,10 @@ namespace devices {
     void shutdownSlaveDevice();
     static Rectangle buildCanvas(double width, double height);
     Rectangle buildCurrentCanvas();
+    void adjustLabels();
+    Ptr<actions::RTextAction> getTextActionForLabel(LabelInfo label);
 
-    RLazyGraphicsDevice(ActionList previousActions, std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters);
+    RLazyGraphicsDevice(ActionList previousActions, LabelGroups labelGroups, std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters);
 
   public:
     RLazyGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters);

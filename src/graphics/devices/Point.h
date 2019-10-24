@@ -2,6 +2,7 @@
 #define RWRAPPER_POINT_H
 
 #include <iostream>
+#include <cmath>
 
 namespace devices {
   struct Point {
@@ -32,6 +33,12 @@ namespace devices {
   inline std::ostream& operator<<(std::ostream& out, Point point) {
     out << "Point {x = " << point.x << ", y = " << point.y << "}";
     return out;
+  }
+
+  inline double distance(Point from, Point to) {
+    auto dx = from.x - to.x;
+    auto dy = from.y - to.y;
+    return sqrt(dx * dx + dy * dy);
   }
 }
 

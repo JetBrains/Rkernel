@@ -19,11 +19,14 @@
 #include "actions/RRectAction.h"
 #include "actions/RPathAction.h"
 #include "actions/RRasterAction.h"
-#include "actions/RTextAction.h"
+#include "actions/RTextAsciiAction.h"
 #include "actions/RTextUtf8Action.h"
+#include "actions/util/RescaleUtil.h"
 
 namespace devices {
   namespace {
+    const auto GAP_SEQUENCE = "m";
+
     const auto NORMAL_SUFFIX = "normal";
     const auto SKETCH_SUFFIX = "sketch";
     const auto ZOOMED_SUFFIX = "zoomed";
@@ -58,22 +61,39 @@ namespace devices {
 
   RLazyGraphicsDevice::RLazyGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters)
     : snapshotDirectory(std::move(snapshotDirectory)), snapshotNumber(snapshotNumber), snapshotVersion(0), parameters(parameters), slave(nullptr),
-      artBoard(buildCurrentCanvas()), status(Status::NORMAL)
+      artBoard(buildCurrentCanvas()), status(Status::NORMAL), hasDrawnLine(false)
   {
+    labelGroups = LabelGroups { LabelGroup(), LabelGroup(), LabelGroup(), LabelGroup() };  // NORTH, WEST, SOUTH, EAST
     DEVICE_TRACE;
   }
 
-  RLazyGraphicsDevice::RLazyGraphicsDevice(ActionList previousActions, std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters)
+  RLazyGraphicsDevice::RLazyGraphicsDevice(ActionList previousActions, LabelGroups labelGroups, std::string snapshotDirectory,
+                                           int snapshotNumber, ScreenParameters parameters)
     : RLazyGraphicsDevice(std::move(snapshotDirectory), snapshotNumber, parameters)
   {
     DEVICE_TRACE;
     this->previousActions = std::move(previousActions);
+    this->labelGroups = std::move(labelGroups);
   }
 
   RLazyGraphicsDevice::ActionList RLazyGraphicsDevice::copyActions() {
     auto copy = ActionList();
+    // TODO [mine]: copy previous actions as well
     for (auto& action : actions) {
       copy.push_back(action->clone());
+    }
+    return copy;
+  }
+
+  RLazyGraphicsDevice::LabelGroups RLazyGraphicsDevice::copyLabels() {
+    auto copy = labelGroups;
+    for (auto& labelGroup : copy) {
+      for (auto& label : labelGroup.labels) {
+        if (!label.isFromPreviousActions) {
+          // TODO [mine]: adjust `actionIndex` by size of `previousActions`
+          label.isFromPreviousActions = true;
+        }
+      }
     }
     return copy;
   }
@@ -116,6 +136,47 @@ namespace devices {
     return sout.str();
   }
 
+  void RLazyGraphicsDevice::adjustLabels() {
+    for (auto& labelGroup : labelGroups) {
+      std::cerr << "Adjusting labels for the next group\n";
+      auto& labels = labelGroup.labels;
+      if (labels.size() >= 2U) {
+        auto numLabels = int(labels.size());
+        auto textActions = TextActionList();
+        for (auto& label : labels) {
+          textActions.push_back(getTextActionForLabel(label));
+        }
+        auto lastEnabledIndex = 0;
+        for (auto i = 1; i < numLabels; i++) {  // Note: the first element was intentionally skipped
+          auto textAction = textActions[i];
+          auto lastEnabledAction = textActions[lastEnabledIndex];
+          auto actualDistance = distance(textAction->location(), lastEnabledAction->location());
+          auto minDistance = (textAction->textWidth() + lastEnabledAction->textWidth()) / 2.0 + labelGroup.gap;
+          std::cerr << "Required distance: " << minDistance << ", actual = " << actualDistance << std::endl;
+          if (actualDistance > minDistance) {
+            textAction->setEnabled(true);
+            lastEnabledIndex = i;
+            std::cerr << "Text action #" << i << " was enabled\n";
+          } else {
+            textAction->setEnabled(false);
+          }
+        }
+      }
+    }
+  }
+
+  Ptr<actions::RTextAction> RLazyGraphicsDevice::getTextActionForLabel(RLazyGraphicsDevice::LabelInfo label) {
+    auto& actionList = label.isFromPreviousActions ? previousActions : actions;
+    auto action = actionList[label.actionIndex];
+    auto textAction = std::dynamic_pointer_cast<actions::RTextAction>(action);
+    if (!textAction) {
+      std::cerr << "Failed to downcast to RTextAction: actionIndex = " << label.actionIndex
+                << ", is previous = " << label.isFromPreviousActions << std::endl;
+      throw std::runtime_error("Downcast to RTextAction failed");
+    }
+    return textAction;
+  }
+
   void RLazyGraphicsDevice::drawCircle(Point center, double radius, pGEcontext context) {
     DEVICE_TRACE;
     actions.push_back(makePtr<actions::RCircleAction>(center, radius, context));
@@ -138,6 +199,7 @@ namespace devices {
 
   void RLazyGraphicsDevice::drawLine(Point from, Point to, pGEcontext context) {
     DEVICE_TRACE;
+    hasDrawnLine = true;
     actions.push_back(makePtr<actions::RLineAction>(from, to, context));
   }
 
@@ -148,6 +210,9 @@ namespace devices {
 
   void RLazyGraphicsDevice::setMode(int mode) {
     DEVICE_TRACE;
+    if (mode == 0) {
+      hasDrawnLine = false;
+    }
     actions.push_back(makePtr<actions::RModeAction>(mode));
   }
 
@@ -155,6 +220,10 @@ namespace devices {
     DEVICE_TRACE;
     //actions.clear();  // TODO [mine]: I'm not sure whether I need this
     previousActions.clear();
+    for (auto& group : labelGroups) {
+      group.labels.clear();
+    }
+    hasDrawnLine = false;
     actions.push_back(makePtr<actions::RNewPageAction>(context));
   }
 
@@ -195,7 +264,34 @@ namespace devices {
 
   void RLazyGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context) {
     DEVICE_TRACE;
-    actions.push_back(makePtr<actions::RTextUtf8Action>(text, at, rotation, heightAdjustment, context));
+    if (hasDrawnLine) {
+      auto relative = actions::util::getRelativePosition(at, artBoard);
+      switch (relative) {
+        case actions::util::RelativePosition::NORTH:
+        case actions::util::RelativePosition::WEST:
+        case actions::util::RelativePosition::SOUTH:
+        case actions::util::RelativePosition::EAST: {
+          auto actionIndex = int(actions.size());
+          auto listIndex = int(relative);  // Note: take advantage of enum values order
+          auto& labelGroup = labelGroups[listIndex];
+          if (labelGroup.labels.empty()) {
+            labelGroup.gap = widthOfStringUtf8(GAP_SEQUENCE, context);
+            std::cerr << "Gap = " << labelGroup.gap << std::endl;
+          }
+          std::cerr << "Push label info: direction = " << listIndex << ", action index = " << actionIndex << std::endl;
+          labelGroup.labels.push_back(LabelInfo { actionIndex, false });
+          break;
+        }
+        default: {
+          break;
+        }
+      }
+    }
+    // Note: it looks like engine calls `widthOfStringUtf8` just before `drawTextUtf8`
+    // so there might be a temptation to cache it
+    // but experiments have shown that this assumption is not always true
+    auto textWidth = widthOfStringUtf8(text, context);
+    actions.push_back(makePtr<actions::RTextUtf8Action>(text, textWidth, at, rotation, heightAdjustment, context));
   }
 
   bool RLazyGraphicsDevice::dump(SnapshotType type) {
@@ -262,6 +358,7 @@ namespace devices {
         for (auto& action : actions) {
           action->rescale(rescaleInfo);
         }
+        adjustLabels();
         parameters.width = newWidth;
         parameters.height = newHeight;
         artBoard = newArtBoard;
@@ -275,7 +372,7 @@ namespace devices {
   Ptr<RGraphicsDevice> RLazyGraphicsDevice::clone() {
     // TODO [mine]: increase of snapshot number is a non-obvious side effect
     // Note: I don't use `makePtr` here since ctor is private
-    return ptrOf(new RLazyGraphicsDevice(copyActions(), snapshotDirectory, snapshotNumber + 1, parameters));
+    return ptrOf(new RLazyGraphicsDevice(copyActions(), copyLabels(), snapshotDirectory, snapshotNumber + 1, parameters));
   }
 
   bool RLazyGraphicsDevice::isBlank() {

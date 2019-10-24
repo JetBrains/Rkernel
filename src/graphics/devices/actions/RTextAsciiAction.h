@@ -1,12 +1,13 @@
-#ifndef RWRAPPER_RTEXTUTF8ACTION_H
-#define RWRAPPER_RTEXTUTF8ACTION_H
+#ifndef RWRAPPER_RTEXTASCIIACTION_H
+#define RWRAPPER_RTEXTASCIIACTION_H
+
+#include <string>
 
 #include "RTextAction.h"
-#include "RTextAsciiAction.h"
 
 namespace devices {
   namespace actions {
-    class RTextUtf8Action : public RTextAction {
+    class RTextAsciiAction : public RTextAction {
     private:
       std::string text;
       double width;
@@ -17,7 +18,7 @@ namespace devices {
       bool isEnabled;
 
     public:
-      RTextUtf8Action(std::string text, double width, Point at, double rot, double hadj, pGEcontext context);
+      RTextAsciiAction(std::string text, double width, Point at, double rot, double hadj, pGEcontext context);
 
       void rescale(const RescaleInfo& rescaleInfo) override;
       void perform(Ptr<RGraphicsDevice> device) override;
@@ -31,4 +32,4 @@ namespace devices {
   }
 }
 
-#endif //RWRAPPER_RTEXTUTF8ACTION_H
+#endif //RWRAPPER_RTEXTASCIIACTION_H

@@ -131,7 +131,7 @@ add_executable(
         src/graphics/devices/actions/RRectAction.cpp
         src/graphics/devices/actions/RPathAction.cpp
         src/graphics/devices/actions/RRasterAction.cpp
-        src/graphics/devices/actions/RTextAction.cpp
+        src/graphics/devices/actions/RTextAsciiAction.cpp
         src/graphics/devices/actions/RTextUtf8Action.cpp
         src/graphics/devices/actions/util/RescaleUtil.cpp
         src/base64/base64.cpp
