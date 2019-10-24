@@ -9,7 +9,7 @@ The idea of Rkernel is pretty similar to
 ​
 ## Building
 ​
-###1 Init git submodules
+### 1 Init git submodules
 ​
 To build Rkernel, initialize the git submodules: `git submodules update --init`
 
@@ -49,7 +49,7 @@ To start interacting with Rwrapper:
 For more details about the protocol, see the `Rkernel-proto` project.
 You could find an example of the client implementation [here](https://github.com/JetBrains/Rplugin).
 
-#Licensing
+## Licensing
 
 - `Rkernel-proto` is covered by Apache License 2.0
 - `R/RSession` is covered by AGPL-3.0
