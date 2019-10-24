@@ -55,7 +55,8 @@ namespace devices {
     void adjustLabels();
     Ptr<actions::RTextAction> getTextActionForLabel(LabelInfo label);
 
-    RLazyGraphicsDevice(ActionList previousActions, LabelGroups labelGroups, std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters);
+    RLazyGraphicsDevice(ActionList previousActions, LabelGroups labelGroups, Rectangle artBoard,
+                        std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters);
 
   public:
     RLazyGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters);

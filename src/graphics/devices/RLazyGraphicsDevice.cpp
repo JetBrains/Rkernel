@@ -67,18 +67,21 @@ namespace devices {
     DEVICE_TRACE;
   }
 
-  RLazyGraphicsDevice::RLazyGraphicsDevice(ActionList previousActions, LabelGroups labelGroups, std::string snapshotDirectory,
-                                           int snapshotNumber, ScreenParameters parameters)
+  RLazyGraphicsDevice::RLazyGraphicsDevice(ActionList previousActions, LabelGroups labelGroups, Rectangle artBoard,
+                                           std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters)
     : RLazyGraphicsDevice(std::move(snapshotDirectory), snapshotNumber, parameters)
   {
     DEVICE_TRACE;
     this->previousActions = std::move(previousActions);
     this->labelGroups = std::move(labelGroups);
+    this->artBoard = artBoard;
   }
 
   RLazyGraphicsDevice::ActionList RLazyGraphicsDevice::copyActions() {
     auto copy = ActionList();
-    // TODO [mine]: copy previous actions as well
+    for (auto& action : previousActions) {
+      copy.push_back(action->clone());
+    }
     for (auto& action : actions) {
       copy.push_back(action->clone());
     }
@@ -90,7 +93,8 @@ namespace devices {
     for (auto& labelGroup : copy) {
       for (auto& label : labelGroup.labels) {
         if (!label.isFromPreviousActions) {
-          // TODO [mine]: adjust `actionIndex` by size of `previousActions`
+          auto numPrevious = int(previousActions.size());
+          label.actionIndex += numPrevious;
           label.isFromPreviousActions = true;
         }
       }
@@ -372,7 +376,7 @@ namespace devices {
   Ptr<RGraphicsDevice> RLazyGraphicsDevice::clone() {
     // TODO [mine]: increase of snapshot number is a non-obvious side effect
     // Note: I don't use `makePtr` here since ctor is private
-    return ptrOf(new RLazyGraphicsDevice(copyActions(), copyLabels(), snapshotDirectory, snapshotNumber + 1, parameters));
+    return ptrOf(new RLazyGraphicsDevice(copyActions(), copyLabels(), artBoard, snapshotDirectory, snapshotNumber + 1, parameters));
   }
 
   bool RLazyGraphicsDevice::isBlank() {
