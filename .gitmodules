@@ -1,0 +1,8 @@
+[submodule "rwrapper/vcpkg"]
+	path = vcpkg
+	url = https://github.com/microsoft/vcpkg.git
+[submodule "rwrapper/Rcpp"]
+	path = Rcpp
+	url = https://github.com/RcppCore/Rcpp.git
+  ignore = dirty
+
