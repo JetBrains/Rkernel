@@ -26,6 +26,11 @@ Status RPIServiceImpl::getInfo(ServerContext*, const google::protobuf::Empty*, G
   return Status::OK;
 }
 
+Status RPIServiceImpl::isBusy(ServerContext* context, const Empty*, BoolValue* response) {
+  response->set_value(rState == REPL_BUSY || rState == BUSY);
+  return Status::OK;
+}
+
 Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerWriter<CommandOutput>* response) {
     auto sourceInterop = std::ostringstream();
     sourceInterop << "source(\"" << escapeBackslashes(request->rscriptspath()) << "/interop.R\")";

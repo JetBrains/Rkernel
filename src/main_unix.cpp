@@ -15,11 +15,14 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+#include "RPIServiceImpl.h"
 #include "IO.h"
 #include <Rinterface.h>
 #include <Rembedded.h>
 
 int main(int argc, char* argv[]) {
+  parseFlags(argc, argv);
+
   R_running_as_main_program = 1;
   const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save"};
   Rf_initialize_R(sizeof(rArgv) / sizeof(rArgv[0]), (char**)rArgv);

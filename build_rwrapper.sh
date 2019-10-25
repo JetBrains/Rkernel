@@ -11,9 +11,8 @@ if [ ! -d gens/protos ]; then
   mkdir -p gens/protos
 fi
 
-if [ ! -d Rkernel-proto ]; then
-  cp -r ../protos Rkernel-proto
-fi
+rm -rf Rkernel-proto
+cp -rp ../protos Rkernel-proto
 
 chmod -R +x grpc/tools
 if [[ "$OSTYPE" == "linux-gnu" ]]; then

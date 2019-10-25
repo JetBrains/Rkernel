@@ -45,6 +45,8 @@ static int winMyReadConsole(const char* p, char* buf, int len, int a) {
 }
 
 int main(int argc, char **argv) {
+  parseFlags(argc, argv);
+
   structRstart rstart;
   Rstart Rs = &rstart;
   R_setStartTime();

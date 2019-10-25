@@ -25,6 +25,7 @@
 #include "util/RUtil.h"
 #include <sstream>
 #include <cstdlib>
+#include <thread>
 #include <Rinternals.h>
 
 namespace {
@@ -363,12 +364,73 @@ std::string RPIServiceImpl::replaceAll(string buffer, char from, const char *to)
 
 std::unique_ptr<RPIServiceImpl> rpiService;
 std::unique_ptr<RObjects> RI;
+static bool enableTerminationOnTimeout = false;
 static std::unique_ptr<Server> server;
+
+void parseFlags(int argc, char *argv[]) {
+  for (int i = 1; i < argc; ++i) {
+    if (!strcmp(argv[i], "--with-timeout")) {
+      enableTerminationOnTimeout = true;
+    }
+  }
+}
+
+class TerminationTimer : public Server::GlobalCallbacks {
+public:
+  void PreSynchronousRequest(grpc_impl::ServerContext* context) override {
+    rpcHappened = true;
+  }
+
+  void PostSynchronousRequest(grpc_impl::ServerContext* context) override {
+  }
+
+  void init() {
+    Server::SetGlobalCallbacks(this);
+    thread = std::thread([&] {
+      while (true) {
+        rpcHappened = false;
+        std::unique_lock<std::mutex> lock(mutex);
+        auto time = std::chrono::steady_clock::now() + std::chrono::milliseconds(CLIENT_RPC_TIMEOUT_MILLIS);
+        condVar.wait_until(lock, time, [&] { return !termination && std::chrono::steady_clock::now() >= time; });
+        if (termination) {
+          break;
+        }
+        if (!rpcHappened) {
+          std::cerr << "No RPC for " << CLIENT_RPC_TIMEOUT_MILLIS << "ms, terminating\n";
+          rpiService->terminate = true;
+          R_interrupts_pending = 1;
+          rpiService->executeOnMainThreadAsync([]{});
+          std::this_thread::sleep_for(std::chrono::seconds(5));
+          if (!termination) {
+            exit(0);
+          }
+          break;
+        }
+      }
+    });
+  }
+
+  void quit() {
+    termination = true;
+    condVar.notify_one();
+    thread.join();
+  }
+private:
+  volatile bool rpcHappened = false;
+  volatile bool termination = false;
+
+  std::mutex mutex;
+  std::condition_variable condVar;
+  std::thread thread;
+} terminationTimer;
 
 void initRPIService() {
   RI = std::make_unique<RObjects>();
   //RI->loadNamespace("Rcpp");
   rpiService = std::make_unique<RPIServiceImpl>();
+  if (enableTerminationOnTimeout) {
+    terminationTimer.init();
+  }
   ServerBuilder builder;
   int port = 0;
   builder.AddListeningPort("127.0.0.1:0", InsecureServerCredentials(), &port);
@@ -382,6 +444,9 @@ void initRPIService() {
 }
 
 void quitRPIService() {
+  if (enableTerminationOnTimeout) {
+    terminationTimer.quit();
+  }
   server = nullptr;
   rpiService = nullptr;
   RI = nullptr;

@@ -37,6 +37,7 @@ public:
   ~RPIServiceImpl() override;
 
   Status getInfo(ServerContext* context, const Empty* request, GetInfoResponse* response) override;
+  Status isBusy(ServerContext* context, const Empty*, BoolValue* response) override;
   Status init(ServerContext* context, const Init* request, ServerWriter<CommandOutput>* response) override;
   Status quit(ServerContext* context, const Empty* request, Empty* response) override;
 
@@ -111,12 +112,15 @@ public:
   std::string mainLoop(const char* prompt, State newState);
   volatile bool terminate = false;
 
+  void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);
+  void executeOnMainThreadAsync(std::function<void()> const& f);
+
 private:
   WithOutputConsumer defaultConsumer;
   BlockingQueue<ReplEvent> replEvents{1};
 
   GetInfoResponse infoResponse;
-  State rState = REPL_BUSY;
+  volatile State rState = REPL_BUSY;
   bool nextPromptSilent = false;
   bool isDebugEnabled = false;
 
@@ -126,8 +130,6 @@ private:
   Rcpp::Environment const& currentEnvironment() { return sysFrames.empty() ? RI->globalEnv : sysFrames.back(); }
 
   BlockingQueue<std::function<void()>> executionQueue;
-  void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);
-  void executeOnMainThreadAsync(std::function<void()> const& f);
 
   bool doReturnFromReadConsole = false;
   std::string returnFromReadConsoleValue;
@@ -146,8 +148,11 @@ private:
   Status replExecuteCommand(ServerContext* context, const std::string& command);
 };
 
+const int CLIENT_RPC_TIMEOUT_MILLIS = 60000;
+
 extern std::unique_ptr<RPIServiceImpl> rpiService;
 
+void parseFlags(int argc, char *argv[]);
 void initRPIService();
 void quitRPIService();
 
