@@ -53,6 +53,14 @@ namespace {
     return joinToString(collection, [](const T& t) { return t; });
   }
 
+  std::string getResolutionString(int resolution) {
+    if (resolution > 0) {
+      return std::to_string(resolution);
+    } else {
+      return "NA";
+    }
+  }
+
   const size_t REPL_OUTPUT_MAX_SIZE = 65536;
 }
 
@@ -102,10 +110,23 @@ Status RPIServiceImpl::graphicsReset(ServerContext* context, const Empty*, Serve
 }
 
 Status RPIServiceImpl::beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) {
-  auto sout = std::ostringstream();
-  sout << ".jetbrains$runBeforeChunk('" << escape(request->rmarkdownparameters()) << "', '" << escape(request->chunktext()) << "', '"
-       << escape(request->outputdirectory()) << "', " << request->width()  << ", " << request->height() << ")";
-  return executeCommand(context, sout.str(), writer);
+  auto stringArguments = std::vector<std::string> {
+    request->rmarkdownparameters(),
+    request->chunktext(),
+    request->outputdirectory()
+  };
+  auto numericArguments = std::vector<int> {
+    request->width(),
+    request->height()
+  };
+  auto joinedStrings = joinToString(stringArguments, [](const std::string& s) {
+    return quote(escape(s));
+  });
+  auto joinedNumbers = joinToString(numericArguments);
+  auto resolutionString = getResolutionString(request->resolution());
+  auto joinedArguments = joinToString(std::vector<std::string> { joinedStrings, joinedNumbers, resolutionString });
+  auto command = buildCallCommand(".jetbrains$runBeforeChunk", joinedArguments);
+  return executeCommand(context, command, writer);
 }
 
 Status RPIServiceImpl::afterChunkExecution(ServerContext *context, const ::google::protobuf::Empty *request,ServerWriter<CommandOutput> *writer) {

@@ -46,7 +46,16 @@ assign(".jetbrains", new.env(), baseenv())
   })
 }
 
-.jetbrains$runBeforeChunk <- function(report.text, chunk.text, cache.dir, width, height) {
+.jetbrains$setNotebookGraphicsOption <- function(image.dir, width, height, resolution) {
+  file.name <- file.path(image.dir, "%d.png")
+  options(device = function() {
+    png(file.name, width, height, res = resolution)
+    dev.control(displaylist = "enable")
+    par(mar = c(5.1, 4.1, 2.1, 2.1))
+  })
+}
+
+.jetbrains$runBeforeChunk <- function(report.text, chunk.text, cache.dir, width, height, resolution) {
   .rs.evaluateRmdParams(report.text)
   opts <- .rs.evaluateChunkOptions(chunk.text)
   data.dir <- file.path(cache.dir, "data")
@@ -60,7 +69,7 @@ assign(".jetbrains", new.env(), baseenv())
   if (grDevices::dev.cur() != 1) {
     grDevices::dev.off()
    }
-  .rs.setNotebookGraphicsOption(file.path(image.dir, "%d.png"), height, width, "px", 1, "")
+  .jetbrains$setNotebookGraphicsOption(image.dir, width, height, resolution)
   .rs.initHtmlCapture(cache.dir, html.lib.dir, opts)
   .rs.initDataCapture(data.dir, opts)
   if (!.rs.hasVar("jbHookedPackages")) {
