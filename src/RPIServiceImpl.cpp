@@ -364,16 +364,7 @@ std::string RPIServiceImpl::replaceAll(string buffer, char from, const char *to)
 
 std::unique_ptr<RPIServiceImpl> rpiService;
 std::unique_ptr<RObjects> RI;
-static bool enableTerminationOnTimeout = false;
 static std::unique_ptr<Server> server;
-
-void parseFlags(int argc, char *argv[]) {
-  for (int i = 1; i < argc; ++i) {
-    if (!strcmp(argv[i], "--with-timeout")) {
-      enableTerminationOnTimeout = true;
-    }
-  }
-}
 
 class TerminationTimer : public Server::GlobalCallbacks {
 public:
@@ -428,7 +419,7 @@ void initRPIService() {
   RI = std::make_unique<RObjects>();
   //RI->loadNamespace("Rcpp");
   rpiService = std::make_unique<RPIServiceImpl>();
-  if (enableTerminationOnTimeout) {
+  if (commandLineOptions.withTimeout) {
     terminationTimer.init();
   }
   ServerBuilder builder;
@@ -444,7 +435,7 @@ void initRPIService() {
 }
 
 void quitRPIService() {
-  if (enableTerminationOnTimeout) {
+  if (commandLineOptions.withTimeout) {
     terminationTimer.quit();
   }
   server = nullptr;

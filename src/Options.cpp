@@ -14,25 +14,24 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include "Options.h"
 
-#include "RPIServiceImpl.h"
-#include "IO.h"
-#include <Rinterface.h>
-#include <Rembedded.h>
+CommandLineOptions commandLineOptions;
 
-int main(int argc, char* argv[]) {
-  commandLineOptions.parse(argc, argv);
-
-  R_running_as_main_program = 1;
-  const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save"};
-  Rf_initialize_R(sizeof(rArgv) / sizeof(rArgv[0]), (char**)rArgv);
-
-  R_Outputfile = nullptr;
-  R_Consolefile = nullptr;
-  ptr_R_ReadConsole = myReadConsole;
-  ptr_R_WriteConsole = nullptr;
-  ptr_R_WriteConsoleEx = myWriteConsoleEx;
-  ptr_R_Suicide = mySuicide;
-  Rf_mainloop();
-  return 0;
+void CommandLineOptions::parse(int argc, char* argv[]) {
+  cxxopts::Options options("RWrapper", "Execution kernel for R interpreter");
+  options.add_options()
+      ("h,help", "Show help and exit")
+      ("with-timeout", "Terminate RWrapper if no RPCs were received for a minute");
+  try {
+    auto result = options.parse(argc, argv);
+    if (result["help"].as<bool>()) {
+      std::cout << options.help();
+      exit(0);
+    }
+    withTimeout = result["with-timeout"].as<bool>();
+  } catch (cxxopts::OptionParseException const& e) {
+    std::cout << e.what() << "\n";
+    exit(1);
+  }
 }

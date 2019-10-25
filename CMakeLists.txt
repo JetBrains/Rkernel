@@ -127,6 +127,7 @@ add_executable(
         src/RLoader.cpp
         src/DataFrame.cpp
         src/RDebugger.cpp
+        src/Options.cpp
         ${service_proto_srcs}
         ${service_grpc_srcs}
 )

@@ -14,25 +14,17 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#ifndef RWRAPPER_OPTIONS_H
+#define RWRAPPER_OPTIONS_H
 
-#include "RPIServiceImpl.h"
-#include "IO.h"
-#include <Rinterface.h>
-#include <Rembedded.h>
+#include "cxxopts.hpp"
 
-int main(int argc, char* argv[]) {
-  commandLineOptions.parse(argc, argv);
+struct CommandLineOptions {
+  bool withTimeout = false;
 
-  R_running_as_main_program = 1;
-  const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save"};
-  Rf_initialize_R(sizeof(rArgv) / sizeof(rArgv[0]), (char**)rArgv);
+  void parse(int argc, char* argv[]);
+};
 
-  R_Outputfile = nullptr;
-  R_Consolefile = nullptr;
-  ptr_R_ReadConsole = myReadConsole;
-  ptr_R_WriteConsole = nullptr;
-  ptr_R_WriteConsoleEx = myWriteConsoleEx;
-  ptr_R_Suicide = mySuicide;
-  Rf_mainloop();
-  return 0;
-}
+extern CommandLineOptions commandLineOptions;
+
+#endif //RWRAPPER_OPTIONS_H

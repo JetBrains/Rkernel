@@ -24,6 +24,7 @@
 #include "util/BlockingQueue.h"
 #include "util/IndexedStorage.h"
 #include "IO.h"
+#include "Options.h"
 #include "RObjects.h"
 #include <Rcpp.h>
 
@@ -152,7 +153,6 @@ const int CLIENT_RPC_TIMEOUT_MILLIS = 60000;
 
 extern std::unique_ptr<RPIServiceImpl> rpiService;
 
-void parseFlags(int argc, char *argv[]);
 void initRPIService();
 void quitRPIService();
 
