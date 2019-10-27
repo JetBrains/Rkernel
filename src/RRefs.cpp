@@ -116,16 +116,7 @@ Status RPIServiceImpl::evaluateAsStringList(ServerContext* context, const RRef* 
   executeOnMainThread([&] {
     Rcpp::RObject object = dereference(*request);
     if (!Rcpp::is<Rcpp::GenericVector>(object) && !Rcpp::is<Rcpp::CharacterVector>(object)) {
-      Rcpp::CharacterVector classes = RI->classes(object);
-      bool isFactor = false;
-      for (auto const& c : classes) {
-        if (Rcpp::as<std::string>(c) == "factor") {
-          isFactor = true;
-          break;
-        }
-      }
-
-      if (isFactor) {
+      if (Rf_inherits(object, "factor")) {
         Rcpp::CharacterVector vector = Rcpp::as<Rcpp::CharacterVector>(object);
         for (auto const& x : vector) {
           response->add_list(Rcpp::as<std::string>(x));
