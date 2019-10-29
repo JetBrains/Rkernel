@@ -18,6 +18,10 @@ namespace devices {
       return to.y - from.y;
     }
 
+    Point center() const {
+      return (from + to) / 2.0;
+    }
+
     static inline Rectangle make(Point a, Point b) {
       auto xMin = std::min(a.x, b.x);
       auto xMax = std::max(a.x, b.x);
@@ -26,6 +30,10 @@ namespace devices {
       return Rectangle { Point { xMin, yMin }, Point { xMax, yMax } };
     }
   };
+
+  inline bool isClose(Rectangle a, Rectangle b, double epsilon = 1e-3) {
+    return isClose(a.from, b.from, epsilon) && isClose(a.to, b.to, epsilon);
+  }
 
   inline std::ostream& operator<<(std::ostream& out, Rectangle rectangle) {
     out << "Rectangle {from = " << rectangle.from << ", to = " << rectangle.to << "}";

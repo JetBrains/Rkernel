@@ -67,8 +67,8 @@ std::string calculateInitCommand(const std::string &snapshotDir, ScreenParameter
   ss << "png" <<
       "(" <<
       "\"" << snapshotDir << "/snapshot_" << snapshotNumber << ".png" << "\"" << ", " <<
-      screenParameters.width << ", " <<
-      screenParameters.height << ", " <<
+      screenParameters.size.width << ", " <<
+      screenParameters.size.height << ", " <<
       "res = " << getResolutionString(screenParameters.resolution) <<
       ")";
 

@@ -12,6 +12,10 @@ namespace devices {
     Point rescale(Point scale) const {
       return { x * scale.x, y * scale.y };
     }
+
+    static Point make(Size size) {
+      return Point { size.width, size.height };
+    }
   };
 
   inline Point operator+(Point a, Point b) {
@@ -30,6 +34,10 @@ namespace devices {
     return alpha * point;
   }
 
+  inline Point operator/(Point point, double alpha) {
+    return Point { point.x / alpha, point.y / alpha };
+  }
+
   inline std::ostream& operator<<(std::ostream& out, Point point) {
     out << "Point {x = " << point.x << ", y = " << point.y << "}";
     return out;
@@ -39,6 +47,14 @@ namespace devices {
     auto dx = from.x - to.x;
     auto dy = from.y - to.y;
     return sqrt(dx * dx + dy * dy);
+  }
+
+  inline bool isClose(double x, double y, double epsilon = 1e-3) {
+    return fabs(x - y) < epsilon;
+  }
+
+  inline bool isClose(Point a, Point b, double epsilon = 1e-3) {
+    return isClose(a.x, b.x, epsilon) && isClose(a.y, b.y, epsilon);
   }
 }
 

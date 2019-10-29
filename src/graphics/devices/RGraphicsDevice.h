@@ -44,7 +44,7 @@ namespace devices {
     virtual void drawPolyline(const std::vector<Point>& points, pGEcontext context) = 0;
     virtual void drawRect(Point from, Point to, pGEcontext context) = 0;
     virtual void drawPath(const std::vector<Point>& points, const std::vector<int>& numPointsPerPolygon, Rboolean winding, pGEcontext context) = 0;
-    virtual void drawRaster(const RasterInfo& rasterInfo, Point at, double width, double height, double rotation, Rboolean interpolate, pGEcontext context) = 0;
+    virtual void drawRaster(const RasterInfo& rasterInfo, Point at, Size size, double rotation, Rboolean interpolate, pGEcontext context) = 0;
     virtual ScreenParameters screenParameters() = 0;
     virtual double widthOfStringUtf8(const char* text, pGEcontext context) = 0;
     virtual void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context) = 0;

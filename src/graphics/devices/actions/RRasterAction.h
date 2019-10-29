@@ -11,14 +11,20 @@ namespace devices {
     private:
       RasterInfo rasterInfo;
       Point at;
-      double width;
-      double height;
+      bool fitsArtBoard;
+      Size originalSize;
+      Size currentSize;
+      double xCumulativeScale;
+      double yCumulativeScale;
       double rot;
       Rboolean interpolate;
       R_GE_gcontext context;
 
+      RRasterAction(RasterInfo rasterInfo, Point at, Size originalSize, Size currentSize, bool fitsArtBoard,
+                    double xCumulativeScale, double yCumulativeScale, double rot, Rboolean interpolate, pGEcontext context);
+
     public:
-      RRasterAction(RasterInfo rasterInfo, Point at, double width, double height, double rot, Rboolean interpolate, pGEcontext context);
+      RRasterAction(RasterInfo rasterInfo, Point at, Size size, Rectangle artBoard, double rot, Rboolean interpolate, pGEcontext context);
 
       void rescale(const RescaleInfo& rescaleInfo) override;
       void perform(Ptr<RGraphicsDevice> device) override;

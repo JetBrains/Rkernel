@@ -186,14 +186,19 @@ void raster(unsigned int *raster,
   DEVICE_TRACE;
 
   auto pixels = makePtr<std::vector<unsigned>>(raster, raster + w * h);
-  getCurrentDevice()->drawRaster({ pixels, w, h }, { x, y }, width, height, rot, interpolate, context);
+  // Note: for some reason height can be negative
+  if (height < 0.0) {
+    height *= -1.0;
+    y -= height;
+  }
+  getCurrentDevice()->drawRaster({ pixels, w, h }, { x, y }, Size { width, height }, rot, interpolate, context);
 }
 
 void size(double *left, double *right, double *bottom, double *top, pDevDesc) {
   DEVICE_TRACE;
   *left = 0.0;
-  *right = currentScreenParameters.width / currentScaleFactor;
-  *bottom = currentScreenParameters.height / currentScaleFactor;
+  *right = currentScreenParameters.size.width / currentScaleFactor;
+  *bottom = currentScreenParameters.size.height / currentScaleFactor;
   *top = 0.0;
   std::cerr << "width = " << *right << ", height = " << *bottom << std::endl;
 }
@@ -292,7 +297,7 @@ bool rescale(int snapshotNumber, double width, double height) {
     auto previousParameters = device->screenParameters();
     device->rescale(width, height);
     device->dump(devices::SnapshotType::NORMAL);
-    std::cerr << "(previously was " << int(previousParameters.width) << "x" << int(previousParameters.height) << ")\n";
+    std::cerr << "(previously was " << int(previousParameters.size.width) << "x" << int(previousParameters.size.height) << ")\n";
     return true;
   } else {
     if (snapshotNumber < 0) {

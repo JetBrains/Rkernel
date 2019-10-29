@@ -38,7 +38,7 @@ namespace devices {
     void drawPolyline(const std::vector<Point> &points, pGEcontext context) override;
     void drawRect(Point from, Point to, pGEcontext context) override;
     void drawPath(const std::vector<Point> &points, const std::vector<int> &numPointsPerPolygon, Rboolean winding, pGEcontext context) override;
-    void drawRaster(const RasterInfo &rasterInfo, Point at, double width, double height, double rotation, Rboolean interpolate, pGEcontext context) override;
+    void drawRaster(const RasterInfo &rasterInfo, Point at, Size size, double rotation, Rboolean interpolate, pGEcontext context) override;
     ScreenParameters screenParameters() override;
     double widthOfStringUtf8(const char* text, pGEcontext context) override;
     void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context) override;

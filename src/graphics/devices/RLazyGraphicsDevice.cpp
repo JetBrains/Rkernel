@@ -45,18 +45,6 @@ namespace devices {
           throw std::runtime_error("Unsupported snapshot type #" + std::to_string(int(type)));
       }
     }
-
-    bool isClose(double x, double y, double epsilon = 1e-3) {
-      return fabs(x - y) < epsilon;
-    }
-
-    bool isClose(Point a, Point b, double epsilon = 1e-3) {
-      return isClose(a.x, b.x, epsilon) && isClose(a.y, b.y, epsilon);
-    }
-
-    bool isClose(Rectangle a, Rectangle b, double epsilon = 1e-3) {
-      return isClose(a.from, b.from, epsilon) && isClose(a.to, b.to, epsilon);
-    }
   }
 
   RLazyGraphicsDevice::RLazyGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters)
@@ -126,7 +114,7 @@ namespace devices {
   }
 
   Rectangle RLazyGraphicsDevice::buildCurrentCanvas() {
-    return buildCanvas(parameters.width, parameters.height);
+    return buildCanvas(parameters.size.width, parameters.size.height);
   }
 
   std::string RLazyGraphicsDevice::buildSnapshotPath(const char* typeSuffix, const char* errorSuffix) {
@@ -251,9 +239,9 @@ namespace devices {
     actions.push_back(makePtr<actions::RPathAction>(points, numPointsPerPolygon, winding, context));
   }
 
-  void RLazyGraphicsDevice::drawRaster(const RasterInfo &rasterInfo, Point at, double width, double height, double rotation, Rboolean interpolate, pGEcontext context) {
+  void RLazyGraphicsDevice::drawRaster(const RasterInfo &rasterInfo, Point at, Size size, double rotation, Rboolean interpolate, pGEcontext context) {
     DEVICE_TRACE;
-    actions.push_back(makePtr<actions::RRasterAction>(rasterInfo, at, width, height, rotation, interpolate, context));
+    actions.push_back(makePtr<actions::RRasterAction>(rasterInfo, at, size, artBoard, rotation, interpolate, context));
   }
 
   ScreenParameters RLazyGraphicsDevice::screenParameters() {
@@ -340,7 +328,7 @@ namespace devices {
 
   void RLazyGraphicsDevice::rescale(double newWidth, double newHeight) {
     DEVICE_TRACE;
-    if (!isClose(newWidth, parameters.width) || !isClose(newHeight, parameters.height)) {
+    if (!isClose(newWidth, parameters.size.width) || !isClose(newHeight, parameters.size.height)) {
       auto oldCanvas = buildCurrentCanvas();
       auto newCanvas = buildCanvas(newWidth, newHeight);
       auto deltaFrom = artBoard.from - oldCanvas.from;
@@ -363,8 +351,8 @@ namespace devices {
           action->rescale(rescaleInfo);
         }
         adjustLabels();
-        parameters.width = newWidth;
-        parameters.height = newHeight;
+        parameters.size.width = newWidth;
+        parameters.size.height = newHeight;
         artBoard = newArtBoard;
         shutdownSlaveDevice();
       } else {

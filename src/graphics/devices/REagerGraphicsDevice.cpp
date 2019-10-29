@@ -41,8 +41,8 @@ namespace devices {
     auto sout = std::ostringstream();
     sout << "png('"
          << snapshotPath << "', "
-         << parameters.width << ", "
-         << parameters.height << ", "
+         << parameters.size.width << ", "
+         << parameters.size.height << ", "
          << "res = " << buildResolutionString()
          << ")";
     auto command = sout.str();
@@ -141,9 +141,14 @@ namespace devices {
     getSlave()->path(xs.data(), ys.data(), int(numPointsPerPolygon.size()), copyPointsPerPolygon.data(), winding, context, getSlave());
   }
 
-  void REagerGraphicsDevice::drawRaster(const RasterInfo &rasterInfo, Point at, double width, double height, double rotation, Rboolean interpolate, pGEcontext context) {
+  void REagerGraphicsDevice::drawRaster(const RasterInfo &rasterInfo, Point at, Size size, double rotation, Rboolean interpolate, pGEcontext context) {
     auto raster = rasterInfo.pixels->data();  // Note: looks like callee won't modify buffer that's why I don't use preventive copy
-    getSlave()->raster(raster, rasterInfo.width, rasterInfo.height, at.x, at.y, width, height, rotation, interpolate, context, getSlave());
+    // Note: Looks like we should adjust position of image anchor point and image height
+    auto width = size.width;
+    auto height = -size.height;  // Note: minus is NOT a typo
+    auto x = at.x;
+    auto y = at.y - height;
+    getSlave()->raster(raster, rasterInfo.width, rasterInfo.height, x, y, width, height, rotation, interpolate, context, getSlave());
   }
 
   ScreenParameters REagerGraphicsDevice::screenParameters() {
@@ -171,8 +176,8 @@ namespace devices {
   void REagerGraphicsDevice::rescale(double newWidth, double newHeight) {
     DEVICE_TRACE;
     shutdownSlaveDevice();
-    parameters.width = newWidth;
-    parameters.height = newHeight;
+    parameters.size.width = newWidth;
+    parameters.size.height = newHeight;
   }
 
   Ptr<RGraphicsDevice> REagerGraphicsDevice::clone() {
