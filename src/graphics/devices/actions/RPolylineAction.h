@@ -5,22 +5,24 @@
 
 #include <vector>
 
-namespace devices {
-  namespace actions {
-    class RPolylineAction : public RGraphicsAction {
-    private:
-      std::vector<Point> points;
-      R_GE_gcontext context;
+namespace graphics {
+  namespace devices {
+    namespace actions {
+      class RPolylineAction : public RGraphicsAction {
+      private:
+        std::vector<Point> points;
+        R_GE_gcontext context;
 
-    public:
-      RPolylineAction(std::vector<Point> points, pGEcontext context);
+      public:
+        RPolylineAction(std::vector<Point> points, pGEcontext context);
 
-      void rescale(const RescaleInfo& rescaleInfo) override;
-      void perform(Ptr<RGraphicsDevice> device) override;
-      Ptr<RGraphicsAction> clone() override;
-      std::string toString() override;
-      bool isVisible() override;
-    };
+        void rescale(const RescaleInfo &rescaleInfo) override;
+        void perform(Ptr<RGraphicsDevice> device) override;
+        Ptr<RGraphicsAction> clone() override;
+        std::string toString() override;
+        bool isVisible() override;
+      };
+    }
   }
 }
 

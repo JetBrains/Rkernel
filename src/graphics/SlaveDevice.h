@@ -25,22 +25,18 @@
 
 #include "ScreenParameters.h"
 
-namespace jetbrains {
-namespace ther {
-namespace device {
-namespace slave {
+namespace graphics {
+  class SlaveDevice {
+  private:
+    pGEDevDesc descriptor;
 
-pGEDevDesc instance(const std::string &snapshotDir, ScreenParameters screenParameters);
+  public:
+    SlaveDevice(const std::string& snapshotPath, ScreenParameters screenParameters);
 
-void newPage();
+    pDevDesc getDescriptor();
 
-void dump();
-
-void trueDump();
-
-} // slave
-} // device
-} // ther
-} // jetbrains
+    ~SlaveDevice();
+  };
+}
 
 #endif // SLAVE_DEVICE_H

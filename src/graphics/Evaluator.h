@@ -22,18 +22,12 @@
 
 #include "ScopeProtector.h"
 
-namespace jetbrains {
-namespace ther {
-namespace device {
-namespace evaluator {
-
-void evaluate(const std::string &command);
-
-SEXP evaluate(const std::string &command, jetbrains::ther::device::protector::ScopeProtector *protector);
-
-} // evaluator
-} // device
-} // ther
-} // jetbrains
+namespace graphics {
+  class Evaluator {
+  public:
+    static void evaluate(const std::string &command);
+    static SEXP evaluate(const std::string &command, ScopeProtector *protector);
+  };
+}
 
 #endif // EVALUATOR_H

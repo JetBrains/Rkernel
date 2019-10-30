@@ -22,25 +22,25 @@
 #include "MasterDevice.h"
 #include "SlaveDevice.h"
 
-
 using namespace Rcpp;
 
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution, double scaleFactor) {
   auto path = as<std::string>(snapshotDir[0]);
-  jetbrains::ther::device::master::init(path, { width, height, resolution }, scaleFactor);
+  auto screenParameters = graphics::ScreenParameters{width, height, resolution};
+  graphics::MasterDevice::init(path, screenParameters, scaleFactor);
   return R_NilValue;
 }
 
 using namespace Rcpp;
 
 SEXP jetbrains_ther_device_dump() {
-    jetbrains::ther::device::master::dumpAndMoveNext();
-    return R_NilValue;
+  graphics::MasterDevice::dumpAndMoveNext();
+  return R_NilValue;
 }
 
 SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double height) {
-  auto isRescaled = jetbrains::ther::device::master::rescale(snapshotNumber, width, height);
+  auto isRescaled = graphics::MasterDevice::rescale(snapshotNumber, width, height);
   return Rcpp::wrap(isRescaled);
 }

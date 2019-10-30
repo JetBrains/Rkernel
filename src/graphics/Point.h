@@ -4,30 +4,32 @@
 #include <iostream>
 #include <cmath>
 
-namespace devices {
+#include "ScreenParameters.h"
+
+namespace graphics {
   struct Point {
     double x;
     double y;
 
     Point rescale(Point scale) const {
-      return { x * scale.x, y * scale.y };
+      return {x * scale.x, y * scale.y};
     }
 
     static Point make(Size size) {
-      return Point { size.width, size.height };
+      return Point{size.width, size.height};
     }
   };
 
   inline Point operator+(Point a, Point b) {
-    return Point { a.x + b.x, a.y + b.y };
+    return Point{a.x + b.x, a.y + b.y};
   }
 
   inline Point operator-(Point a, Point b) {
-    return Point { a.x - b.x, a.y - b.y };
+    return Point{a.x - b.x, a.y - b.y};
   }
 
   inline Point operator*(double alpha, Point point) {
-    return Point { alpha * point.x, alpha * point.y };
+    return Point{alpha * point.x, alpha * point.y};
   }
 
   inline Point operator*(Point point, double alpha) {
@@ -35,10 +37,10 @@ namespace devices {
   }
 
   inline Point operator/(Point point, double alpha) {
-    return Point { point.x / alpha, point.y / alpha };
+    return Point{point.x / alpha, point.y / alpha};
   }
 
-  inline std::ostream& operator<<(std::ostream& out, Point point) {
+  inline std::ostream &operator<<(std::ostream &out, Point point) {
     out << "Point {x = " << point.x << ", y = " << point.y << "}";
     return out;
   }

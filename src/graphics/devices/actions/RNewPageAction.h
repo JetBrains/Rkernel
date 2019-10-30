@@ -3,21 +3,23 @@
 
 #include "RGraphicsAction.h"
 
-namespace devices {
-  namespace actions {
-    class RNewPageAction : public RGraphicsAction {
-    private:
-      R_GE_gcontext context;
+namespace graphics {
+  namespace devices {
+    namespace actions {
+      class RNewPageAction : public RGraphicsAction {
+      private:
+        R_GE_gcontext context;
 
-    public:
-      explicit RNewPageAction(pGEcontext context);
+      public:
+        explicit RNewPageAction(pGEcontext context);
 
-      void rescale(const RescaleInfo& rescaleInfo) override;
-      void perform(Ptr<RGraphicsDevice> device) override;
-      Ptr<RGraphicsAction> clone() override;
-      std::string toString() override;
-      bool isVisible() override;
-    };
+        void rescale(const RescaleInfo& rescaleInfo) override;
+        void perform(Ptr<RGraphicsDevice> device) override;
+        Ptr<RGraphicsAction> clone() override;
+        std::string toString() override;
+        bool isVisible() override;
+      };
+    }
   }
 }
 

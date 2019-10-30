@@ -5,7 +5,7 @@
 
 #include "Point.h"
 
-namespace devices {
+namespace graphics {
   struct Rectangle {
     Point from;
     Point to;
@@ -27,7 +27,7 @@ namespace devices {
       auto xMax = std::max(a.x, b.x);
       auto yMin = std::min(a.y, b.y);
       auto yMax = std::max(a.y, b.y);
-      return Rectangle { Point { xMin, yMin }, Point { xMax, yMax } };
+      return Rectangle{Point{xMin, yMin}, Point{xMax, yMax}};
     }
   };
 
@@ -35,7 +35,7 @@ namespace devices {
     return isClose(a.from, b.from, epsilon) && isClose(a.to, b.to, epsilon);
   }
 
-  inline std::ostream& operator<<(std::ostream& out, Rectangle rectangle) {
+  inline std::ostream &operator<<(std::ostream &out, Rectangle rectangle) {
     out << "Rectangle {from = " << rectangle.from << ", to = " << rectangle.to << "}";
     return out;
   }

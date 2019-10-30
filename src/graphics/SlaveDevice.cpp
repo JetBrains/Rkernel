@@ -21,107 +21,66 @@
 #include "Common.h"
 #include "SlaveDevice.h"
 
-namespace jetbrains {
-namespace ther {
-namespace device {
-namespace slave {
-namespace {
+namespace graphics {
+  namespace {
+    class InitHelper {
+    public:
+      InitHelper() : previousDevice(nullptr) {
+        if (!Rf_NoDevices()) {
+          previousDevice = GEcurrentDevice();
+        }
+      }
 
-pGEDevDesc INSTANCE = NULL;
+      ~InitHelper() {
+        if (previousDevice != nullptr) {
+          int previousDeviceNumber = Rf_ndevNumber(previousDevice->dev);
 
-int snapshotNumber = 0;
+          GEcopyDisplayList(previousDeviceNumber);
+          Rf_selectDevice(previousDeviceNumber);
+        }
+      }
 
-class InitHelper {
- public:
-  InitHelper() : previousDevice(NULL) {
-    if (!Rf_NoDevices()) {
-      previousDevice = GEcurrentDevice();
+    private:
+      pGEDevDesc previousDevice;
+    };
+
+    std::string getResolutionString(int resolution) {
+      if (resolution > 0) {
+        return std::to_string(resolution);
+      } else {
+        return "NA";
+      }
+    }
+
+    std::string calculateInitCommand(const std::string &snapshotPath, ScreenParameters screenParameters) {
+      std::stringstream sout;
+      sout << "png("
+           << "'" << snapshotPath << "', "
+           << screenParameters.size.width << ", "
+           << screenParameters.size.height << ", "
+           << "res = " << getResolutionString(screenParameters.resolution) << ")";
+      return sout.str();
+    }
+
+    pGEDevDesc init(const std::string &snapshotPath, ScreenParameters screenParameters) {
+      InitHelper helper; // helper backups and restores active device and copies its display list to slave device
+      Evaluator::evaluate(calculateInitCommand(snapshotPath, screenParameters));
+      return GEcurrentDevice();
     }
   }
 
-  virtual ~InitHelper() {
-    if (previousDevice != NULL) {
-      int previousDeviceNumber = Rf_ndevNumber(previousDevice->dev);
-
-      GEcopyDisplayList(previousDeviceNumber);
-      Rf_selectDevice(previousDeviceNumber);
-    }
-  }
-
- private:
-  pGEDevDesc previousDevice;
-};
-
-static std::string getResolutionString(int resolution) {
-  if (resolution > 0) {
-    return std::to_string(resolution);
-  } else {
-    return "NA";
-  }
-}
-
-// TODO [mine]: enormous code duplication with devices::REagerGraphicsDevice
-std::string calculateInitCommand(const std::string &snapshotDir, ScreenParameters screenParameters) {
-  std::stringstream ss;
-
-  ss << "png" <<
-      "(" <<
-      "\"" << snapshotDir << "/snapshot_" << snapshotNumber << ".png" << "\"" << ", " <<
-      screenParameters.size.width << ", " <<
-      screenParameters.size.height << ", " <<
-      "res = " << getResolutionString(screenParameters.resolution) <<
-      ")";
-
-  return ss.str();
-}
-
-pGEDevDesc init(const std::string &snapshotDir, ScreenParameters screenParameters) {
-  InitHelper helper; // helper backups and restores active device and copies its display list to slave device
-
-  evaluator::evaluate(calculateInitCommand(snapshotDir, screenParameters));
-
-  return GEcurrentDevice();
-}
-
-} // anonymous
-
-pGEDevDesc instance(const std::string &snapshotDir, ScreenParameters screenParameters) {
-  DEVICE_TRACE;
-
-  if (INSTANCE == NULL) {
-    INSTANCE = init(snapshotDir, screenParameters);
-  }
-
-  return INSTANCE;
-}
-
-void newPage() {
-  DEVICE_TRACE;
-
-  dump();
-
-  ++snapshotNumber;
-}
-
-void dump() {
+  SlaveDevice::SlaveDevice(const std::string &snapshotPath, ScreenParameters screenParameters) {
     DEVICE_TRACE;
-    // Previously dump() was busy with saving plots.
-    // That made it impossible to use this graphical device with ggplot2.
-    // It's not the behaviour we're looking for.
-    // So I introduced trueDump() that should be called separately
-}
+    descriptor = init(snapshotPath, screenParameters);
+  }
 
-void trueDump() {
+  pDevDesc SlaveDevice::getDescriptor() {
+    return descriptor->dev;
+  }
+
+  SlaveDevice::~SlaveDevice() {
     DEVICE_TRACE;
-
-    if (INSTANCE != NULL) {
-        GEkillDevice(INSTANCE);
-        INSTANCE = NULL;
-        snapshotNumber++;
-    }
+    GEkillDevice(descriptor);
+    descriptor = nullptr;
+  }
 }
-
-} // slave
-} // device
-} // ther
-} // jetbrains

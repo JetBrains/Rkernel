@@ -3,23 +3,25 @@
 
 #include "RGraphicsAction.h"
 
-namespace devices {
-  namespace actions {
-    class RLineAction : public RGraphicsAction {
-    private:
-      Point from;
-      Point to;
-      R_GE_gcontext context;
+namespace graphics {
+  namespace devices {
+    namespace actions {
+      class RLineAction : public RGraphicsAction {
+      private:
+        Point from;
+        Point to;
+        R_GE_gcontext context;
 
-    public:
-      RLineAction(Point from, Point to, pGEcontext context);
+      public:
+        RLineAction(Point from, Point to, pGEcontext context);
 
-      void rescale(const RescaleInfo& rescaleInfo) override;
-      void perform(Ptr<RGraphicsDevice> device) override;
-      Ptr<RGraphicsAction> clone() override;
-      std::string toString() override;
-      bool isVisible() override;
-    };
+        void rescale(const RescaleInfo &rescaleInfo) override;
+        void perform(Ptr<RGraphicsDevice> device) override;
+        Ptr<RGraphicsAction> clone() override;
+        std::string toString() override;
+        bool isVisible() override;
+      };
+    }
   }
 }
 

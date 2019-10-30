@@ -22,31 +22,23 @@
 
 #include <Rinternals.h>
 
-namespace jetbrains {
-namespace ther {
-namespace device {
-namespace protector {
+namespace graphics {
+  class ScopeProtector {
+  public:
+    ScopeProtector();
 
-class ScopeProtector {
- public:
-  ScopeProtector();
+    ScopeProtector(const ScopeProtector &) = delete;
+    ScopeProtector &operator=(const ScopeProtector &) = delete;
 
-  ScopeProtector(const ScopeProtector &) = delete;
-  ScopeProtector &operator=(const ScopeProtector &) = delete;
+    virtual ~ScopeProtector();
 
-  virtual ~ScopeProtector();
+    void add(SEXP sexp);
 
-  void add(SEXP sexp);
+  private:
+    class Impl;
 
- private:
-  class Impl;
-
-  const std::unique_ptr<Impl> pImpl;
-};
-
-} // protector
-} // device
-} // ther
-} // jetbrains
+    const std::unique_ptr<Impl> pImpl;
+  };
+}
 
 #endif // SCOPE_PROTECTOR_H

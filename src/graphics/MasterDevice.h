@@ -22,18 +22,13 @@
 
 #include "ScreenParameters.h"
 
-namespace jetbrains {
-namespace ther {
-namespace device {
-namespace master {
-
-void init(const std::string& snapshotDirectory, ScreenParameters screenParameters, double scaleFactor);
-void dumpAndMoveNext();
-bool rescale(int snapshotNumber, double width, double height);
-
-} // master
-} // device
-} // ther
-} // jetbrains
+namespace graphics {
+  class MasterDevice {
+  public:
+    static void init(const std::string& snapshotDirectory, ScreenParameters screenParameters, double scaleFactor);
+    static void dumpAndMoveNext();
+    static bool rescale(int snapshotNumber, double width, double height);
+  };
+}
 
 #endif // MASTER_DEVICE_H
