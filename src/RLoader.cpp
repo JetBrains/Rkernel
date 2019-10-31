@@ -43,7 +43,7 @@ static void getValueInfo(SEXP var, ValueInfo* result) {
     return;
   }
   if (Rcpp::as<bool>(RI->isFunction(var))) {
-    result->mutable_function()->set_code(getPrintedValue(var));
+    result->mutable_function()->set_code(getPrintedValue(RI->unclass(var)));
   } else if (Rcpp::as<bool>(RI->isEnvironment(var))) {
     result->mutable_environment()->set_name(Rcpp::as<std::string>(RI->environmentName(var)));
   } else {
@@ -63,10 +63,11 @@ static void getValueInfo(SEXP var, ValueInfo* result) {
         int length = Rcpp::as<int>(RI->length(var));
         value->set_isvector(length > 1);
         if (length <= MAX_PREVIEW_PRINTED_COUNT) {
-          value->set_textvalue(getPrintedValue(var));
+          value->set_textvalue(getPrintedValue(RI->unclass(var)));
           value->set_iscomplete(true);
         } else {
-          value->set_textvalue(getPrintedValue(RI->subscript(var, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT))));
+          value->set_textvalue(getPrintedValue(RI->unclass(
+              RI->subscript(var, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT)))));
           value->set_iscomplete(false);
         }
       } else if (type == "character") {
@@ -81,7 +82,7 @@ static void getValueInfo(SEXP var, ValueInfo* result) {
             isComplete = false;
           }
         }
-        value->set_textvalue(getPrintedValue(vector));
+        value->set_textvalue(getPrintedValue(RI->unclass(vector)));
         value->set_iscomplete(isComplete);
       } else {
         value->set_isvector(false);

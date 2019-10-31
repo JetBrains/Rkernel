@@ -77,6 +77,7 @@ struct RObjects {
   Rcpp::Function sysSetEnv = baseEnv["Sys.setenv"];
   Rcpp::Function sysSetLocale = baseEnv["Sys.setlocale"];
   Rcpp::Function type = baseEnv["typeof"];
+  Rcpp::Function unclass = baseEnv["unclass"];
 
   Rcpp::Function mySysFrames = evalCode("function() sys.frames()", baseEnv);
   Rcpp::Function mySysFunction = evalCode("function(n) sys.function(n)", baseEnv);
