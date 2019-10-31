@@ -6,24 +6,26 @@
 #include <vector>
 
 namespace graphics {
-  namespace devices {
-    namespace actions {
-      class RPolylineAction : public RGraphicsAction {
-      private:
-        std::vector<Point> points;
-        R_GE_gcontext context;
+namespace devices {
+namespace actions {
 
-      public:
-        RPolylineAction(std::vector<Point> points, pGEcontext context);
+class RPolylineAction : public RGraphicsAction {
+private:
+  std::vector<Point> points;
+  R_GE_gcontext context;
 
-        void rescale(const RescaleInfo &rescaleInfo) override;
-        void perform(Ptr<RGraphicsDevice> device) override;
-        Ptr<RGraphicsAction> clone() override;
-        std::string toString() override;
-        bool isVisible() override;
-      };
-    }
-  }
-}
+public:
+  RPolylineAction(std::vector<Point> points, pGEcontext context);
+
+  void rescale(const RescaleInfo &rescaleInfo) override;
+  void perform(Ptr<RGraphicsDevice> device) override;
+  Ptr<RGraphicsAction> clone() override;
+  std::string toString() override;
+  bool isVisible() override;
+};
+
+}  // actions
+}  // devices
+}  // graphics
 
 #endif //RWRAPPER_RPOLYLINEACTION_H

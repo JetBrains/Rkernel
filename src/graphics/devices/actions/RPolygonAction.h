@@ -6,24 +6,26 @@
 #include "RGraphicsAction.h"
 
 namespace graphics {
-  namespace devices {
-    namespace actions {
-      class RPolygonAction : public RGraphicsAction {
-      private:
-        std::vector<Point> points;
-        R_GE_gcontext context;
+namespace devices {
+namespace actions {
 
-      public:
-        RPolygonAction(std::vector<Point> points, pGEcontext context);
+class RPolygonAction : public RGraphicsAction {
+private:
+  std::vector<Point> points;
+  R_GE_gcontext context;
 
-        void rescale(const RescaleInfo& rescaleInfo) override;
-        void perform(Ptr<RGraphicsDevice> device) override;
-        Ptr<RGraphicsAction> clone() override;
-        std::string toString() override;
-        bool isVisible() override;
-      };
-    }
-  }
-}
+public:
+  RPolygonAction(std::vector<Point> points, pGEcontext context);
+
+  void rescale(const RescaleInfo& rescaleInfo) override;
+  void perform(Ptr<RGraphicsDevice> device) override;
+  Ptr<RGraphicsAction> clone() override;
+  std::string toString() override;
+  bool isVisible() override;
+};
+
+}  // actions
+}  // devices
+}  // graphics
 
 #endif //RWRAPPER_RPOLYGONACTION_H

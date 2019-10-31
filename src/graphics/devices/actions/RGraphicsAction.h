@@ -7,29 +7,28 @@
 #include "../RGraphicsDevice.h"
 
 namespace graphics {
-  namespace devices {
-    namespace actions {
-      struct RescaleInfo {
-        Rectangle oldArtBoard;
-        Rectangle newArtBoard;
-        Point scale;
-      };
+namespace devices {
+namespace actions {
 
-      // TODO [mine]: - almost each instance of `RGraphicsAction` stores its copy of current context
-      //              - this means it stores char array for font name (which is the same all time, I guess)
-      //              - to make it more memory friendly it's better to introduce proxy context which will cache font names
-      class RGraphicsAction {
-      public:
-        virtual void rescale(const RescaleInfo& rescaleInfo) = 0;
-        virtual void perform(Ptr<RGraphicsDevice> device) = 0;
-        virtual Ptr<RGraphicsAction> clone() = 0;
-        virtual std::string toString() = 0;
-        virtual bool isVisible() = 0;
+struct RescaleInfo {
+  Rectangle oldArtBoard;
+  Rectangle newArtBoard;
+  Point scale;
+};
 
-        virtual ~RGraphicsAction() = default;
-      };
-    }
-  }
-}
+class RGraphicsAction {
+public:
+  virtual void rescale(const RescaleInfo& rescaleInfo) = 0;
+  virtual void perform(Ptr<RGraphicsDevice> device) = 0;
+  virtual Ptr<RGraphicsAction> clone() = 0;
+  virtual std::string toString() = 0;
+  virtual bool isVisible() = 0;
+
+  virtual ~RGraphicsAction() = default;
+};
+
+}  // actions
+}  // devices
+}  // graphics
 
 #endif //RWRAPPER_RGRAPHICSELEMENT_H

@@ -23,12 +23,14 @@
 #include "ScreenParameters.h"
 
 namespace graphics {
-  class MasterDevice {
-  public:
-    static void init(const std::string& snapshotDirectory, ScreenParameters screenParameters, double scaleFactor);
-    static void dumpAndMoveNext();
-    static bool rescale(int snapshotNumber, double width, double height);
-  };
-}
+
+class MasterDevice {
+public:
+  static void init(const std::string& snapshotDirectory, ScreenParameters screenParameters, double scaleFactor);
+  static void dumpAndMoveNext();
+  static bool rescale(int snapshotNumber, double width, double height);
+};
+
+}  // graphics
 
 #endif // MASTER_DEVICE_H

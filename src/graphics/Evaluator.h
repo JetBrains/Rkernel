@@ -23,11 +23,13 @@
 #include "ScopeProtector.h"
 
 namespace graphics {
-  class Evaluator {
-  public:
-    static void evaluate(const std::string &command);
-    static SEXP evaluate(const std::string &command, ScopeProtector *protector);
-  };
-}
+
+class Evaluator {
+public:
+  static void evaluate(const std::string &command);
+  static SEXP evaluate(const std::string &command, ScopeProtector *protector);
+};
+
+}  // graphics
 
 #endif // EVALUATOR_H

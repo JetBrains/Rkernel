@@ -26,17 +26,19 @@
 #include "ScreenParameters.h"
 
 namespace graphics {
-  class SlaveDevice {
-  private:
-    pGEDevDesc descriptor;
 
-  public:
-    SlaveDevice(const std::string& snapshotPath, ScreenParameters screenParameters);
+class SlaveDevice {
+private:
+  pGEDevDesc descriptor;
 
-    pDevDesc getDescriptor();
+public:
+  SlaveDevice(const std::string& snapshotPath, ScreenParameters screenParameters);
 
-    ~SlaveDevice();
-  };
-}
+  pDevDesc getDescriptor();
+
+  ~SlaveDevice();
+};
+
+}  // graphics
 
 #endif // SLAVE_DEVICE_H

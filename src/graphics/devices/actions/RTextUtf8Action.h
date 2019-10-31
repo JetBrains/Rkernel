@@ -5,32 +5,34 @@
 #include "RTextAsciiAction.h"
 
 namespace graphics {
-  namespace devices {
-    namespace actions {
-      class RTextUtf8Action : public RTextAction {
-      private:
-        std::string text;
-        double width;
-        Point at;
-        double rot;
-        double hadj;
-        R_GE_gcontext context;
-        bool isEnabled;
+namespace devices {
+namespace actions {
 
-      public:
-        RTextUtf8Action(std::string text, double width, Point at, double rot, double hadj, pGEcontext context);
+class RTextUtf8Action : public RTextAction {
+private:
+  std::string text;
+  double width;
+  Point at;
+  double rot;
+  double hadj;
+  R_GE_gcontext context;
+  bool isEnabled;
 
-        void rescale(const RescaleInfo &rescaleInfo) override;
-        void perform(Ptr<RGraphicsDevice> device) override;
-        Ptr<RGraphicsAction> clone() override;
-        std::string toString() override;
-        bool isVisible() override;
-        void setEnabled(bool isEnabled) override;
-        double textWidth() override;
-        Point location() override;
-      };
-    }
-  }
-}
+public:
+  RTextUtf8Action(std::string text, double width, Point at, double rot, double hadj, pGEcontext context);
+
+  void rescale(const RescaleInfo &rescaleInfo) override;
+  void perform(Ptr<RGraphicsDevice> device) override;
+  Ptr<RGraphicsAction> clone() override;
+  std::string toString() override;
+  bool isVisible() override;
+  void setEnabled(bool isEnabled) override;
+  double textWidth() override;
+  Point location() override;
+};
+
+}  // actions
+}  // devices
+}  // graphics
 
 #endif //RWRAPPER_RTEXTUTF8ACTION_H

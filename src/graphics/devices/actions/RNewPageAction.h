@@ -4,23 +4,25 @@
 #include "RGraphicsAction.h"
 
 namespace graphics {
-  namespace devices {
-    namespace actions {
-      class RNewPageAction : public RGraphicsAction {
-      private:
-        R_GE_gcontext context;
+namespace devices {
+namespace actions {
 
-      public:
-        explicit RNewPageAction(pGEcontext context);
+class RNewPageAction : public RGraphicsAction {
+private:
+  R_GE_gcontext context;
 
-        void rescale(const RescaleInfo& rescaleInfo) override;
-        void perform(Ptr<RGraphicsDevice> device) override;
-        Ptr<RGraphicsAction> clone() override;
-        std::string toString() override;
-        bool isVisible() override;
-      };
-    }
-  }
-}
+public:
+  explicit RNewPageAction(pGEcontext context);
+
+  void rescale(const RescaleInfo& rescaleInfo) override;
+  void perform(Ptr<RGraphicsDevice> device) override;
+  Ptr<RGraphicsAction> clone() override;
+  std::string toString() override;
+  bool isVisible() override;
+};
+
+}  // actions
+}  // devices
+}  // graphics
 
 #endif //RWRAPPER_RNEWPAGEACTION_H

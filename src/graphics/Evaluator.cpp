@@ -21,41 +21,44 @@
 #include <R_ext/Parse.h>
 
 namespace graphics {
-  namespace {
-    SEXP createSexp(const std::string &str, ScopeProtector *protector) {
-      SEXP result = Rf_allocVector(STRSXP, 1);
-      protector->add(result);
-      SET_STRING_ELT(result, 0, Rf_mkChar(str.c_str()));
-      return result;
-    }
+namespace {
 
-    SEXP createExpressionSexp(SEXP strSexp, ScopeProtector *protector) {
-      ParseStatus status;
-      SEXP result = R_ParseVector(strSexp, 1, &status, R_NilValue);
-      protector->add(result);
-      return result;
-    }
-
-    SEXP createExpressionSexp(const std::string &str, ScopeProtector *protector) {
-      return createExpressionSexp(createSexp(str, protector), protector);
-    }
-
-    SEXP evaluateExpression(SEXP exprSexp, ScopeProtector *protector) {
-      SEXP result = Rf_eval(VECTOR_ELT(exprSexp, 0), R_GlobalEnv);
-      protector->add(result);
-      return result;
-    }
-  }
-
-  void Evaluator::evaluate(const std::string &command) {
-    DEVICE_TRACE;
-    ScopeProtector protector;
-    evaluateExpression(createExpressionSexp(command, &protector), &protector);
-  }
-
-
-  SEXP Evaluator::evaluate(const std::string &command, ScopeProtector *protector) {
-    DEVICE_TRACE;
-    return evaluateExpression(createExpressionSexp(command, protector), protector);
-  }
+SEXP createSexp(const std::string &str, ScopeProtector *protector) {
+  SEXP result = Rf_allocVector(STRSXP, 1);
+  protector->add(result);
+  SET_STRING_ELT(result, 0, Rf_mkChar(str.c_str()));
+  return result;
 }
+
+SEXP createExpressionSexp(SEXP strSexp, ScopeProtector *protector) {
+  ParseStatus status;
+  SEXP result = R_ParseVector(strSexp, 1, &status, R_NilValue);
+  protector->add(result);
+  return result;
+}
+
+SEXP createExpressionSexp(const std::string &str, ScopeProtector *protector) {
+  return createExpressionSexp(createSexp(str, protector), protector);
+}
+
+SEXP evaluateExpression(SEXP exprSexp, ScopeProtector *protector) {
+  SEXP result = Rf_eval(VECTOR_ELT(exprSexp, 0), R_GlobalEnv);
+  protector->add(result);
+  return result;
+}
+
+}  // anonymous
+
+void Evaluator::evaluate(const std::string &command) {
+  DEVICE_TRACE;
+  ScopeProtector protector;
+  evaluateExpression(createExpressionSexp(command, &protector), &protector);
+}
+
+
+SEXP Evaluator::evaluate(const std::string &command, ScopeProtector *protector) {
+  DEVICE_TRACE;
+  return evaluateExpression(createExpressionSexp(command, protector), protector);
+}
+
+}  // graphics

@@ -5,25 +5,27 @@
 #include "../RGraphicsDevice.h"
 
 namespace graphics {
-  namespace devices {
-    namespace actions {
-      class RCircleAction : public RGraphicsAction {
-      private:
-        Point center;
-        double radius;
-        R_GE_gcontext context;
+namespace devices {
+namespace actions {
 
-      public:
-        RCircleAction(Point center, double radius, pGEcontext context);
+class RCircleAction : public RGraphicsAction {
+private:
+  Point center;
+  double radius;
+  R_GE_gcontext context;
 
-        void rescale(const RescaleInfo& rescaleInfo) override;
-        void perform(Ptr<RGraphicsDevice> device) override;
-        Ptr<RGraphicsAction> clone() override;
-        std::string toString() override;
-        bool isVisible() override;
-      };
-    }
-  }
-}
+public:
+  RCircleAction(Point center, double radius, pGEcontext context);
+
+  void rescale(const RescaleInfo& rescaleInfo) override;
+  void perform(Ptr<RGraphicsDevice> device) override;
+  Ptr<RGraphicsAction> clone() override;
+  std::string toString() override;
+  bool isVisible() override;
+};
+
+}  // actions
+}  // devices
+}  // graphics
 
 #endif //RWRAPPER_RCIRCLEACTION_H

@@ -23,22 +23,24 @@
 #include <Rinternals.h>
 
 namespace graphics {
-  class ScopeProtector {
-  public:
-    ScopeProtector();
 
-    ScopeProtector(const ScopeProtector &) = delete;
-    ScopeProtector &operator=(const ScopeProtector &) = delete;
+class ScopeProtector {
+public:
+  ScopeProtector();
 
-    virtual ~ScopeProtector();
+  ScopeProtector(const ScopeProtector &) = delete;
+  ScopeProtector &operator=(const ScopeProtector &) = delete;
 
-    void add(SEXP sexp);
+  virtual ~ScopeProtector();
 
-  private:
-    class Impl;
+  void add(SEXP sexp);
 
-    const std::unique_ptr<Impl> pImpl;
-  };
-}
+private:
+  class Impl;
+
+  const std::unique_ptr<Impl> pImpl;
+};
+
+}  // graphics
 
 #endif // SCOPE_PROTECTOR_H
