@@ -27,14 +27,19 @@ const int MAX_PREVIEW_STRING_LENGTH = 200;
 const int MAX_PREVIEW_PRINTED_COUNT = 20;
 
 static void getValueInfo(SEXP var, ValueInfo* result) {
-  if (TYPEOF(var) == PROMSXP && PRVALUE(var) == R_UnboundValue) {
-    std::string code = Rcpp::as<std::string>(RI->paste(RI->deparse(RI->expression(PRCODE(var))), Rcpp::Named("collapse", " ")));
-    const char* exprStr = "expression(";
-    int exprLen = strlen(exprStr);
-    if (!strncmp(exprStr, code.c_str(), exprLen) && code.back() == ')') {
-      code = code.substr(exprLen, code.size() - 1 - exprLen);
+  if (TYPEOF(var) == PROMSXP) {
+    if (PRVALUE(var) == R_UnboundValue) {
+      std::string code = Rcpp::as<std::string>(
+          RI->paste(RI->deparse(RI->expression(PRCODE(var))), Rcpp::Named("collapse", " ")));
+      const char* exprStr = "expression(";
+      int exprLen = strlen(exprStr);
+      if (!strncmp(exprStr, code.c_str(), exprLen) && code.back() == ')') {
+        code = code.substr(exprLen, code.size() - 1 - exprLen);
+      }
+      result->mutable_unevaluated()->set_code(code);
+      return;
     }
-    result->mutable_unevaluated()->set_code(code);
+    getValueInfo(PRVALUE(var), result);
     return;
   }
   if (Rcpp::as<bool>(RI->isFunction(var))) {
