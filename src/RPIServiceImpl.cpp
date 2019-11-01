@@ -95,9 +95,7 @@ Status RPIServiceImpl::graphicsInit(ServerContext* context, const GraphicsInitRe
        << "'" << request->snapshotdirectory() << "', "
        << parameters.width() << ", "
        << parameters.height() << ", "
-       << parameters.resolution() << ", "
-       << request->scalefactor()
-       << ")";
+       << parameters.resolution() << ")";
   return executeCommand(context, sout.str(), writer);
 }
 

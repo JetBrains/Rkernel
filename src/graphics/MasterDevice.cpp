@@ -32,7 +32,6 @@ const auto DUMMY_SNAPSHOT_NAME = "snapshot_0.png";
 
 auto currentSnapshotDir = std::string();
 auto currentScreenParameters = ScreenParameters{640.0, 480.0, 75};
-auto currentScaleFactor = 1.0;
 auto currentSnapshotNumber = 0;
 
 struct DeviceInfo {
@@ -181,9 +180,11 @@ void raster(unsigned int *raster,
 
 void size(double *left, double *right, double *bottom, double *top, pDevDesc) {
   DEVICE_TRACE;
+  auto screenParameters = getCurrentDevice()->screenParameters();
+  auto screenSize = screenParameters.size;
   *left = 0.0;
-  *right = currentScreenParameters.size.width / currentScaleFactor;
-  *bottom = currentScreenParameters.size.height / currentScaleFactor;
+  *right = screenSize.width;
+  *bottom = screenSize.height;
   *top = 0.0;
 }
 
@@ -221,14 +222,11 @@ double strWidthUTF8(const char *str, pGEcontext context, pDevDesc) {
   return getCurrentDevice()->widthOfStringUtf8(str, context);
 }
 
-void setMasterDeviceSize(pDevDesc masterDevDesc) {
-  size(
-      &(masterDevDesc->left),
-      &(masterDevDesc->right),
-      &(masterDevDesc->bottom),
-      &(masterDevDesc->top),
-      masterDevDesc
-  );
+void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
+  masterDevDesc->left = slaveDevDesc->left;
+  masterDevDesc->right = slaveDevDesc->right;
+  masterDevDesc->bottom = slaveDevDesc->bottom;
+  masterDevDesc->top = slaveDevDesc->top;
   masterDevDesc->clipLeft = masterDevDesc->left;
   masterDevDesc->clipRight = masterDevDesc->right;
   masterDevDesc->clipBottom = masterDevDesc->bottom;
@@ -274,12 +272,11 @@ bool MasterDevice::rescale(int snapshotNumber, double width, double height) {
   }
 }
 
-void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters screenParameters, double scaleFactor) {
+void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters screenParameters) {
   DEVICE_TRACE;
 
   currentSnapshotDir = snapshotDirectory;
   currentScreenParameters = screenParameters;
-  currentScaleFactor = scaleFactor;
   if (currentDeviceInfos.empty()) {
     currentDeviceInfos.emplace_back(DeviceInfo());
   }
@@ -288,7 +285,7 @@ void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters s
   auto slaveDevice = SlaveDevice(snapshotDirectory + "/" + DUMMY_SNAPSHOT_NAME, screenParameters);
   auto slaveDevDesc = slaveDevice.getDescriptor();
 
-  setMasterDeviceSize(masterDevDesc);
+  setMasterDeviceSize(masterDevDesc, slaveDevDesc);
 
   masterDevDesc->xCharOffset = slaveDevDesc->xCharOffset;
   masterDevDesc->yCharOffset = slaveDevDesc->yCharOffset;

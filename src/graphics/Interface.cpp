@@ -26,10 +26,10 @@ using namespace Rcpp;
 
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
-SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution, double scaleFactor) {
+SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution) {
   auto path = as<std::string>(snapshotDir[0]);
   auto screenParameters = graphics::ScreenParameters{width, height, resolution};
-  graphics::MasterDevice::init(path, screenParameters, scaleFactor);
+  graphics::MasterDevice::init(path, screenParameters);
   return R_NilValue;
 }
 

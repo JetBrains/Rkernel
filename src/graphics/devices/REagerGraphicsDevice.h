@@ -23,7 +23,7 @@ private:
   Ptr<SlaveDevice> initializeSlaveDevice();
   void shutdownSlaveDevice();
   pDevDesc getSlave();
-  UnzippedPoints unzip(const std::vector<Point> &points);
+  static UnzippedPoints unzip(const std::vector<Point> &points);
 
 public:
   REagerGraphicsDevice(std::string snapshotPath, ScreenParameters parameters);

@@ -112,7 +112,13 @@ void REagerGraphicsDevice::drawRaster(const RasterInfo &rasterInfo, Point at, Si
 }
 
 ScreenParameters REagerGraphicsDevice::screenParameters() {
-  return parameters;
+  auto left = 0.0;
+  auto right = 0.0;
+  auto bottom = 0.0;
+  auto top = 0.0;
+  getSlave()->size(&left, &right, &bottom, &top, getSlave());
+  auto size = Size{right - left, bottom - top};
+  return ScreenParameters{size, parameters.resolution};
 }
 
 double REagerGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext context) {

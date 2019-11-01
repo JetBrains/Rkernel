@@ -6,7 +6,6 @@
 #include <fstream>
 #include <sstream>
 
-#include "../Common.h"
 #include "../Evaluator.h"
 #include "REagerGraphicsDevice.h"
 #include "actions/RCircleAction.h"
@@ -118,7 +117,8 @@ Rectangle RLazyGraphicsDevice::buildCanvas(double width, double height) {
 }
 
 Rectangle RLazyGraphicsDevice::buildCurrentCanvas() {
-  return buildCanvas(parameters.size.width, parameters.size.height);
+  auto size = screenParameters().size;
+  return buildCanvas(size.width, size.height);
 }
 
 std::string RLazyGraphicsDevice::buildSnapshotPath(const char* typeSuffix, const char* errorSuffix) {
@@ -249,7 +249,7 @@ void RLazyGraphicsDevice::drawRaster(const RasterInfo &rasterInfo, Point at, Siz
 
 ScreenParameters RLazyGraphicsDevice::screenParameters() {
   DEVICE_TRACE;
-  return parameters;
+  return getSlave()->screenParameters();
 }
 
 double RLazyGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext context) {
@@ -320,8 +320,13 @@ Ptr<RGraphicsDevice> RLazyGraphicsDevice::getSlave(const char* typeSuffix) {
 void RLazyGraphicsDevice::rescale(double newWidth, double newHeight) {
   DEVICE_TRACE;
   if (!isClose(newWidth, parameters.size.width) || !isClose(newHeight, parameters.size.height)) {
+    // Note: on Mac actual canvas size is not equal to `parameters.size`.
     auto oldCanvas = buildCurrentCanvas();
-    auto newCanvas = buildCanvas(newWidth, newHeight);
+
+    // Note: `scaleFactor` is exactly `(75.0 / parameters.resolution) * 0.96` for Mac.
+    // But why hard-code this odd formula when we can just use provided canvas size?
+    auto scaleFactor = oldCanvas.width() / parameters.size.width;
+    auto newCanvas = buildCanvas(newWidth * scaleFactor, newHeight * scaleFactor);
     auto deltaFrom = artBoard.from - oldCanvas.from;
     auto deltaTo = artBoard.to - oldCanvas.to;
     auto newArtBoard = Rectangle{

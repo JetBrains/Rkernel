@@ -46,8 +46,8 @@ RcppExport SEXP _rplugingraphics_jetbrains_ther_device_rescale(SEXP snapshotNumb
   END_RCPP
 }
 // jetbrains_ther_device_init
-SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution, double scaleFactor);
-RcppExport SEXP _rplugingraphics_jetbrains_ther_device_init(SEXP snapshotDirSEXP, SEXP widthSEXP, SEXP heightSEXP, SEXP resolutionSEXP, SEXP scaleFactorSEXP) {
+SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution);
+RcppExport SEXP _rplugingraphics_jetbrains_ther_device_init(SEXP snapshotDirSEXP, SEXP widthSEXP, SEXP heightSEXP, SEXP resolutionSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -55,8 +55,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type width(widthSEXP);
     Rcpp::traits::input_parameter< double >::type height(heightSEXP);
     Rcpp::traits::input_parameter< int >::type resolution(resolutionSEXP);
-    Rcpp::traits::input_parameter< double >::type scaleFactor(scaleFactorSEXP);
-    rcpp_result_gen = Rcpp::wrap(jetbrains_ther_device_init(snapshotDir, width, height, resolution, scaleFactor));
+    rcpp_result_gen = Rcpp::wrap(jetbrains_ther_device_init(snapshotDir, width, height, resolution));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -89,7 +88,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_dump", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_dump, 0},
     {"_rplugingraphics_rs_base64encode", (DL_FUNC) &_rplugingraphics_rs_base64encode, 2},
     {"_rplugingraphics_rs_base64decode", (DL_FUNC) &_rplugingraphics_rs_base64decode, 2},
-    {".jetbrains_ther_device_init", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_init, 5},
+    {".jetbrains_ther_device_init", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_init, 4},
     {".jetbrains_ther_device_rescale", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_rescale, 3},
     {NULL, NULL, 0}
 };
