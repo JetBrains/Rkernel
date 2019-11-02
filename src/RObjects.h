@@ -80,7 +80,7 @@ struct RObjects {
   Rcpp::Function unclass = baseEnv["unclass"];
 
   Rcpp::Function mySysFrames = evalCode("function() sys.frames()", baseEnv);
-  Rcpp::Function mySysFunction = evalCode("function(n) sys.function(n)", baseEnv);
+  Rcpp::Function mySysFunction = evalCode("function(n) tryCatch(sys.function(n - 9), error=function(...) NULL)", baseEnv);
 
   Rcpp::Function evalWithVisible = evalCode("function(exprs, env) {\n"
                                             "  for (expr in exprs) {\n"

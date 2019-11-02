@@ -72,9 +72,7 @@ inline std::vector<Rcpp::Environment> getSysFrames() {
 }
 
 inline Rcpp::RObject getSysFunction(int n) {
-  Rcpp::IntegerVector value;
-  value.push_back(n);
-  return Rf_eval(Rf_lang2(RI->mySysFunction, value), RI->globalEnv);
+  return RI->mySysFunction(n);
 }
 
 inline SEXP invokeFunction(SEXP func, std::vector<SEXP> const& args) {

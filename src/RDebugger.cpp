@@ -23,29 +23,25 @@
 Status RPIServiceImpl::debugWhere(ServerContext*, const Empty*, StringValue* response) {
   std::string result;
   OutputConsumer oldConsumer;
-  {
-    bool notDebug = false;
-    executeOnMainThreadAsync([&]{
-      if (rState != PROMPT_DEBUG) {
-        notDebug = true;
-        return;
-      }
-      oldConsumer = currentConsumer;
-      currentConsumer = [&](const char* s, size_t c, OutputType type) {
-        result.insert(result.end(), s, s + c);
-      };
-      rState = REPL_BUSY;
-      nextPromptSilent = true;
-      returnFromReadConsole("where");
-    });
-    if (notDebug) {
-      response->set_value("");
-      return Status::OK;
+  bool isDebug = true;
+  executeOnMainThreadAsync([&]{
+    if (rState != PROMPT_DEBUG) {
+      notDebug = false;
+      return;
     }
-    executeOnMainThreadAsync([&]{
+    oldConsumer = currentConsumer;
+    currentConsumer = [&](const char* s, size_t c, OutputType type) {
+      result.insert(result.end(), s, s + c);
+    };
+    rState = REPL_BUSY;
+    nextPromptSilent = true;
+    returnFromReadConsole("where");
+  });
+  executeOnMainThreadAsync([&]{
+    if (isDebug) {
       currentConsumer = oldConsumer;
-    });
-  }
+    }
+  });
   executeOnMainThread([]{});
   response->set_value(std::move(result));
   return Status::OK;
