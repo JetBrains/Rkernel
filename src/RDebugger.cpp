@@ -26,7 +26,7 @@ Status RPIServiceImpl::debugWhere(ServerContext*, const Empty*, StringValue* res
   bool isDebug = true;
   executeOnMainThreadAsync([&]{
     if (rState != PROMPT_DEBUG) {
-      notDebug = false;
+      isDebug = false;
       return;
     }
     oldConsumer = currentConsumer;
