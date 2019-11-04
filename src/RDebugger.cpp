@@ -118,13 +118,12 @@ Status RPIServiceImpl::debugExecute(ServerContext*, const DebugExecuteRequest* r
     replEvents.push(event);
     isDebugEnabled = true;
 
+    Rcpp::Environment jetbrainsEnv = RI->globalEnv[".jetbrains"];
     try {
+      jetbrainsEnv[fileId] = RI->textConnection(prepareDebugSource(code));
       std::ostringstream command;
-      command << "local({\n";
-      command << fileId << " = textConnection(\"" << escapeStringCharacters(prepareDebugSource(code)) << "\")\n";
       command << "source(" << fileId << ", keep.source = TRUE, print.eval = TRUE)";
-      command << "})\n";
-      RI->evalCode(command.str(), RI->baseEnv);
+      RI->evalCode(command.str(), jetbrainsEnv);
     } catch (Rcpp::eval_error const& e) {
       CommandOutput* out = event.mutable_text();
       out->set_text('\n' + std::string(e.what()) + '\n');
@@ -132,6 +131,7 @@ Status RPIServiceImpl::debugExecute(ServerContext*, const DebugExecuteRequest* r
       replEvents.push(event);
     } catch (...) {
     }
+    jetbrainsEnv.remove(fileId);
 
     isDebugEnabled = false;
     RI->compilerEnableJIT(prevJIT);

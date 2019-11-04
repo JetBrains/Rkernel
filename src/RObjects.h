@@ -76,6 +76,7 @@ struct RObjects {
   Rcpp::Function sysGetLocale = baseEnv["Sys.getlocale"];
   Rcpp::Function sysSetEnv = baseEnv["Sys.setenv"];
   Rcpp::Function sysSetLocale = baseEnv["Sys.setlocale"];
+  Rcpp::Function textConnection = baseEnv["textConnection"];
   Rcpp::Function type = baseEnv["typeof"];
   Rcpp::Function unclass = baseEnv["unclass"];
 
