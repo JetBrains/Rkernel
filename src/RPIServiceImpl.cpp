@@ -111,7 +111,6 @@ Status RPIServiceImpl::graphicsRescale(ServerContext* context, const GraphicsRes
     std::to_string(request->newheight())
   };
   auto command = buildCallCommand(".Call", joinToString(arguments));
-  std::cerr << "graphics rescale command: " << command << std::endl;
   return executeCommand(context, command, writer);
 }
 
