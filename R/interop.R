@@ -68,7 +68,10 @@ assign(".jetbrains", new.env(), baseenv())
 
   if (grDevices::dev.cur() != 1) {
     grDevices::dev.off()
-   }
+    if (grDevices::dev.cur() != 1) {
+      grDevices::dev.off()
+    }
+  }
   .jetbrains$setNotebookGraphicsOption(image.dir, width, height, resolution)
   .rs.initHtmlCapture(cache.dir, html.lib.dir, opts)
   .rs.initDataCapture(data.dir, opts)
