@@ -33,6 +33,10 @@ inline std::string getPrintedValue(Rcpp::RObject const& a) {
   return result;
 }
 
+inline std::string getFunctionCode(Rcpp::RObject const& a) {
+  return Rcpp::as<std::string>(RI->getFunctionCode(a));
+}
+
 inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLength) {
   std::string result;
   bool limitReached = false;

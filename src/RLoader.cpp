@@ -43,7 +43,7 @@ static void getValueInfo(SEXP var, ValueInfo* result) {
     return;
   }
   if (Rcpp::as<bool>(RI->isFunction(var))) {
-    result->mutable_function()->set_code(getPrintedValue(RI->unclass(var)));
+    result->mutable_function()->set_code(getFunctionCode(var));
   } else if (Rcpp::as<bool>(RI->isEnvironment(var))) {
     result->mutable_environment()->set_name(Rcpp::as<std::string>(RI->environmentName(var)));
   } else {

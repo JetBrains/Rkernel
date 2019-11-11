@@ -90,6 +90,20 @@ struct RObjects {
                                             "  }"
                                             "}", globalEnv);
 
+  Rcpp::Function getFunctionCode = evalCode(
+      "function(f) {\n"
+      "  f <- unclass(f)\n"
+      "  attributes(f) <- NULL\n"
+      "  a = capture.output(f)\n"
+      "  for (i in 1:length(a)) {\n"
+      "    if (startsWith(a[i], '<environment:') || startsWith(a[i], '<bytecode:')) {\n"
+      "      a = a[1:(i-1)]\n"
+      "      break\n"
+      "    }\n"
+      "  }\n"
+      "  return(paste(a, collapse='\\n'))\n"
+      "}", globalEnv);
+
   Rcpp::Environment compiler = loadNamespace("compiler");
   Rcpp::Function compilerEnableJIT = compiler["enableJIT"];
 
