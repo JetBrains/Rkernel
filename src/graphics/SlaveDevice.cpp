@@ -35,8 +35,6 @@ public:
   ~InitHelper() {
     if (previousDevice != nullptr) {
       int previousDeviceNumber = Rf_ndevNumber(previousDevice->dev);
-
-      GEcopyDisplayList(previousDeviceNumber);
       Rf_selectDevice(previousDeviceNumber);
     }
   }
@@ -74,6 +72,10 @@ pGEDevDesc init(const std::string &snapshotPath, ScreenParameters screenParamete
 SlaveDevice::SlaveDevice(const std::string &snapshotPath, ScreenParameters screenParameters) {
   DEVICE_TRACE;
   descriptor = init(snapshotPath, screenParameters);
+}
+
+pGEDevDesc SlaveDevice::getGeDescriptor() {
+  return descriptor;
 }
 
 pDevDesc SlaveDevice::getDescriptor() {

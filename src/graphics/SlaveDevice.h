@@ -34,6 +34,7 @@ private:
 public:
   SlaveDevice(const std::string& snapshotPath, ScreenParameters screenParameters);
 
+  pGEDevDesc getGeDescriptor();
   pDevDesc getDescriptor();
 
   ~SlaveDevice();

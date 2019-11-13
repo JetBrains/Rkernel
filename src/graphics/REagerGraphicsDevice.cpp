@@ -19,18 +19,17 @@
 
 #include <sstream>
 
-#include "../Common.h"
-#include "../Evaluator.h"
+#include "Common.h"
+#include "Evaluator.h"
 
 namespace graphics {
-namespace devices {
 
 REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotPath, ScreenParameters parameters)
-    : snapshotPath(std::move(snapshotPath)), parameters(parameters), slaveDevice(nullptr) { getSlave(); }
+    : snapshotPath(std::move(snapshotPath)), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true), snapshotVersion(0) { getSlave(); }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
-  return makePtr<SlaveDevice>(snapshotPath, parameters);
+  return makePtr<SlaveDevice>(snapshotPath + "_" + std::to_string(snapshotVersion) + ".png", parameters);
 }
 
 void REagerGraphicsDevice::shutdownSlaveDevice() {
@@ -45,17 +44,8 @@ pDevDesc REagerGraphicsDevice::getSlave() {
   return slaveDevice->getDescriptor();
 }
 
-REagerGraphicsDevice::UnzippedPoints REagerGraphicsDevice::unzip(const std::vector<Point> &points) {
-  auto xs = std::vector<double>();
-  auto ys = std::vector<double>();
-  for (auto &point : points) {
-    xs.push_back(point.x);
-    ys.push_back(point.y);
-  }
-  return {std::move(xs), std::move(ys)};
-}
-
 void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext context) {
+  isDeviceBlank = false;
   getSlave()->circle(center.x, center.y, radius, context, getSlave());
 }
 
@@ -64,10 +54,11 @@ void REagerGraphicsDevice::clip(Point from, Point to) {
 }
 
 void REagerGraphicsDevice::close() {
-  // Do nothing for now
+  shutdownSlaveDevice();
 }
 
 void REagerGraphicsDevice::drawLine(Point from, Point to, pGEcontext context) {
+  isDeviceBlank = false;
   getSlave()->line(from.x, from.y, to.x, to.y, context, getSlave());
 }
 
@@ -79,53 +70,50 @@ MetricInfo REagerGraphicsDevice::metricInfo(int character, pGEcontext context) {
 
 void REagerGraphicsDevice::setMode(int mode) {
   DEVICE_TRACE;
-  // Note: calling `mode` on slave device will cause freezing. On the other hand, It just works without it
+  auto slave = getSlave();
+  if (slave->mode != nullptr) {
+    slave->mode(mode, slave);
+  }
 }
 
 void REagerGraphicsDevice::newPage(pGEcontext context) {
   getSlave()->newPage(context, getSlave());
 }
 
-void REagerGraphicsDevice::drawPolygon(const std::vector<Point> &points, pGEcontext context) {
-  auto unzipped = unzip(points);
-  auto &xs = unzipped.xs;
-  auto &ys = unzipped.ys;
-  getSlave()->polygon(int(xs.size()), xs.data(), ys.data(), context, getSlave());
+void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext context) {
+  isDeviceBlank = false;
+  getSlave()->polygon(n, x, y, context, getSlave());
 }
 
-void REagerGraphicsDevice::drawPolyline(const std::vector<Point> &points, pGEcontext context) {
-  auto unzipped = unzip(points);
-  auto &xs = unzipped.xs;
-  auto &ys = unzipped.ys;
-  getSlave()->polyline(int(xs.size()), xs.data(), ys.data(), context, getSlave());
+void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext context) {
+  isDeviceBlank = false;
+  getSlave()->polyline(n, x, y, context, getSlave());
 }
 
 void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
+  isDeviceBlank = false;
   getSlave()->rect(from.x, from.y, to.x, to.y, context, getSlave());
 }
 
-void REagerGraphicsDevice::drawPath(const std::vector<Point> &points, const std::vector<int> &numPointsPerPolygon,
-                                    Rboolean winding, pGEcontext context)
+void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, Rboolean winding, pGEcontext context)
 {
-  auto unzipped = unzip(points);
-  auto &xs = unzipped.xs;
-  auto &ys = unzipped.ys;
-  auto copyPointsPerPolygon = numPointsPerPolygon;
-  getSlave()->path(xs.data(), ys.data(), int(numPointsPerPolygon.size()), copyPointsPerPolygon.data(), winding,
-                   context, getSlave());
+  isDeviceBlank = false;
+  getSlave()->path(x, y, npoly, nper, winding, context, getSlave());
 }
 
-void REagerGraphicsDevice::drawRaster(const RasterInfo &rasterInfo, Point at, Size size, double rotation,
-                                      Rboolean interpolate, pGEcontext context)
+void REagerGraphicsDevice::drawRaster(unsigned int *raster,
+                                      int w,
+                                      int h,
+                                      double x,
+                                      double y,
+                                      double width,
+                                      double height,
+                                      double rotation,
+                                      Rboolean interpolate,
+                                      pGEcontext context)
 {
-  auto raster = rasterInfo.pixels->data();  // Note: looks like callee won't modify buffer that's why I don't use preventive copy
-  // Note: Looks like we should adjust position of image anchor point and image height
-  auto width = size.width;
-  auto height = -size.height;  // Note: minus is NOT a typo
-  auto x = at.x;
-  auto y = at.y - height;
-  getSlave()->raster(raster, rasterInfo.width, rasterInfo.height, x, y, width, height, rotation, interpolate,
-                     context, getSlave());
+  isDeviceBlank = false;
+  getSlave()->raster(raster, w, h, x, y, width, height, rotation, interpolate, context, getSlave());
 }
 
 ScreenParameters REagerGraphicsDevice::screenParameters() {
@@ -138,11 +126,16 @@ ScreenParameters REagerGraphicsDevice::screenParameters() {
   return ScreenParameters{size, parameters.resolution};
 }
 
+ScreenParameters REagerGraphicsDevice::logicScreenParameters() {
+  return parameters;
+}
+
 double REagerGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext context) {
   return getSlave()->strWidthUTF8(text, context, getSlave());
 }
 
 void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context) {
+  isDeviceBlank = false;
   getSlave()->textUTF8(at.x, at.y, text, rotation, heightAdjustment, context, getSlave());
 }
 
@@ -156,15 +149,20 @@ void REagerGraphicsDevice::rescale(double newWidth, double newHeight) {
   shutdownSlaveDevice();
   parameters.size.width = newWidth;
   parameters.size.height = newHeight;
+  snapshotVersion++;
 }
 
-Ptr<RGraphicsDevice> REagerGraphicsDevice::clone() {
+Ptr<REagerGraphicsDevice> REagerGraphicsDevice::clone() {
   return makePtr<REagerGraphicsDevice>(snapshotPath, parameters);
 }
 
 bool REagerGraphicsDevice::isBlank() {
-  return false;
+  return isDeviceBlank;
 }
 
-}  // devices
+void REagerGraphicsDevice::replay(SEXP snapshotSEXP) {
+  getSlave();
+  GEplaySnapshot(snapshotSEXP, slaveDevice->getGeDescriptor());
+}
+
 }  // graphics

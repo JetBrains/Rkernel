@@ -17,16 +17,18 @@
 
 #include <string.h>
 
+#include <Rcpp.h>
+
 #include "Common.h"
 #include "Evaluator.h"
 #include "MasterDevice.h"
 #include "SlaveDevice.h"
-#include "devices/RLazyGraphicsDevice.h"
-#include "devices/REagerGraphicsDevice.h"
+#include "REagerGraphicsDevice.h"
 
 namespace graphics {
 namespace {
 
+const auto JETBRAINS_ENVIRONMENT_NAME = ".jetbrains";
 const auto MASTER_DEVICE_NAME = "TheRPlugin_Device";
 const auto DUMMY_SNAPSHOT_NAME = "snapshot_0.png";
 
@@ -35,8 +37,8 @@ auto currentScreenParameters = ScreenParameters{640.0, 480.0, 75};
 auto currentSnapshotNumber = 0;
 
 struct DeviceInfo {
-  Ptr<devices::RGraphicsDevice> device;
-  bool hasZoomed = false;
+  Ptr<REagerGraphicsDevice> device;
+  SEXP snapshotSEXP = nullptr;
 };
 
 auto currentDeviceInfos = std::vector<DeviceInfo>();
@@ -46,9 +48,10 @@ bool hasCurrentDevice() {
   return currentDeviceInfos[currentSnapshotNumber].device != nullptr;
 }
 
-Ptr<devices::RGraphicsDevice> getCurrentDevice() {
+Ptr<REagerGraphicsDevice> getCurrentDevice() {
   if (!hasCurrentDevice()) {
-    auto newDevice = makePtr<devices::RLazyGraphicsDevice>(currentSnapshotDir, currentSnapshotNumber, currentScreenParameters);
+    auto path = currentSnapshotDir + "/snapshot_" + std::to_string(currentSnapshotNumber);
+    auto newDevice = makePtr<REagerGraphicsDevice>(path, currentScreenParameters);
     currentDeviceInfos[currentSnapshotNumber].device = newDevice;
   }
   return currentDeviceInfos[currentSnapshotNumber].device;
@@ -57,23 +60,6 @@ Ptr<devices::RGraphicsDevice> getCurrentDevice() {
 DeviceInfo& getCurrentDeviceInfo() {
   getCurrentDevice();  // Create default device if absent
   return currentDeviceInfos[currentSnapshotNumber];
-}
-
-std::vector<Point> zip(double* xs, double* ys, int n) {
-  auto points = std::vector<Point>();
-  for (auto i = 0; i < n; i++) {
-    points.push_back(Point{xs[i], ys[i]});
-  }
-  return points;
-}
-
-template<typename E>
-E sum(E* elements, int numElements) {
-  auto result = E(0);
-  for (auto i = 0; i < numElements; i++) {
-    result += elements[i];
-  }
-  return result;
 }
 
 void circle(double x, double y, double r, pGEcontext context, pDevDesc) {
@@ -125,14 +111,12 @@ void newPage(pGEcontext context, pDevDesc) {
 
 void polygon(int n, double *x, double *y, pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
-  auto points = zip(x, y, n);
-  getCurrentDevice()->drawPolygon(points, context);
+  getCurrentDevice()->drawPolygon(n, x, y, context);
 }
 
 void polyline(int n, double *x, double *y, pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
-  auto points = zip(x, y, n);
-  getCurrentDevice()->drawPolyline(points, context);
+  getCurrentDevice()->drawPolyline(n, x, y, context);
 }
 
 void rect(double x1, double y1, double x2, double y2, pGEcontext context, pDevDesc) {
@@ -149,10 +133,7 @@ void path(double *x,
           pDevDesc)
 {
   DEVICE_TRACE;
-  auto numPoints = sum(nper, npoly);
-  auto points = zip(x, y, numPoints);
-  auto numPointsPerPolygon = std::vector<int>(nper, nper + npoly);
-  getCurrentDevice()->drawPath(points, numPointsPerPolygon, winding, context);
+  getCurrentDevice()->drawPath(x, y, npoly, nper, winding, context);
 }
 
 void raster(unsigned int *raster,
@@ -168,14 +149,7 @@ void raster(unsigned int *raster,
             pDevDesc)
 {
   DEVICE_TRACE;
-  auto pixels = makePtr<std::vector<unsigned>>(raster, raster + w * h);
-  // Note: for some reason height can be negative
-  if (height < 0.0) {
-    height *= -1.0;
-    y -= height;
-  }
-  auto rasterInfo = devices::RasterInfo{pixels, w, h};
-  getCurrentDevice()->drawRaster(rasterInfo, Point{x, y}, Size{width, height}, rot, interpolate, context);
+  getCurrentDevice()->drawRaster(raster, w, h, x, y, width, height, rot, interpolate, context);
 }
 
 void size(double *left, double *right, double *bottom, double *top, pDevDesc) {
@@ -233,39 +207,53 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
   masterDevDesc->clipTop = masterDevDesc->top;
 }
 
+void dump(DeviceInfo& deviceInfo, int number) {
+  auto device = deviceInfo.device;
+  if (!device->isBlank()) {
+    SEXP snapshotSEXP = GEcreateSnapshot(masterDeviceDescriptor);
+    auto global = Rcpp::Environment::global_env();
+    Rcpp::Environment jetbrainsEnvironment = global[JETBRAINS_ENVIRONMENT_NAME];
+    jetbrainsEnvironment.assign("savedSnapshot" + std::to_string(number), snapshotSEXP);
+    deviceInfo.snapshotSEXP = snapshotSEXP;
+    device->dump(SnapshotType::NORMAL);
+  }
+}
+
 } // anonymous
 
 void MasterDevice::dumpAndMoveNext() {
-  if (hasCurrentDevice()) {
-    auto current = getCurrentDevice();
-    if (current->dump(devices::SnapshotType::NORMAL)) {
-      auto clone = current->clone();
-      currentDeviceInfos.push_back(DeviceInfo{clone, false});
-      currentSnapshotNumber++;
-    }
-  }
+  // TODO [mine]: I guess this should be removed from final release
 }
 
 bool MasterDevice::rescale(int snapshotNumber, double width, double height) {
   auto& deviceInfo = (snapshotNumber >= 0) ? currentDeviceInfos[snapshotNumber] : getCurrentDeviceInfo();
+  auto number = (snapshotNumber >= 0) ? snapshotNumber : currentSnapshotNumber;
   auto device = deviceInfo.device;
   if (!device) {
-    std::cerr << "Device for snapshot number = " << snapshotNumber << " was null\n";
+    std::cerr << "Device for snapshot number = " << number << " was null\n";
     throw std::runtime_error("Device was null");
   }
   if (!device->isBlank()) {
-    if (!deviceInfo.hasZoomed) {
-      device->dump(devices::SnapshotType::ZOOMED);
-      deviceInfo.hasZoomed = true;
+    if (deviceInfo.snapshotSEXP == nullptr) {
+      dump(deviceInfo, number);
     }
+
+    if (deviceInfo.snapshotSEXP == nullptr) {
+      std::cerr << "Cannot record snapshot #" << number << "\n";
+      throw std::runtime_error("Null snapshotSEXP");
+    }
+
     if (snapshotNumber < 0) {
-      // Imitate dump and move next
-      auto clone = device->clone();
-      currentDeviceInfos.push_back(DeviceInfo{clone, false});
+      currentDeviceInfos.push_back(DeviceInfo{nullptr, nullptr});
       currentSnapshotNumber++;
     }
-    device->rescale(width, height);
-    device->dump(devices::SnapshotType::NORMAL);
+
+    auto previousSize = device->logicScreenParameters().size;
+    if (!isClose(Point::make(previousSize), Point{width, height})) {
+      device->rescale(width, height);
+      device->replay(deviceInfo.snapshotSEXP);
+      device->dump(SnapshotType::NORMAL);
+    }
     return true;
   } else {
     return false;
@@ -372,7 +360,7 @@ void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters s
       current = nullptr;
     } else {
       std::cerr << "Failed to null current device: it's not blank\n";  // Note: normally this shouldn't happen
-      currentDeviceInfos.push_back(DeviceInfo{nullptr, false});
+      currentDeviceInfos.push_back(DeviceInfo{nullptr, nullptr});
       currentSnapshotNumber++;
     }
   }
