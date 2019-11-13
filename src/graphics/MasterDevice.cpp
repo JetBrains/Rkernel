@@ -17,8 +17,6 @@
 
 #include <string.h>
 
-#include <Rcpp.h>
-
 #include "Common.h"
 #include "Evaluator.h"
 #include "MasterDevice.h"
@@ -38,7 +36,7 @@ auto currentSnapshotNumber = 0;
 
 struct DeviceInfo {
   Ptr<REagerGraphicsDevice> device;
-  SEXP snapshotSEXP = nullptr;
+  bool hasRecorded = false;
 };
 
 auto currentDeviceInfos = std::vector<DeviceInfo>();
@@ -210,11 +208,10 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
 void dump(DeviceInfo& deviceInfo, int number) {
   auto device = deviceInfo.device;
   if (!device->isBlank()) {
-    SEXP snapshotSEXP = GEcreateSnapshot(masterDeviceDescriptor);
-    auto global = Rcpp::Environment::global_env();
-    Rcpp::Environment jetbrainsEnvironment = global[JETBRAINS_ENVIRONMENT_NAME];
-    jetbrainsEnvironment.assign("savedSnapshot" + std::to_string(number), snapshotSEXP);
-    deviceInfo.snapshotSEXP = snapshotSEXP;
+    auto name = ".jetbrains$recordedSnapshot" + std::to_string(number);
+    auto command = name + " <- recordPlot()";
+    Evaluator::evaluate(command);
+    deviceInfo.hasRecorded = true;
     device->dump(SnapshotType::NORMAL);
   }
 }
@@ -226,33 +223,37 @@ void MasterDevice::dumpAndMoveNext() {
 }
 
 bool MasterDevice::rescale(int snapshotNumber, double width, double height) {
-  auto& deviceInfo = (snapshotNumber >= 0) ? currentDeviceInfos[snapshotNumber] : getCurrentDeviceInfo();
+  // Note: history recording might be disabled in some circumstances
+  // (for example, call of `points(...)` before `plot(...)` will do this)
+  // that's why we should re-enable it manually here
+  masterDeviceDescriptor->recordGraphics = TRUE;
+
   auto number = (snapshotNumber >= 0) ? snapshotNumber : currentSnapshotNumber;
+  auto& deviceInfo = currentDeviceInfos[number];
+  if (!deviceInfo.device) {
+    return false;
+  }
+
   auto device = deviceInfo.device;
   if (!device) {
     std::cerr << "Device for snapshot number = " << number << " was null\n";
     throw std::runtime_error("Device was null");
   }
   if (!device->isBlank()) {
-    if (deviceInfo.snapshotSEXP == nullptr) {
+    if (!deviceInfo.hasRecorded) {
       dump(deviceInfo, number);
-    }
-
-    if (deviceInfo.snapshotSEXP == nullptr) {
-      std::cerr << "Cannot record snapshot #" << number << "\n";
-      throw std::runtime_error("Null snapshotSEXP");
-    }
-
-    if (snapshotNumber < 0) {
-      currentDeviceInfos.push_back(DeviceInfo{nullptr, nullptr});
-      currentSnapshotNumber++;
     }
 
     auto previousSize = device->logicScreenParameters().size;
     if (!isClose(Point::make(previousSize), Point{width, height})) {
       device->rescale(width, height);
-      device->replay(deviceInfo.snapshotSEXP);
+      device->replay(number);
       device->dump(SnapshotType::NORMAL);
+    }
+
+    if (snapshotNumber < 0) {
+      currentDeviceInfos.push_back(DeviceInfo{nullptr, false});
+      currentSnapshotNumber++;
     }
     return true;
   } else {
@@ -360,7 +361,7 @@ void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters s
       current = nullptr;
     } else {
       std::cerr << "Failed to null current device: it's not blank\n";  // Note: normally this shouldn't happen
-      currentDeviceInfos.push_back(DeviceInfo{nullptr, nullptr});
+      currentDeviceInfos.push_back(DeviceInfo{nullptr, false});
       currentSnapshotNumber++;
     }
   }

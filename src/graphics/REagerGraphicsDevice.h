@@ -88,7 +88,7 @@ public:
   void rescale(double newWidth, double newHeight);
   Ptr<REagerGraphicsDevice> clone();
   bool isBlank();
-  void replay(SEXP snapshotSEXP);
+  void replay(int snapshotNumber);
 };
 
 }  // graphics

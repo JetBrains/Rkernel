@@ -23,6 +23,28 @@
 #include "Evaluator.h"
 
 namespace graphics {
+namespace {
+
+class InitHelper {
+public:
+  InitHelper() : previousDevice(nullptr) {
+    if (!Rf_NoDevices()) {
+      previousDevice = GEcurrentDevice();
+    }
+  }
+
+  ~InitHelper() {
+    if (previousDevice != nullptr) {
+      int previousDeviceNumber = Rf_ndevNumber(previousDevice->dev);
+      Rf_selectDevice(previousDeviceNumber);
+    }
+  }
+
+private:
+  pGEDevDesc previousDevice;
+};
+
+}
 
 REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotPath, ScreenParameters parameters)
     : snapshotPath(std::move(snapshotPath)), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true), snapshotVersion(0) { getSlave(); }
@@ -160,9 +182,14 @@ bool REagerGraphicsDevice::isBlank() {
   return isDeviceBlank;
 }
 
-void REagerGraphicsDevice::replay(SEXP snapshotSEXP) {
+void REagerGraphicsDevice::replay(int snapshotNumber) {
   getSlave();
-  GEplaySnapshot(snapshotSEXP, slaveDevice->getGeDescriptor());
+
+  InitHelper helper;
+  Rf_selectDevice(Rf_ndevNumber(slaveDevice->getDescriptor()));
+  auto name = ".jetbrains$recordedSnapshot" + std::to_string(snapshotNumber);
+  auto command = "replayPlot(" + name + ")";
+  Evaluator::evaluate(command);
 }
 
 }  // graphics
