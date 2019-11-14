@@ -101,6 +101,7 @@ public:
   Status setWorkingDir(ServerContext* context, const StringValue* request, Empty*) override;
   Status clearEnvironment(ServerContext* context, const RRef* request, Empty*) override;
   Status loadLibrary(ServerContext* context, const StringValue* request, Empty*) override;
+  Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty* response) override;
 
   Status convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status makeRdFromRoxygen(ServerContext* context, const MakeRdFromRoxygenRequest* request,  ServerWriter<CommandOutput> *writer) override;

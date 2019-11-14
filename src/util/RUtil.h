@@ -22,13 +22,35 @@
 #include <vector>
 #include <string>
 
+const int DEFAULT_WIDTH = 80;
+const int R_MIN_WIDTH_OPT = 10;
+const int R_MAX_WIDTH_OPT = 10000;
+
+class WithOption {
+public:
+  template <typename T>
+  WithOption(std::string const& option, T const& value) : name(option), oldValue(RI->getOption(option)) {
+    RI->options(Rcpp::Named(option, value));
+  }
+  ~WithOption() {
+    try {
+      RI->options(Rcpp::Named(name, oldValue));
+    } catch (Rcpp::eval_error const&) {
+    }
+  }
+private:
+  std::string name;
+  Rcpp::RObject oldValue;
+};
+
 inline std::string getPrintedValue(Rcpp::RObject const& a) {
   std::string result;
-  WithOutputConsumer with([&](const char *s, size_t c, OutputType type) {
+  WithOutputConsumer consumer([&](const char *s, size_t c, OutputType type) {
     if (type == STDOUT) {
       result.insert(result.end(), s, s + c);
     }
   });
+  WithOption option("width", DEFAULT_WIDTH);
   RI->print(a);
   return result;
 }
@@ -41,7 +63,7 @@ inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLengt
   std::string result;
   bool limitReached = false;
   try {
-    WithOutputConsumer with([&](const char *s, size_t c, OutputType type) {
+    WithOutputConsumer consumer([&](const char *s, size_t c, OutputType type) {
       if (type == STDOUT) {
         if (result.size() + c > maxLength) {
           result.insert(result.end(), s, s + (maxLength - result.size()));
@@ -52,6 +74,7 @@ inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLengt
         }
       }
     });
+    WithOption option("width", DEFAULT_WIDTH);
     RI->print(a);
   } catch (Rcpp::internal::InterruptedException const&) {
   }

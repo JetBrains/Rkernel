@@ -44,6 +44,7 @@ struct RObjects {
   Rcpp::Function expression = baseEnv["expression"];
   Rcpp::Function formals = baseEnv["formals"];
   Rcpp::Function geq = baseEnv[">="];
+  Rcpp::Function getOption = baseEnv["getOption"];
   Rcpp::Function getwd = baseEnv["getwd"];
   Rcpp::Function greater = baseEnv[">"];
   Rcpp::Function grepl = baseEnv["grepl"];
@@ -66,6 +67,7 @@ struct RObjects {
   Rcpp::Function ncol = baseEnv["ncol"];
   Rcpp::Function neq = baseEnv["!="];
   Rcpp::Function nrow = baseEnv["nrow"];
+  Rcpp::Function options = baseEnv["options"];
   Rcpp::Function parse = baseEnv["parse"];
   Rcpp::Function paste = baseEnv["paste"];
   Rcpp::Function print = baseEnv["print"];

@@ -20,6 +20,7 @@
 #include <grpcpp/server_builder.h>
 #include "RObjects.h"
 #include "IO.h"
+#include "util/RUtil.h"
 
 Status RPIServiceImpl::getInfo(ServerContext*, const google::protobuf::Empty*, GetInfoResponse* response) {
   response->CopyFrom(infoResponse);
@@ -104,6 +105,16 @@ Status RPIServiceImpl::clearEnvironment(ServerContext* context, const RRef* requ
 Status RPIServiceImpl::loadLibrary(ServerContext* context, const StringValue* request, Empty*) {
   executeOnMainThread([&] {
     RI->library(request->value());
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::setOutputWidth(ServerContext* context, const Int32Value* request, Empty*) {
+  executeOnMainThread([&] {
+    int width = request->value();
+    width = std::min(width, R_MAX_WIDTH_OPT);
+    width = std::max(width, R_MIN_WIDTH_OPT);
+    RI->options(Rcpp::Named("width", width));
   }, context);
   return Status::OK;
 }
