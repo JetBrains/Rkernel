@@ -28,6 +28,7 @@ struct RObjects {
 
   Rcpp::List version = baseEnv["version"];
 
+  Rcpp::Function any = baseEnv["any"];
   Rcpp::Function asDouble = baseEnv["as.double"];
   Rcpp::Function asInteger = baseEnv["as.integer"];
   Rcpp::Function asLogical = baseEnv["as.logical"];
@@ -120,6 +121,7 @@ struct RObjects {
     Rcpp::Function loadNamespace = baseEnv["loadNamespace"];
   public:
     Rcpp::Environment dplyr = loadNamespace("dplyr");
+    Rcpp::Function addRowNames = dplyr["add_rownames"];
     Rcpp::Function arrange = dplyr["arrange"];
     Rcpp::Function asTbl = dplyr["as.tbl"];
     Rcpp::Function desc = dplyr["desc"];

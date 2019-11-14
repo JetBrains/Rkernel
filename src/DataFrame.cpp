@@ -22,11 +22,25 @@
 #include "IO.h"
 #include "util/RUtil.h"
 
+const std::string ROW_NAMES_COL = "rwr_rownames_column";
+
 Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* request, Int32Value* response) {
   response->set_value(-1);
   executeOnMainThread([&] {
     if (!RI->initDplyr()) return;
-    Rcpp::RObject dataFrame = dereference(*request);
+    Rcpp::RObject obj = dereference(*request);
+    if (!Rcpp::is<Rcpp::DataFrame>(obj)) return;
+    Rcpp::DataFrame dataFrame = Rcpp::clone(Rcpp::as<Rcpp::DataFrame>(obj));
+    Rcpp::RObject namesObj = dataFrame.names();
+    Rcpp::CharacterVector namesList = Rcpp::is<Rcpp::CharacterVector>(namesObj) ?
+        Rcpp::as<Rcpp::CharacterVector>(namesObj) : Rcpp::CharacterVector();
+    int ncol = dataFrame.ncol();
+    Rcpp::CharacterVector names(ncol);
+    for (int i = 0; i < ncol; ++i) {
+      names[i] = i < namesList.size() && !namesList.is_na(namesList[i]) ? namesList[i] : "";
+      if (names[i].empty()) names[i] = "Column " + std::to_string(i + 1);
+    }
+    dataFrame.names() = names;
     if (RI->dplyr->isTbl(dataFrame)) {
       dataFrame = RI->dplyr->ungroup(dataFrame);
     } else {
@@ -34,6 +48,10 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
         dataFrame = RI->dataFrame(dataFrame, Rcpp::Named("stringsAsFactors", false));
       }
       dataFrame = RI->dplyr->asTbl(dataFrame);
+    }
+    dataFrame = RI->dplyr->addRowNames(dataFrame, ROW_NAMES_COL);
+    if (!Rcpp::as<bool>(RI->any(RI->isNa(RI->asInteger(dataFrame[ROW_NAMES_COL]))))) {
+      dataFrame[ROW_NAMES_COL] = RI->asInteger(dataFrame[ROW_NAMES_COL]);
     }
     for (int index : dataFramesCache) {
       if (Rcpp::as<bool>(RI->identical(dataFrame, persistentRefStorage[index]))) {
@@ -59,8 +77,12 @@ Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* requ
     Rcpp::CharacterVector names = RI->names(dataFrame);
     for (int i = 0; i < (int)dataFrame.ncol(); ++i) {
       DataFrameInfoResponse::Column *columnInfo = response->add_columns();
-      columnInfo->set_name(names[i]);
       std::string cls = getClasses(RI->doubleSubscript(dataFrame, i + 1));
+      if (names[i] == ROW_NAMES_COL) {
+        columnInfo->set_isrownames(true);
+      } else {
+        columnInfo->set_name(names[i]);
+      }
       if (cls == "integer") {
         columnInfo->set_type(DataFrameInfoResponse::INTEGER);
         columnInfo->set_sortable(true);
