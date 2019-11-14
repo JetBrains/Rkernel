@@ -21,37 +21,36 @@
 
 #include "Common.h"
 #include "Evaluator.h"
+#include "InitHelper.h"
 
 namespace graphics {
-namespace {
 
-class InitHelper {
-public:
-  InitHelper() : previousDevice(nullptr) {
-    if (!Rf_NoDevices()) {
-      previousDevice = GEcurrentDevice();
-    }
-  }
-
-  ~InitHelper() {
-    if (previousDevice != nullptr) {
-      int previousDeviceNumber = Rf_ndevNumber(previousDevice->dev);
-      Rf_selectDevice(previousDeviceNumber);
-    }
-  }
-
-private:
-  pGEDevDesc previousDevice;
-};
-
-}
-
-REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotPath, ScreenParameters parameters)
-    : snapshotPath(std::move(snapshotPath)), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true), snapshotVersion(0) { getSlave(); }
+REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters)
+    : snapshotDirectory(std::move(snapshotDirectory)), snapshotNumber(snapshotNumber), parameters(parameters),
+      slaveDevice(nullptr), isDeviceBlank(true), snapshotVersion(0), snapshotType(SnapshotType::SKETCH) { getSlave(); }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
-  return makePtr<SlaveDevice>(snapshotPath + "_" + std::to_string(snapshotVersion) + ".png", parameters);
+  auto sout = std::ostringstream();
+  sout << snapshotDirectory << "/snapshot" << makeSnapshotTypeSuffix()
+       << "_" << snapshotNumber << "_" << snapshotVersion << ".png";
+  return makePtr<SlaveDevice>(sout.str(), parameters);
+}
+
+const char* REagerGraphicsDevice::makeSnapshotTypeSuffix() {
+  switch (snapshotType) {
+    case SnapshotType::SKETCH:
+      return "_sketch";
+
+    case SnapshotType::NORMAL:
+      return "_normal";
+
+    case SnapshotType::ZOOMED:
+      return "_zoomed";
+
+    default:
+      return "";
+  }
 }
 
 void REagerGraphicsDevice::shutdownSlaveDevice() {
@@ -161,30 +160,26 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
   getSlave()->textUTF8(at.x, at.y, text, rotation, heightAdjustment, context, getSlave());
 }
 
-bool REagerGraphicsDevice::dump(SnapshotType type) {
+bool REagerGraphicsDevice::dump() {
   shutdownSlaveDevice();
   return true;
 }
 
-void REagerGraphicsDevice::rescale(double newWidth, double newHeight) {
+void REagerGraphicsDevice::rescale(SnapshotType newType, double newWidth, double newHeight) {
   DEVICE_TRACE;
   shutdownSlaveDevice();
+  snapshotType = newType;
   parameters.size.width = newWidth;
   parameters.size.height = newHeight;
   snapshotVersion++;
-}
-
-Ptr<REagerGraphicsDevice> REagerGraphicsDevice::clone() {
-  return makePtr<REagerGraphicsDevice>(snapshotPath, parameters);
 }
 
 bool REagerGraphicsDevice::isBlank() {
   return isDeviceBlank;
 }
 
-void REagerGraphicsDevice::replay(int snapshotNumber) {
+void REagerGraphicsDevice::replay() {
   getSlave();
-
   InitHelper helper;
   Rf_selectDevice(Rf_ndevNumber(slaveDevice->getDescriptor()));
   auto name = ".jetbrains$recordedSnapshot" + std::to_string(snapshotNumber);

@@ -34,6 +34,7 @@
 namespace graphics {
 
 enum class SnapshotType {
+  SKETCH,
   NORMAL,
   ZOOMED,
 };
@@ -47,17 +48,20 @@ struct MetricInfo {
 class REagerGraphicsDevice {
 private:
   bool isDeviceBlank;
+  int snapshotNumber;
   int snapshotVersion;
-  std::string snapshotPath;
+  SnapshotType snapshotType;
+  std::string snapshotDirectory;
   ScreenParameters parameters;
   Ptr<SlaveDevice> slaveDevice;
 
   Ptr<SlaveDevice> initializeSlaveDevice();
+  const char* makeSnapshotTypeSuffix();
   void shutdownSlaveDevice();
   pDevDesc getSlave();
 
 public:
-  REagerGraphicsDevice(std::string snapshotPath, ScreenParameters parameters);
+  REagerGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters);
 
   void drawCircle(Point center, double radius, pGEcontext context);
   void clip(Point from, Point to);
@@ -84,11 +88,10 @@ public:
   ScreenParameters logicScreenParameters();
   double widthOfStringUtf8(const char* text, pGEcontext context);
   void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context);
-  bool dump(SnapshotType type);
-  void rescale(double newWidth, double newHeight);
-  Ptr<REagerGraphicsDevice> clone();
+  bool dump();
+  void rescale(SnapshotType newType, double newWidth, double newHeight);
   bool isBlank();
-  void replay(int snapshotNumber);
+  void replay();
 };
 
 }  // graphics

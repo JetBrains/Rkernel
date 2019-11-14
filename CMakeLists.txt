@@ -116,6 +116,7 @@ add_executable(
         src/RcppExports.cpp
         src/graphics/Evaluator.cpp
         src/graphics/Interface.cpp
+        src/graphics/InitHelper.cpp
         src/graphics/MasterDevice.cpp
         src/graphics/ScopeProtector.cpp
         src/graphics/SlaveDevice.cpp

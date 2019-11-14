@@ -26,13 +26,12 @@
 namespace graphics {
 namespace {
 
-const auto JETBRAINS_ENVIRONMENT_NAME = ".jetbrains";
 const auto MASTER_DEVICE_NAME = "TheRPlugin_Device";
 const auto DUMMY_SNAPSHOT_NAME = "snapshot_0.png";
 
 auto currentSnapshotDir = std::string();
 auto currentScreenParameters = ScreenParameters{640.0, 480.0, 75};
-auto currentSnapshotNumber = 0;
+auto currentSnapshotNumber = -1;
 
 struct DeviceInfo {
   Ptr<REagerGraphicsDevice> device;
@@ -48,16 +47,10 @@ bool hasCurrentDevice() {
 
 Ptr<REagerGraphicsDevice> getCurrentDevice() {
   if (!hasCurrentDevice()) {
-    auto path = currentSnapshotDir + "/snapshot_" + std::to_string(currentSnapshotNumber);
-    auto newDevice = makePtr<REagerGraphicsDevice>(path, currentScreenParameters);
+    auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDir, currentSnapshotNumber, currentScreenParameters);
     currentDeviceInfos[currentSnapshotNumber].device = newDevice;
   }
   return currentDeviceInfos[currentSnapshotNumber].device;
-}
-
-DeviceInfo& getCurrentDeviceInfo() {
-  getCurrentDevice();  // Create default device if absent
-  return currentDeviceInfos[currentSnapshotNumber];
 }
 
 void circle(double x, double y, double r, pGEcontext context, pDevDesc) {
@@ -205,15 +198,39 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
   masterDevDesc->clipTop = masterDevDesc->top;
 }
 
-void dump(DeviceInfo& deviceInfo, int number) {
+void addNewDevice() {
+  currentDeviceInfos.emplace_back(DeviceInfo());
+  currentSnapshotNumber++;
+}
+
+void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, double width, double height) {
+  device->rescale(type, width, height);
+  device->replay();
+  device->dump();
+}
+
+void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type) {
+  auto width = currentScreenParameters.size.width;
+  auto height = currentScreenParameters.size.height;
+  rescaleAndDump(device, type, width, height);
+}
+
+void record(DeviceInfo& deviceInfo, int number) {
+  auto name = ".jetbrains$recordedSnapshot" + std::to_string(number);
+  auto command = name + " <- recordPlot()";
+  Evaluator::evaluate(command);
+  deviceInfo.hasRecorded = true;
+}
+
+void recordAndDump(DeviceInfo &deviceInfo, int number) {
+  record(deviceInfo, number);
   auto device = deviceInfo.device;
-  if (!device->isBlank()) {
-    auto name = ".jetbrains$recordedSnapshot" + std::to_string(number);
-    auto command = name + " <- recordPlot()";
-    Evaluator::evaluate(command);
-    deviceInfo.hasRecorded = true;
-    device->dump(SnapshotType::NORMAL);
-  }
+  device->dump();
+
+  // Note: there might be a temptation to dump "zoomed" version with a previous operator
+  // but, unfortunately, it doesn't produce any output for "partial" plots (i.e. produced by `points()` command)
+  rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
+  rescaleAndDump(device, SnapshotType::NORMAL);  // Dump full-screen "normal"
 }
 
 } // anonymous
@@ -241,19 +258,16 @@ bool MasterDevice::rescale(int snapshotNumber, double width, double height) {
   }
   if (!device->isBlank()) {
     if (!deviceInfo.hasRecorded) {
-      dump(deviceInfo, number);
+      recordAndDump(deviceInfo, number);
     }
 
     auto previousSize = device->logicScreenParameters().size;
     if (!isClose(Point::make(previousSize), Point{width, height})) {
-      device->rescale(width, height);
-      device->replay(number);
-      device->dump(SnapshotType::NORMAL);
+      rescaleAndDump(device, SnapshotType::NORMAL, width, height);
     }
 
     if (snapshotNumber < 0) {
-      currentDeviceInfos.push_back(DeviceInfo{nullptr, false});
-      currentSnapshotNumber++;
+      addNewDevice();
     }
     return true;
   } else {
@@ -267,7 +281,7 @@ void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters s
   currentSnapshotDir = snapshotDirectory;
   currentScreenParameters = screenParameters;
   if (currentDeviceInfos.empty()) {
-    currentDeviceInfos.emplace_back(DeviceInfo());
+    addNewDevice();
   }
 
   auto masterDevDesc = new DevDesc;
@@ -361,8 +375,7 @@ void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters s
       current = nullptr;
     } else {
       std::cerr << "Failed to null current device: it's not blank\n";  // Note: normally this shouldn't happen
-      currentDeviceInfos.push_back(DeviceInfo{nullptr, false});
-      currentSnapshotNumber++;
+      addNewDevice();
     }
   }
 }

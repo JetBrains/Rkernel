@@ -17,31 +17,13 @@
 
 #include <sstream>
 
-#include "Evaluator.h"
 #include "Common.h"
+#include "Evaluator.h"
+#include "InitHelper.h"
 #include "SlaveDevice.h"
 
 namespace graphics {
 namespace {
-
-class InitHelper {
-public:
-  InitHelper() : previousDevice(nullptr) {
-    if (!Rf_NoDevices()) {
-      previousDevice = GEcurrentDevice();
-    }
-  }
-
-  ~InitHelper() {
-    if (previousDevice != nullptr) {
-      int previousDeviceNumber = Rf_ndevNumber(previousDevice->dev);
-      Rf_selectDevice(previousDeviceNumber);
-    }
-  }
-
-private:
-  pGEDevDesc previousDevice;
-};
 
 std::string getResolutionString(int resolution) {
   if (resolution > 0) {
