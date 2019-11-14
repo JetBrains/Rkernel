@@ -7,4 +7,4 @@ if (length(args) != 0) {
   quit(save = "no", status = 1, runLast = FALSE)
 }
 
-print(.libPaths())
+writeLines(.libPaths())
