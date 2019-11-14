@@ -65,10 +65,14 @@ void clip(double x1, double x2, double y1, double y2, pDevDesc) {
 
 void close(pDevDesc) {
   DEVICE_TRACE;
-  getCurrentDevice()->close();
-  delete masterDeviceDescriptor->dev;
-  masterDeviceDescriptor->dev = nullptr;
-  masterDeviceDescriptor = nullptr;
+  if (hasCurrentDevice()) {
+    getCurrentDevice()->close();
+  }
+  if (masterDeviceDescriptor) {
+    delete masterDeviceDescriptor->dev;
+    masterDeviceDescriptor->dev = nullptr;
+    masterDeviceDescriptor = nullptr;
+  }
 }
 
 void line(double x1, double y1, double x2, double y2, pGEcontext context, pDevDesc) {
@@ -240,6 +244,10 @@ void MasterDevice::dumpAndMoveNext() {
 }
 
 bool MasterDevice::rescale(int snapshotNumber, double width, double height) {
+  if (!masterDeviceDescriptor) {
+    return false;
+  }
+
   // Note: history recording might be disabled in some circumstances
   // (for example, call of `points(...)` before `plot(...)` will do this)
   // that's why we should re-enable it manually here
@@ -277,6 +285,10 @@ bool MasterDevice::rescale(int snapshotNumber, double width, double height) {
 
 void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters screenParameters) {
   DEVICE_TRACE;
+
+  if (masterDeviceDescriptor) {
+    GEkillDevice(masterDeviceDescriptor);
+  }
 
   currentSnapshotDir = snapshotDirectory;
   currentScreenParameters = screenParameters;
