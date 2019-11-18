@@ -465,10 +465,11 @@ void initRPIService() {
 }
 
 void quitRPIService() {
-  if (commandLineOptions.withTimeout) {
-    terminationTimer.quit();
-  }
+  server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(1));
   server = nullptr;
   rpiService = nullptr;
   RI = nullptr;
+  if (commandLineOptions.withTimeout) {
+    terminationTimer.quit();
+  }
 }
