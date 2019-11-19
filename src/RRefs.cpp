@@ -171,6 +171,9 @@ Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableCo
       case TableColumnsInfoRequest_TableType_DATA_TABLE:
         if (!Rcpp::as<bool>(RI->inherits(tableObj, "data.table"))) return;
         break;
+      case TableColumnsInfoRequest_TableType_DATA_FRAME:
+        if (!Rcpp::as<bool>(RI->inherits(tableObj, "data.frame"))) return;
+        break;
       default:;
     }
     Rcpp::DataFrame table = tableObj;
