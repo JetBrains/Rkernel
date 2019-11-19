@@ -49,7 +49,7 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
     registerFunctions();
     init_Rcpp_routines(dll);
     RcppExports_Init(dll);
-    rpiService->mainLoop("> ", RPIServiceImpl::PROMPT);
+    rpiService->handlePrompt("> ", RPIServiceImpl::PROMPT);
     R_interrupts_pending = 0;
     quitRPIService();
     buf[0] = 0;
@@ -66,7 +66,7 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   } else {
     state = RPIServiceImpl::READ_LN;
   }
-  std::string s = rpiService->mainLoop(prompt, state);
+  std::string s = rpiService->handlePrompt(prompt, state);
   if (rpiService->terminate) {
     R_interrupts_pending = 1;
     buf[0] = 0;

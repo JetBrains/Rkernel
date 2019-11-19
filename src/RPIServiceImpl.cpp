@@ -260,7 +260,7 @@ Status RPIServiceImpl::replExecuteCommand(ServerContext* context, const std::str
   return replExecute(context, &stringRequest, &empty);
 }
 
-std::string RPIServiceImpl::mainLoop(const char* prompt, State newState) {
+std::string RPIServiceImpl::handlePrompt(const char* prompt, State newState) {
   assert(newState != BUSY && newState != REPL_BUSY);
   switch (rState) {
     case REPL_BUSY:
@@ -290,22 +290,23 @@ std::string RPIServiceImpl::mainLoop(const char* prompt, State newState) {
     default:
       assert(false);
   }
+  eventLoop();
+  return returnFromReadConsoleValue;
+}
 
+void RPIServiceImpl::eventLoop() {
   while (true) {
     auto f = executionQueue.pop();
     f();
-    if (terminate) {
-      return "";
-    }
-    if (doReturnFromReadConsole) {
-      doReturnFromReadConsole = false;
-      return returnFromReadConsoleValue;
+    if (terminate || doBreakEventLoop) {
+      doBreakEventLoop = false;
+      return;
     }
   }
 }
 
-void RPIServiceImpl::returnFromReadConsole(std::string s) {
-  doReturnFromReadConsole = true;
+void RPIServiceImpl::breakEventLoop(std::string s) {
+  doBreakEventLoop = true;
   returnFromReadConsoleValue = std::move(s);
 }
 

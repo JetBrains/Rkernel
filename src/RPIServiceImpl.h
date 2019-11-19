@@ -102,28 +102,33 @@ public:
   Status clearEnvironment(ServerContext* context, const RRef* request, Empty*) override;
   Status loadLibrary(ServerContext* context, const StringValue* request, Empty*) override;
   Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty* response) override;
+  Status viewRequestFinished(ServerContext* context, const Empty*, Empty*) override;
 
   Status convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status makeRdFromRoxygen(ServerContext* context, const MakeRdFromRoxygenRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status findPackagePathByTopic(ServerContext* context, const FindPackagePathByTopicRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status findPackagePathByPackageName(ServerContext* context, const FindPackagePathByPackageNameRequest* request,  ServerWriter<CommandOutput> *writer) override;
 
+  void viewHandler(SEXP x, SEXP title);
+
   enum State {
     PROMPT, PROMPT_DEBUG, READ_LN, REPL_BUSY, BUSY
   };
 
-  std::string mainLoop(const char* prompt, State newState);
+  std::string handlePrompt(const char* prompt, State newState);
   volatile bool terminate = false;
 
   void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);
   void executeOnMainThreadAsync(std::function<void()> const& f);
 
 private:
+  void eventLoop();
   WithOutputConsumer defaultConsumer;
   BlockingQueue<ReplEvent> replEvents{1};
 
   GetInfoResponse infoResponse;
   volatile State rState = REPL_BUSY;
+  bool isInViewRequest = false;
   bool nextPromptSilent = false;
   bool isDebugEnabled = false;
 
@@ -134,9 +139,9 @@ private:
 
   BlockingQueue<std::function<void()>> executionQueue;
 
-  bool doReturnFromReadConsole = false;
+  bool doBreakEventLoop = false;
   std::string returnFromReadConsoleValue;
-  void returnFromReadConsole(std::string s);
+  void breakEventLoop(std::string s = "");
 
   IndexedStorage<Rcpp::RObject> persistentRefStorage;
   Rcpp::RObject dereference(RRef const& ref);

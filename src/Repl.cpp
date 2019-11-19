@@ -52,7 +52,7 @@ Status RPIServiceImpl::replSendReadLn(ServerContext*, const StringValue* request
   text.erase(std::find(text.begin(), text.end(), '\n'), text.end());
   executeOnMainThreadAsync([=] {
     if (rState == READ_LN) {
-      returnFromReadConsole(text);
+      breakEventLoop(text);
       rState = REPL_BUSY;
       ReplEvent event;
       event.mutable_busy();
@@ -68,19 +68,19 @@ Status RPIServiceImpl::replSendDebuggerCommand(ServerContext*, const DebuggerCom
     if (rState == PROMPT_DEBUG) {
       switch (command) {
         case DebuggerCommand::NEXT:
-          returnFromReadConsole("n");
+          breakEventLoop("n");
           break;
         case DebuggerCommand::STEP:
-          returnFromReadConsole("s");
+          breakEventLoop("s");
           break;
         case DebuggerCommand::CONTINUE:
-          returnFromReadConsole("c");
+          breakEventLoop("c");
           break;
         case DebuggerCommand::FINISH:
-          returnFromReadConsole("f");
+          breakEventLoop("f");
           break;
         case DebuggerCommand::QUIT:
-          returnFromReadConsole("Q");
+          breakEventLoop("Q");
           break;
         default:
           ;
@@ -102,7 +102,7 @@ Status RPIServiceImpl::replInterrupt(ServerContext*, const Empty*, Empty*) {
     executeOnMainThreadAsync([=] {
       if (rState == READ_LN) {
         R_interrupts_pending = 1;
-        returnFromReadConsole("");
+        breakEventLoop("");
         rState = REPL_BUSY;
         ReplEvent event;
         event.mutable_busy();

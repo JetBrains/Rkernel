@@ -35,7 +35,7 @@ Status RPIServiceImpl::debugWhere(ServerContext*, const Empty*, StringValue* res
     };
     rState = REPL_BUSY;
     nextPromptSilent = true;
-    returnFromReadConsole("where");
+    breakEventLoop("where");
   });
   executeOnMainThreadAsync([&]{
     if (isDebug) {

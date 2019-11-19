@@ -26,7 +26,7 @@
 const int MAX_PREVIEW_STRING_LENGTH = 200;
 const int MAX_PREVIEW_PRINTED_COUNT = 20;
 
-static void getValueInfo(SEXP var, ValueInfo* result) {
+void getValueInfo(SEXP var, ValueInfo* result) {
   if (TYPEOF(var) == PROMSXP) {
     if (PRVALUE(var) == R_UnboundValue) {
       std::string code = Rcpp::as<std::string>(

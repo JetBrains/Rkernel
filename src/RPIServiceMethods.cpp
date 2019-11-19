@@ -21,6 +21,7 @@
 #include "RObjects.h"
 #include "IO.h"
 #include "util/RUtil.h"
+#include "RLoader.h"
 
 Status RPIServiceImpl::getInfo(ServerContext*, const google::protobuf::Empty*, GetInfoResponse* response) {
   response->CopyFrom(infoResponse);
@@ -115,6 +116,31 @@ Status RPIServiceImpl::setOutputWidth(ServerContext* context, const Int32Value* 
     width = std::min(width, R_MAX_WIDTH_OPT);
     width = std::max(width, R_MIN_WIDTH_OPT);
     RI->options(Rcpp::Named("width", width));
+  }, context);
+  return Status::OK;
+}
+
+void RPIServiceImpl::viewHandler(SEXP xSEXP, SEXP titleSEXP) {
+  Rcpp::RObject x = xSEXP;
+  if (!Rcpp::is<std::string>(titleSEXP)) {
+    throw std::runtime_error("Title should be a string");
+  }
+  std::string title = Rcpp::as<std::string>(titleSEXP);
+  ReplEvent event;
+  event.mutable_viewrequest()->set_persistentrefindex(persistentRefStorage.add(x));
+  event.mutable_viewrequest()->set_title(title);
+  getValueInfo(x, event.mutable_viewrequest()->mutable_value());
+  replEvents.push(event);
+  isInViewRequest = true;
+  eventLoop();
+  isInViewRequest = false;
+}
+
+Status RPIServiceImpl::viewRequestFinished(ServerContext* context, const Empty* request, Empty* response) {
+  executeOnMainThread([&]{
+    if (isInViewRequest) {
+      breakEventLoop();
+    }
   }, context);
   return Status::OK;
 }
