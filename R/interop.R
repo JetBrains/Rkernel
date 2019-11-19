@@ -17,6 +17,20 @@
 
 assign(".jetbrains", new.env(), baseenv())
 
+# Set hook before new vanilla graphics are created
+setHook(hookName = "before.plot.new",
+        value = function() {
+          .Call(".jetbrains_ther_device_dump")
+        },
+        action = "append")
+
+# Set hook before new ggplot2 graphics are created
+setHook(hookName = "before.grid.newpage",
+        value = function() {
+          .Call(".jetbrains_ther_device_dump")
+        },
+        action = "append")
+
 .jetbrains$init <- function(rsession.path, project.dir) {
  current.wd <- getwd()
   tryCatch({

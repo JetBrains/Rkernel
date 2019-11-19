@@ -41,6 +41,11 @@ SEXP jetbrains_ther_device_dump() {
 }
 
 SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double height) {
-  auto isRescaled = graphics::MasterDevice::rescale(snapshotNumber, width, height);
+  bool isRescaled;
+  if (snapshotNumber >= 0) {
+    isRescaled = graphics::MasterDevice::rescaleByNumber(snapshotNumber, width, height);
+  } else {
+    isRescaled = graphics::MasterDevice::rescaleAllLast(width, height);
+  }
   return Rcpp::wrap(isRescaled);
 }

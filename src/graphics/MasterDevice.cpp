@@ -36,6 +36,7 @@ auto currentSnapshotNumber = -1;
 struct DeviceInfo {
   Ptr<REagerGraphicsDevice> device;
   bool hasRecorded = false;
+  bool hasDumped = false;
 };
 
 auto currentDeviceInfos = std::vector<DeviceInfo>();
@@ -51,6 +52,11 @@ Ptr<REagerGraphicsDevice> getCurrentDevice() {
     currentDeviceInfos[currentSnapshotNumber].device = newDevice;
   }
   return currentDeviceInfos[currentSnapshotNumber].device;
+}
+
+void addNewDevice() {
+  currentDeviceInfos.emplace_back(DeviceInfo());
+  currentSnapshotNumber++;
 }
 
 void circle(double x, double y, double r, pGEcontext context, pDevDesc) {
@@ -202,11 +208,6 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
   masterDevDesc->clipTop = masterDevDesc->top;
 }
 
-void addNewDevice() {
-  currentDeviceInfos.emplace_back(DeviceInfo());
-  currentSnapshotNumber++;
-}
-
 void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, double width, double height) {
   device->rescale(type, width, height);
   device->replay();
@@ -219,6 +220,13 @@ void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type) 
   rescaleAndDump(device, type, width, height);
 }
 
+void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, double width, double height) {
+  auto previousSize = device->logicScreenParameters().size;
+  if (!isClose(Point::make(previousSize), Point{width, height})) {
+    rescaleAndDump(device, SnapshotType::NORMAL, width, height);
+  }
+}
+
 void record(DeviceInfo& deviceInfo, int number) {
   auto name = ".jetbrains$recordedSnapshot" + std::to_string(number);
   auto command = name + " <- recordPlot()";
@@ -226,10 +234,10 @@ void record(DeviceInfo& deviceInfo, int number) {
   deviceInfo.hasRecorded = true;
 }
 
-void recordAndDump(DeviceInfo &deviceInfo, int number) {
-  record(deviceInfo, number);
+void dumpNormalAndZoomed(DeviceInfo &deviceInfo, int number) {
   auto device = deviceInfo.device;
   device->dump();
+  deviceInfo.hasDumped = true;
 
   // Note: there might be a temptation to dump "zoomed" version with a previous operator
   // but, unfortunately, it doesn't produce any output for "partial" plots (i.e. produced by `points()` command)
@@ -237,13 +245,47 @@ void recordAndDump(DeviceInfo &deviceInfo, int number) {
   rescaleAndDump(device, SnapshotType::NORMAL);  // Dump full-screen "normal"
 }
 
-} // anonymous
-
-void MasterDevice::dumpAndMoveNext() {
-  // TODO [mine]: I guess this should be removed from final release
+void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) {
+  if (!deviceInfo.hasRecorded) {
+    record(deviceInfo, number);
+  }
+  if (!deviceInfo.hasDumped) {
+    dumpNormalAndZoomed(deviceInfo, number);
+  }
 }
 
-bool MasterDevice::rescale(int snapshotNumber, double width, double height) {
+} // anonymous
+
+// Called by hooks "before.plot.new" for vanilla plots
+// and "before.grid.newpage" for ggplot2 (see "interop.R")
+void MasterDevice::dumpAndMoveNext() {
+  // If current device is neither null nor blank then it should be recorded
+  if (masterDeviceDescriptor) {
+    auto& deviceInfo = currentDeviceInfos[currentSnapshotNumber];
+    auto device = deviceInfo.device;
+    if (device && !device->isBlank()) {
+      record(deviceInfo, currentSnapshotNumber);
+      addNewDevice();
+    }
+  }
+}
+
+bool MasterDevice::rescaleAllLast(double width, double height) {
+  auto hasRescaledAtLeastOne = false;
+  for (auto number = currentSnapshotNumber; number >= 0; number--) {
+    if (currentDeviceInfos[number].hasDumped) {
+      break;
+    }
+    auto hasRescaled = rescaleByNumber(number, width, height);
+    hasRescaledAtLeastOne |= hasRescaled;
+  }
+  if (hasRescaledAtLeastOne) {
+    addNewDevice();
+  }
+  return hasRescaledAtLeastOne;
+}
+
+bool MasterDevice::rescaleByNumber(int number, double width, double height) {
   if (!masterDeviceDescriptor) {
     return false;
   }
@@ -253,30 +295,15 @@ bool MasterDevice::rescale(int snapshotNumber, double width, double height) {
   // that's why we should re-enable it manually here
   masterDeviceDescriptor->recordGraphics = TRUE;
 
-  auto number = (snapshotNumber >= 0) ? snapshotNumber : currentSnapshotNumber;
   auto& deviceInfo = currentDeviceInfos[number];
-  if (!deviceInfo.device) {
+  auto device = deviceInfo.device;
+  if (!device) {
     return false;
   }
 
-  auto device = deviceInfo.device;
-  if (!device) {
-    std::cerr << "Device for snapshot number = " << number << " was null\n";
-    throw std::runtime_error("Device was null");
-  }
   if (!device->isBlank()) {
-    if (!deviceInfo.hasRecorded) {
-      recordAndDump(deviceInfo, number);
-    }
-
-    auto previousSize = device->logicScreenParameters().size;
-    if (!isClose(Point::make(previousSize), Point{width, height})) {
-      rescaleAndDump(device, SnapshotType::NORMAL, width, height);
-    }
-
-    if (snapshotNumber < 0) {
-      addNewDevice();
-    }
+    recordAndDumpIfNecessary(deviceInfo, number);
+    rescaleAndDumpIfNecessary(device, SnapshotType::NORMAL, width, height);
     return true;
   } else {
     return false;
