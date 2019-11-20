@@ -20,11 +20,17 @@
 
 #include <iostream>
 
+#include "Point.h"
+
 namespace graphics {
 
 struct Size {
   double width;
   double height;
+
+  Point toPoint() {
+    return Point{width, height};
+  }
 };
 
 inline Size operator*(Size size, double alpha) {
@@ -44,6 +50,19 @@ struct ScreenParameters {
   Size size;
   int resolution;
 };
+
+inline bool isClose(Size a, Size b, double epsilon = 1e-3) {
+  return isClose(a.toPoint(), b.toPoint(), epsilon);
+}
+
+inline bool isClose(ScreenParameters a, ScreenParameters b, double epsilon = 1e-3) {
+  return isClose(a.size, b.size, epsilon) && a.resolution == b.resolution;
+}
+
+inline std::ostream& operator<<(std::ostream& out, ScreenParameters parameters) {
+  out << "ScreenParameters {size = " << parameters.size << ", resolution = " << parameters.resolution << "}";
+  return out;
+}
 
 }  // graphics
 

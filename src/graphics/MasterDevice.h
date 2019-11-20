@@ -28,8 +28,8 @@ class MasterDevice {
 public:
   static void init(const std::string& snapshotDirectory, ScreenParameters screenParameters);
   static void dumpAndMoveNext();
-  static bool rescaleAllLast(double width, double height);
-  static bool rescaleByNumber(int number, double width, double height);
+  static bool rescaleAllLast(ScreenParameters newParameters);
+  static bool rescaleByNumber(int number, ScreenParameters newParameters);
 };
 
 }  // graphics

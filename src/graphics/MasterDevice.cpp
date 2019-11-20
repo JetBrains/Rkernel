@@ -208,22 +208,23 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
   masterDevDesc->clipTop = masterDevDesc->top;
 }
 
-void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, double width, double height) {
-  device->rescale(type, width, height);
+void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters) {
+  device->rescale(type, newParameters);
   device->replay();
   device->dump();
 }
 
 void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type) {
-  auto width = currentScreenParameters.size.width;
-  auto height = currentScreenParameters.size.height;
-  rescaleAndDump(device, type, width, height);
+  rescaleAndDump(device, type, currentScreenParameters);
 }
 
-void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, double width, double height) {
-  auto previousSize = device->logicScreenParameters().size;
-  if (!isClose(Point::make(previousSize), Point{width, height})) {
-    rescaleAndDump(device, SnapshotType::NORMAL, width, height);
+void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters) {
+  auto previousParameters = device->logicScreenParameters();
+  if (!isClose(previousParameters, newParameters)) {
+    if (previousParameters.resolution != newParameters.resolution) {
+      rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
+    }
+    rescaleAndDump(device, SnapshotType::NORMAL, newParameters);
   }
 }
 
@@ -270,13 +271,13 @@ void MasterDevice::dumpAndMoveNext() {
   }
 }
 
-bool MasterDevice::rescaleAllLast(double width, double height) {
+bool MasterDevice::rescaleAllLast(ScreenParameters newParameters) {
   auto hasRescaledAtLeastOne = false;
   for (auto number = currentSnapshotNumber; number >= 0; number--) {
     if (currentDeviceInfos[number].hasDumped) {
       break;
     }
-    auto hasRescaled = rescaleByNumber(number, width, height);
+    auto hasRescaled = rescaleByNumber(number, newParameters);
     hasRescaledAtLeastOne |= hasRescaled;
   }
   if (hasRescaledAtLeastOne) {
@@ -285,8 +286,13 @@ bool MasterDevice::rescaleAllLast(double width, double height) {
   return hasRescaledAtLeastOne;
 }
 
-bool MasterDevice::rescaleByNumber(int number, double width, double height) {
+bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
   if (!masterDeviceDescriptor) {
+    return false;
+  }
+
+  if (newParameters.size.width < 0.0 || newParameters.size.height < 0.0 || newParameters.resolution == 0) {
+    std::cerr << "Invalid rescale parameters were provided: " << newParameters << "\n";
     return false;
   }
 
@@ -295,6 +301,7 @@ bool MasterDevice::rescaleByNumber(int number, double width, double height) {
   // that's why we should re-enable it manually here
   masterDeviceDescriptor->recordGraphics = TRUE;
 
+  currentScreenParameters.resolution = newParameters.resolution;
   auto& deviceInfo = currentDeviceInfos[number];
   auto device = deviceInfo.device;
   if (!device) {
@@ -303,7 +310,7 @@ bool MasterDevice::rescaleByNumber(int number, double width, double height) {
 
   if (!device->isBlank()) {
     recordAndDumpIfNecessary(deviceInfo, number);
-    rescaleAndDumpIfNecessary(device, SnapshotType::NORMAL, width, height);
+    rescaleAndDumpIfNecessary(device, SnapshotType::NORMAL, newParameters);
     return true;
   } else {
     return false;

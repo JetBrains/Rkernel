@@ -21,8 +21,6 @@
 #include <iostream>
 #include <cmath>
 
-#include "ScreenParameters.h"
-
 namespace graphics {
 
 struct Point {
@@ -31,10 +29,6 @@ struct Point {
 
   Point rescale(Point scale) const {
     return {x * scale.x, y * scale.y};
-  }
-
-  static Point make(Size size) {
-    return Point{size.width, size.height};
   }
 };
 

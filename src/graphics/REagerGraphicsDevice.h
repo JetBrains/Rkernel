@@ -89,7 +89,7 @@ public:
   double widthOfStringUtf8(const char* text, pGEcontext context);
   void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context);
   bool dump();
-  void rescale(SnapshotType newType, double newWidth, double newHeight);
+  void rescale(SnapshotType newType, ScreenParameters newParameters);
   bool isBlank();
   void replay();
 };

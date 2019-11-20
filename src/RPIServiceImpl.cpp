@@ -107,8 +107,9 @@ Status RPIServiceImpl::graphicsRescale(ServerContext* context, const GraphicsRes
   auto arguments = std::vector<std::string> {
     "'.jetbrains_ther_device_rescale'",
     std::to_string(request->snapshotnumber()),
-    std::to_string(request->newwidth()),
-    std::to_string(request->newheight())
+    std::to_string(request->newparameters().width()),
+    std::to_string(request->newparameters().height()),
+    std::to_string(request->newparameters().resolution()),
   };
   auto command = buildCallCommand(".Call", joinToString(arguments));
   return executeCommand(context, command, writer);

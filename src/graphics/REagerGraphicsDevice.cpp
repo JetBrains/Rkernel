@@ -165,12 +165,11 @@ bool REagerGraphicsDevice::dump() {
   return true;
 }
 
-void REagerGraphicsDevice::rescale(SnapshotType newType, double newWidth, double newHeight) {
+void REagerGraphicsDevice::rescale(SnapshotType newType, ScreenParameters newParameters) {
   DEVICE_TRACE;
   shutdownSlaveDevice();
   snapshotType = newType;
-  parameters.size.width = newWidth;
-  parameters.size.height = newHeight;
+  parameters = newParameters;
   snapshotVersion++;
 }
 

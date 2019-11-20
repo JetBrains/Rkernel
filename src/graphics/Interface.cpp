@@ -40,12 +40,13 @@ SEXP jetbrains_ther_device_dump() {
   return R_NilValue;
 }
 
-SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double height) {
+SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double height, int resolution) {
+  auto newParameters = graphics::ScreenParameters{width, height, resolution};
   bool isRescaled;
   if (snapshotNumber >= 0) {
-    isRescaled = graphics::MasterDevice::rescaleByNumber(snapshotNumber, width, height);
+    isRescaled = graphics::MasterDevice::rescaleByNumber(snapshotNumber, newParameters);
   } else {
-    isRescaled = graphics::MasterDevice::rescaleAllLast(width, height);
+    isRescaled = graphics::MasterDevice::rescaleAllLast(newParameters);
   }
   return Rcpp::wrap(isRescaled);
 }
