@@ -180,6 +180,12 @@ Status RPIServiceImpl::repoInstallPackage(ServerContext* context, const RepoInst
   return replExecuteCommand(context, sout.str());
 }
 
+Status RPIServiceImpl::repoAddLibraryPath(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) {
+  auto sout = std::ostringstream();
+  sout << ".libPaths(c('" << request->value() << "', .libPaths()))";
+  return executeCommand(context, sout.str(), writer);
+}
+
 Status RPIServiceImpl::repoCheckPackageInstalled(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) {
   auto sout = std::ostringstream();
   sout << "cat('" << request->value() << "' %in% rownames(installed.packages()))";

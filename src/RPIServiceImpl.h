@@ -82,6 +82,7 @@ public:
 
   Status repoGetPackageVersion(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status repoInstallPackage(ServerContext* context, const RepoInstallPackageRequest* request, Empty*) override;
+  Status repoAddLibraryPath(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status repoCheckPackageInstalled(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status repoRemovePackage(ServerContext* context, const StringValue* request, Empty*) override;
 
