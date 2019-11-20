@@ -112,7 +112,7 @@ static void childHandler() {
 }
 
 void setupForkHandler() {
-  if (int err = pthread_atfork(prepareHandler, parentHandler, childHandler) != 0) {
+  if (int err = pthread_atfork(prepareHandler, parentHandler, childHandler)) {
     std::cerr << "Failed to setup fork handler: " << strerror(err) << "\n";
     exit(1);
   }
