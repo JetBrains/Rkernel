@@ -20,8 +20,11 @@
 #include <Rinterface.h>
 #include <Rembedded.h>
 
+void setupForkHandler();
+
 int main(int argc, char* argv[]) {
   commandLineOptions.parse(argc, argv);
+  setupForkHandler();
 
   R_running_as_main_program = 1;
   const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save"};

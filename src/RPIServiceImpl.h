@@ -113,10 +113,11 @@ public:
   void viewHandler(SEXP x, SEXP title);
 
   enum State {
-    PROMPT, PROMPT_DEBUG, READ_LN, REPL_BUSY, BUSY
+    PROMPT, PROMPT_DEBUG, READ_LN, REPL_BUSY, BUSY, CHILD_PROCESS
   };
 
   std::string handlePrompt(const char* prompt, State newState);
+  void setChildProcessState();
   volatile bool terminate = false;
 
   void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);

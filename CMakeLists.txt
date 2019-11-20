@@ -107,6 +107,12 @@ elseif(WIN32)
     link_directories("${GRPC_DIST}/lib")
 endif()
 
+if (UNIX)
+    set(SYSTEM_SPECIFIC_SOURCES src/UnixForkHandler.cpp)
+else()
+    set(SYSTEM_SPECIFIC_SOURCES)
+endif()
+
 
 add_executable(
         rwrapper
@@ -130,6 +136,7 @@ add_executable(
         src/DataFrame.cpp
         src/RDebugger.cpp
         src/Options.cpp
+        ${SYSTEM_SPECIFIC_SOURCES}
         ${service_proto_srcs}
         ${service_grpc_srcs}
 )

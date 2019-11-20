@@ -293,6 +293,8 @@ std::string RPIServiceImpl::handlePrompt(const char* prompt, State newState) {
         return "f";
       }
       else assert(false);
+    case CHILD_PROCESS:
+      return "\n";
     default:
       assert(false);
   }
@@ -301,6 +303,7 @@ std::string RPIServiceImpl::handlePrompt(const char* prompt, State newState) {
 }
 
 void RPIServiceImpl::eventLoop() {
+  if (rState == CHILD_PROCESS) return;
   while (true) {
     auto f = executionQueue.pop();
     f();
@@ -314,6 +317,10 @@ void RPIServiceImpl::eventLoop() {
 void RPIServiceImpl::breakEventLoop(std::string s) {
   doBreakEventLoop = true;
   returnFromReadConsoleValue = std::move(s);
+}
+
+void RPIServiceImpl::setChildProcessState() {
+  rState = CHILD_PROCESS;
 }
 
 void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerContext* context) {
