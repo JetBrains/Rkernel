@@ -84,6 +84,8 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
 }
 
 void myWriteConsoleEx(const char* buf, int len, int type) {
+  static std::mutex mutex;
+  std::unique_lock<std::mutex> lock(mutex);
   currentConsumer(buf, len, (OutputType)type);
 }
 
