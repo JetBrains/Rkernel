@@ -27,7 +27,7 @@ namespace graphics {
 class MasterDevice {
 public:
   static void init(const std::string& snapshotDirectory, ScreenParameters screenParameters);
-  static void dumpAndMoveNext();
+  static void recordLast();
   static bool rescaleAllLast(ScreenParameters newParameters);
   static bool rescaleByNumber(int number, ScreenParameters newParameters);
 };

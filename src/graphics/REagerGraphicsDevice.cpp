@@ -182,7 +182,7 @@ void REagerGraphicsDevice::replay() {
   InitHelper helper;
   Rf_selectDevice(Rf_ndevNumber(slaveDevice->getDescriptor()));
   auto name = ".jetbrains$recordedSnapshot" + std::to_string(snapshotNumber);
-  auto command = "replayPlot(" + name + ")";
+  auto command = "grDevices::replayPlot(" + name + ")";
   Evaluator::evaluate(command);
 }
 

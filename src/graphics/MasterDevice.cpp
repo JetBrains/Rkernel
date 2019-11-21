@@ -107,7 +107,13 @@ void mode(int mode, pDevDesc) {
 
 void newPage(pGEcontext context, pDevDesc) {
   DEVICE_TRACE;
-  getCurrentDevice()->newPage(context);
+  // Note: you may want to ask why we don't record the latest plot here
+  // and use "before.plot.new" hook instead (see `recordLast()` below).
+  // Well, because here graphics device will record nothing -- just a blank list (oh, but why???)
+  if (!getCurrentDevice()->isBlank()) {
+    addNewDevice();
+  }
+  getCurrentDevice()->newPage(context);  // Note: in general it's NOT the same device as the one above
 }
 
 void polygon(int n, double *x, double *y, pGEcontext context, pDevDesc) {
@@ -230,7 +236,7 @@ void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, Snapshot
 
 void record(DeviceInfo& deviceInfo, int number) {
   auto name = ".jetbrains$recordedSnapshot" + std::to_string(number);
-  auto command = name + " <- recordPlot()";
+  auto command = name + " <- grDevices::recordPlot()";
   Evaluator::evaluate(command);
   deviceInfo.hasRecorded = true;
 }
@@ -247,7 +253,16 @@ void dumpNormalAndZoomed(DeviceInfo &deviceInfo, int number) {
 }
 
 void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) {
-  if (!deviceInfo.hasRecorded) {
+  // Note: you may want to ask why we need such a strange condition for recording.
+  // After all, haven't we already recorded all plots with "before.plot.new" hook?
+  // Not quite: plots with multiple art boards (say, `pairs(iris)`)
+  // will emit "before.plot.new" event **every time** they start drawing a new art board.
+  // That means, if we just check for `hesRecorded` flag, we will skip the very last plot's state
+  // so we have to additionally record a plot after it's done.
+  // Why do we ensure it is the last plot?
+  // Because `recordPlot()` makes sense only for the last produced plot.
+  // If we call it on the previous plots, it will overwrite them with new contents
+  if (!deviceInfo.hasRecorded || (number == currentSnapshotNumber && !deviceInfo.hasDumped)) {
     record(deviceInfo, number);
   }
   if (!deviceInfo.hasDumped) {
@@ -259,14 +274,21 @@ void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) {
 
 // Called by hooks "before.plot.new" for vanilla plots
 // and "before.grid.newpage" for ggplot2 (see "interop.R")
-void MasterDevice::dumpAndMoveNext() {
+void MasterDevice::recordLast() {
   // If current device is neither null nor blank then it should be recorded
   if (masterDeviceDescriptor) {
     auto& deviceInfo = currentDeviceInfos[currentSnapshotNumber];
     auto device = deviceInfo.device;
     if (device && !device->isBlank()) {
+      // Note: you may want to ask why we don't add a new device after recording.
+      // Well, if you trace execution of graphics command `pairs(iris)`,
+      // (you know, this fascinating plot with 25 art boards)
+      // you will find out that it emits "before.plot.new" event
+      // **every time** it wants to start drawing a new art board (oh, but why???).
+      // This implies we will get 25 partial plots if we decide to insert `addNewDevice()` here.
+      // This would be pretty enough to blow out your IDE.
+      // Instead, we will add a new device in `newPage` handler
       record(deviceInfo, currentSnapshotNumber);
-      addNewDevice();
     }
   }
 }

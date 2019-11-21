@@ -17,17 +17,17 @@
 
 assign(".jetbrains", new.env(), baseenv())
 
-# Set hook before new vanilla graphics are created
+# Set hook to record previous plot before new vanilla graphics are created
 setHook(hookName = "before.plot.new",
         value = function() {
-          .Call(".jetbrains_ther_device_dump")
+          .Call(".jetbrains_ther_device_record")
         },
         action = "append")
 
-# Set hook before new ggplot2 graphics are created
+# Set hook to record previous plot before new ggplot2 graphics are created
 setHook(hookName = "before.grid.newpage",
         value = function() {
-          .Call(".jetbrains_ther_device_dump")
+          .Call(".jetbrains_ther_device_record")
         },
         action = "append")
 

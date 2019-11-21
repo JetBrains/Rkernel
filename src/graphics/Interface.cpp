@@ -35,8 +35,8 @@ SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, doubl
 
 using namespace Rcpp;
 
-SEXP jetbrains_ther_device_dump() {
-  graphics::MasterDevice::dumpAndMoveNext();
+SEXP jetbrains_ther_device_record() {
+  graphics::MasterDevice::recordLast();
   return R_NilValue;
 }
 
