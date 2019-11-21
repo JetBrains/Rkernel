@@ -3,7 +3,6 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <thread>
-#include <sys/epoll.h>
 #include "IO.h"
 #include "RPIServiceImpl.h"
 
@@ -27,49 +26,21 @@ static void prepareHandler() {
     perror("Failed to create pipe for child process");
     return;
   }
-  int stdoutPipeFd = globalStdoutPipeFd[0];
-  int stderrPipeFd = globalStderrPipeFd[0];
-  std::thread handlerThread([=] {
-    CloseOnExit closeStdout(stdoutPipeFd);
-    CloseOnExit closeStderr(stderrPipeFd);
-    int epoll = epoll_create1(0);
-    if (epoll < 0) {
-      perror("Failed to create epoll");
-      return;
-    }
-    CloseOnExit closeEpoll(epoll);
-
-    epoll_event stdoutEvent;
-    stdoutEvent.events = EPOLLIN;
-    stdoutEvent.data.fd = stdoutPipeFd;
-    if (epoll_ctl(epoll, EPOLL_CTL_ADD, stdoutPipeFd, &stdoutEvent) < 0) {
-      perror("epoll_clt error");
-      return;
-    }
-
-    epoll_event stderrEvent;
-    stderrEvent.events = EPOLLIN;
-    stderrEvent.data.fd = stderrPipeFd;
-    if (epoll_ctl(epoll, EPOLL_CTL_ADD, stderrPipeFd, &stderrEvent) < 0) {
-      perror("epoll_clt error");
-      return;
-    }
-
-    char buf[BUF_SIZE];
-    while (true) {
-      epoll_event event;
-      if (epoll_wait(epoll, &event, 1, -1) < 0) {
-        break;
+  for (int id = 0; id < 2; ++id) {
+    int fd = (id == 0 ? globalStdoutPipeFd[0] : globalStderrPipeFd[0]);
+    std::thread handlerThread([=] {
+      CloseOnExit closeOnExit(fd);
+      char buf[BUF_SIZE];
+      while (true) {
+        ssize_t size = read(fd, buf, BUF_SIZE);
+        if (size <= 0) {
+          break;
+        }
+        myWriteConsoleEx(buf, size, id);
       }
-      int fd = event.data.fd;
-      ssize_t size = read(fd, buf, BUF_SIZE);
-      if (size <= 0) {
-        break;
-      }
-      myWriteConsoleEx(buf, size, fd == stdoutPipeFd ? 0 : 1);
-    }
-  });
-  handlerThread.detach();
+    });
+    handlerThread.detach();
+  }
 }
 
 static void parentHandler() {
