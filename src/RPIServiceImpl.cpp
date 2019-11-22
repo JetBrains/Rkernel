@@ -115,8 +115,8 @@ Status RPIServiceImpl::graphicsRescale(ServerContext* context, const GraphicsRes
   return executeCommand(context, command, writer);
 }
 
-Status RPIServiceImpl::graphicsReset(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) {
-  return executeCommand(context, "dev.off()", writer);
+Status RPIServiceImpl::graphicsShutdown(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) {
+  return executeCommand(context, ".Call('.jetbrains_ther_device_shutdown')", writer);
 }
 
 Status RPIServiceImpl::beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) {

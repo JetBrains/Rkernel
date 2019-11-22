@@ -60,15 +60,6 @@ setHook(hookName = "before.grid.newpage",
   })
 }
 
-.jetbrains$setNotebookGraphicsOption <- function(image.dir, width, height, resolution) {
-  file.name <- file.path(image.dir, "%d.png")
-  options(device = function() {
-    png(file.name, width, height, res = resolution)
-    dev.control(displaylist = "enable")
-    par(mar = c(5.1, 4.1, 2.1, 2.1))
-  })
-}
-
 .jetbrains$runBeforeChunk <- function(report.text, chunk.text, cache.dir, width, height, resolution) {
   .rs.evaluateRmdParams(report.text)
   opts <- .rs.evaluateChunkOptions(chunk.text)
@@ -80,10 +71,6 @@ setHook(hookName = "before.grid.newpage",
   dir.create(html.lib.dir, showWarnings = FALSE)
   dir.create(data.dir, showWarnings = FALSE)
 
-  while (grDevices::dev.cur() != 1) {
-    grDevices::dev.off()
-  }
-  .jetbrains$setNotebookGraphicsOption(image.dir, width, height, resolution)
   .rs.initHtmlCapture(cache.dir, html.lib.dir, opts)
   .rs.initDataCapture(data.dir, opts)
   if (!.rs.hasVar("jbHookedPackages")) {
@@ -95,9 +82,6 @@ setHook(hookName = "before.grid.newpage",
 .jetbrains$runAfterChunk <- function() {
   .rs.releaseHtmlCapture()
   .rs.releaseDataCapture()
-  if (grDevices::dev.cur() != 1) {
-    grDevices::dev.off()
-  }
 }
 
 .jetbrains$findAllNamedArguments <- function(x) {

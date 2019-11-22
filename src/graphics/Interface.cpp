@@ -15,38 +15,52 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+#include <iostream>
 #include <string>
 
 #include <Rcpp.h>
 
-#include "MasterDevice.h"
-#include "SlaveDevice.h"
+#include "DeviceManager.h"
 
 using namespace Rcpp;
+using namespace graphics;
 
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
 SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution) {
   auto path = as<std::string>(snapshotDir[0]);
-  auto screenParameters = graphics::ScreenParameters{width, height, resolution};
-  graphics::MasterDevice::init(path, screenParameters);
+  auto screenParameters = ScreenParameters{width, height, resolution};
+  DeviceManager::getInstance()->initNew(path, screenParameters);
   return R_NilValue;
 }
 
-using namespace Rcpp;
+SEXP jetbrains_ther_device_shutdown() {
+  DeviceManager::getInstance()->shutdownLast();
+  return R_NilValue;
+}
 
 SEXP jetbrains_ther_device_record() {
-  graphics::MasterDevice::recordLast();
+  auto active = DeviceManager::getInstance()->getActive();
+  if (active) {
+    active->recordLast();
+  } else {
+    std::cerr << "jetbrains_ther_device_record(): nothing to record. Ignored\n";
+  }
   return R_NilValue;
 }
 
 SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double height, int resolution) {
-  auto newParameters = graphics::ScreenParameters{width, height, resolution};
-  bool isRescaled;
-  if (snapshotNumber >= 0) {
-    isRescaled = graphics::MasterDevice::rescaleByNumber(snapshotNumber, newParameters);
+  auto active = DeviceManager::getInstance()->getActive();
+  auto isRescaled = false;
+  if (active) {
+    auto newParameters = graphics::ScreenParameters{width, height, resolution};
+    if (snapshotNumber >= 0) {
+      isRescaled = active->rescaleByNumber(snapshotNumber, newParameters);
+    } else {
+      isRescaled = active->rescaleAllLast(newParameters);
+    }
   } else {
-    isRescaled = graphics::MasterDevice::rescaleAllLast(newParameters);
+    std::cerr << "jetbrains_ther_device_rescale(): nothing to rescale. Ignored\n";
   }
   return Rcpp::wrap(isRescaled);
 }

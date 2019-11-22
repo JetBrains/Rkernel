@@ -22,11 +22,12 @@
 #include "Common.h"
 #include "Evaluator.h"
 #include "InitHelper.h"
+#include "SnapshotUtil.h"
 
 namespace graphics {
 
-REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters)
-    : snapshotDirectory(std::move(snapshotDirectory)), snapshotNumber(snapshotNumber), parameters(parameters),
+REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, ScreenParameters parameters)
+    : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber), parameters(parameters),
       slaveDevice(nullptr), isDeviceBlank(true), snapshotVersion(0), snapshotType(SnapshotType::SKETCH) { getSlave(); }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
@@ -181,8 +182,7 @@ void REagerGraphicsDevice::replay() {
   getSlave();
   InitHelper helper;
   Rf_selectDevice(Rf_ndevNumber(slaveDevice->getDescriptor()));
-  auto name = ".jetbrains$recordedSnapshot" + std::to_string(snapshotNumber);
-  auto command = "grDevices::replayPlot(" + name + ")";
+  auto command = SnapshotUtil::makeReplayVariableCommand(deviceNumber, snapshotNumber);
   Evaluator::evaluate(command);
 }
 

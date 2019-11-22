@@ -48,6 +48,7 @@ struct MetricInfo {
 class REagerGraphicsDevice {
 private:
   bool isDeviceBlank;
+  int deviceNumber;
   int snapshotNumber;
   int snapshotVersion;
   SnapshotType snapshotType;
@@ -61,7 +62,7 @@ private:
   pDevDesc getSlave();
 
 public:
-  REagerGraphicsDevice(std::string snapshotDirectory, int snapshotNumber, ScreenParameters parameters);
+  REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, ScreenParameters parameters);
 
   void drawCircle(Point center, double radius, pGEcontext context);
   void clip(Point from, Point to);

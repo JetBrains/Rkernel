@@ -16,11 +16,13 @@
 
 
 #include <string.h>
+#include <sstream>
 
 #include "Common.h"
 #include "Evaluator.h"
 #include "MasterDevice.h"
 #include "SlaveDevice.h"
+#include "SnapshotUtil.h"
 #include "REagerGraphicsDevice.h"
 
 namespace graphics {
@@ -29,61 +31,37 @@ namespace {
 const auto MASTER_DEVICE_NAME = "TheRPlugin_Device";
 const auto DUMMY_SNAPSHOT_NAME = "snapshot_0.png";
 
-auto currentSnapshotDir = std::string();
-auto currentScreenParameters = ScreenParameters{640.0, 480.0, 75};
-auto currentSnapshotNumber = -1;
-
-struct DeviceInfo {
-  Ptr<REagerGraphicsDevice> device;
-  bool hasRecorded = false;
-  bool hasDumped = false;
-};
-
-auto currentDeviceInfos = std::vector<DeviceInfo>();
-pGEDevDesc masterDeviceDescriptor = nullptr;
-
-bool hasCurrentDevice() {
-  return currentDeviceInfos[currentSnapshotNumber].device != nullptr;
-}
-
-Ptr<REagerGraphicsDevice> getCurrentDevice() {
-  if (!hasCurrentDevice()) {
-    auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDir, currentSnapshotNumber, currentScreenParameters);
-    currentDeviceInfos[currentSnapshotNumber].device = newDevice;
+MasterDevice* masterOf(pDevDesc descriptor) {
+  auto masterDevice = MasterDevice::from(descriptor);
+  if (!masterDevice) {
+    std::cerr << "<!> Saved master device pointer was null\n";
+    throw std::runtime_error("Trying to dereference null master device pointer");
   }
-  return currentDeviceInfos[currentSnapshotNumber].device;
+  return masterDevice;
 }
 
-void addNewDevice() {
-  currentDeviceInfos.emplace_back(DeviceInfo());
-  currentSnapshotNumber++;
+Ptr<REagerGraphicsDevice> deviceOf(pDevDesc descriptor) {
+  return masterOf(descriptor)->getCurrentDevice();
 }
 
-void circle(double x, double y, double r, pGEcontext context, pDevDesc) {
+void circle(double x, double y, double r, pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
-  getCurrentDevice()->drawCircle(Point{x, y}, r, context);
+  deviceOf(descriptor)->drawCircle(Point{x, y}, r, context);
 }
 
-void clip(double x1, double x2, double y1, double y2, pDevDesc) {
+void clip(double x1, double x2, double y1, double y2, pDevDesc descriptor) {
   DEVICE_TRACE;
-  getCurrentDevice()->clip(Point{x1, y1}, Point{x2, y2});
+  deviceOf(descriptor)->clip(Point{x1, y1}, Point{x2, y2});
 }
 
-void close(pDevDesc) {
+void close(pDevDesc descriptor) {
   DEVICE_TRACE;
-  if (hasCurrentDevice()) {
-    getCurrentDevice()->close();
-  }
-  if (masterDeviceDescriptor) {
-    delete masterDeviceDescriptor->dev;
-    masterDeviceDescriptor->dev = nullptr;
-    masterDeviceDescriptor = nullptr;
-  }
+  masterOf(descriptor)->finalize();
 }
 
-void line(double x1, double y1, double x2, double y2, pGEcontext context, pDevDesc) {
+void line(double x1, double y1, double x2, double y2, pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
-  getCurrentDevice()->drawLine(Point{x1, y1}, Point{x2, y2}, context);
+  deviceOf(descriptor)->drawLine(Point{x1, y1}, Point{x2, y2}, context);
 }
 
 void metricInfo(int character,
@@ -91,44 +69,45 @@ void metricInfo(int character,
                 double *ascent,
                 double *descent,
                 double *width,
-                pDevDesc)
+                pDevDesc descriptor)
 {
   DEVICE_TRACE;
-  auto info = getCurrentDevice()->metricInfo(character, context);
+  auto info = deviceOf(descriptor)->metricInfo(character, context);
   *ascent = info.ascent;
   *descent = info.descent;
   *width = info.width;
 }
 
-void mode(int mode, pDevDesc) {
+void mode(int mode, pDevDesc descriptor) {
   DEVICE_TRACE;
-  getCurrentDevice()->setMode(mode);
+  deviceOf(descriptor)->setMode(mode);
 }
 
-void newPage(pGEcontext context, pDevDesc) {
+void newPage(pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
   // Note: you may want to ask why we don't record the latest plot here
   // and use "before.plot.new" hook instead (see `recordLast()` below).
   // Well, because here graphics device will record nothing -- just a blank list (oh, but why???)
-  if (!getCurrentDevice()->isBlank()) {
-    addNewDevice();
+  auto masterDevice = masterOf(descriptor);
+  if (!masterDevice->getCurrentDevice()->isBlank()) {
+    masterDevice->addNewDevice();
   }
-  getCurrentDevice()->newPage(context);  // Note: in general it's NOT the same device as the one above
+  masterDevice->getCurrentDevice()->newPage(context);  // Note: in general it's NOT the same device as the one above
 }
 
-void polygon(int n, double *x, double *y, pGEcontext context, pDevDesc) {
+void polygon(int n, double *x, double *y, pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
-  getCurrentDevice()->drawPolygon(n, x, y, context);
+  deviceOf(descriptor)->drawPolygon(n, x, y, context);
 }
 
-void polyline(int n, double *x, double *y, pGEcontext context, pDevDesc) {
+void polyline(int n, double *x, double *y, pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
-  getCurrentDevice()->drawPolyline(n, x, y, context);
+  deviceOf(descriptor)->drawPolyline(n, x, y, context);
 }
 
-void rect(double x1, double y1, double x2, double y2, pGEcontext context, pDevDesc) {
+void rect(double x1, double y1, double x2, double y2, pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
-  getCurrentDevice()->drawRect(Point{x1, y1}, Point{x2, y2}, context);
+  deviceOf(descriptor)->drawRect(Point{x1, y1}, Point{x2, y2}, context);
 }
 
 void path(double *x,
@@ -137,10 +116,10 @@ void path(double *x,
           int *nper,
           Rboolean winding,
           pGEcontext context,
-          pDevDesc)
+          pDevDesc descriptor)
 {
   DEVICE_TRACE;
-  getCurrentDevice()->drawPath(x, y, npoly, nper, winding, context);
+  deviceOf(descriptor)->drawPath(x, y, npoly, nper, winding, context);
 }
 
 void raster(unsigned int *raster,
@@ -153,15 +132,15 @@ void raster(unsigned int *raster,
             double rot,
             Rboolean interpolate,
             pGEcontext context,
-            pDevDesc)
+            pDevDesc descriptor)
 {
   DEVICE_TRACE;
-  getCurrentDevice()->drawRaster(raster, w, h, x, y, width, height, rot, interpolate, context);
+  deviceOf(descriptor)->drawRaster(raster, w, h, x, y, width, height, rot, interpolate, context);
 }
 
-void size(double *left, double *right, double *bottom, double *top, pDevDesc) {
+void size(double *left, double *right, double *bottom, double *top, pDevDesc descriptor) {
   DEVICE_TRACE;
-  auto screenParameters = getCurrentDevice()->screenParameters();
+  auto screenParameters = deviceOf(descriptor)->screenParameters();
   auto screenSize = screenParameters.size;
   *left = 0.0;
   *right = screenSize.width;
@@ -169,9 +148,9 @@ void size(double *left, double *right, double *bottom, double *top, pDevDesc) {
   *top = 0.0;
 }
 
-double strWidth(const char *str, pGEcontext context, pDevDesc) {
+double strWidth(const char *str, pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
-  return getCurrentDevice()->widthOfStringUtf8(str, context);
+  return deviceOf(descriptor)->widthOfStringUtf8(str, context);
 }
 
 void text(double x,
@@ -180,10 +159,10 @@ void text(double x,
           double rot,
           double hadj,
           pGEcontext context,
-          pDevDesc)
+          pDevDesc descriptor)
 {
   DEVICE_TRACE;
-  getCurrentDevice()->drawTextUtf8(str, Point{x, y}, rot, hadj, context);
+  deviceOf(descriptor)->drawTextUtf8(str, Point{x, y}, rot, hadj, context);
 }
 
 void textUTF8(double x,
@@ -192,15 +171,15 @@ void textUTF8(double x,
               double rot,
               double hadj,
               pGEcontext context,
-              pDevDesc)
+              pDevDesc descriptor)
 {
   DEVICE_TRACE;
-  getCurrentDevice()->drawTextUtf8(str, Point{x, y}, rot, hadj, context);
+  deviceOf(descriptor)->drawTextUtf8(str, Point{x, y}, rot, hadj, context);
 }
 
-double strWidthUTF8(const char *str, pGEcontext context, pDevDesc) {
+double strWidthUTF8(const char *str, pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
-  return getCurrentDevice()->widthOfStringUtf8(str, context);
+  return deviceOf(descriptor)->widthOfStringUtf8(str, context);
 }
 
 void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
@@ -214,63 +193,31 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
   masterDevDesc->clipTop = masterDevDesc->top;
 }
 
-void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters) {
-  device->rescale(type, newParameters);
-  device->replay();
-  device->dump();
-}
-
-void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type) {
-  rescaleAndDump(device, type, currentScreenParameters);
-}
-
-void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters) {
-  auto previousParameters = device->logicScreenParameters();
-  if (!isClose(previousParameters, newParameters)) {
-    if (previousParameters.resolution != newParameters.resolution) {
-      rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
-    }
-    rescaleAndDump(device, SnapshotType::NORMAL, newParameters);
-  }
-}
-
-void record(DeviceInfo& deviceInfo, int number) {
-  auto name = ".jetbrains$recordedSnapshot" + std::to_string(number);
-  auto command = name + " <- grDevices::recordPlot()";
-  Evaluator::evaluate(command);
-  deviceInfo.hasRecorded = true;
-}
-
-void dumpNormalAndZoomed(DeviceInfo &deviceInfo, int number) {
-  auto device = deviceInfo.device;
-  device->dump();
-  deviceInfo.hasDumped = true;
-
-  // Note: there might be a temptation to dump "zoomed" version with a previous operator
-  // but, unfortunately, it doesn't produce any output for "partial" plots (i.e. produced by `points()` command)
-  rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
-  rescaleAndDump(device, SnapshotType::NORMAL);  // Dump full-screen "normal"
-}
-
-void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) {
-  // Note: you may want to ask why we need such a strange condition for recording.
-  // After all, haven't we already recorded all plots with "before.plot.new" hook?
-  // Not quite: plots with multiple art boards (say, `pairs(iris)`)
-  // will emit "before.plot.new" event **every time** they start drawing a new art board.
-  // That means, if we just check for `hesRecorded` flag, we will skip the very last plot's state
-  // so we have to additionally record a plot after it's done.
-  // Why do we ensure it is the last plot?
-  // Because `recordPlot()` makes sense only for the last produced plot.
-  // If we call it on the previous plots, it will overwrite them with new contents
-  if (!deviceInfo.hasRecorded || (number == currentSnapshotNumber && !deviceInfo.hasDumped)) {
-    record(deviceInfo, number);
-  }
-  if (!deviceInfo.hasDumped) {
-    dumpNormalAndZoomed(deviceInfo, number);
-  }
-}
-
 } // anonymous
+
+MasterDevice::MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber)
+  : currentSnapshotDirectory(std::move(snapshotDirectory)), currentScreenParameters(screenParameters),
+    currentSnapshotNumber(-1), masterDeviceDescriptor(nullptr), deviceNumber(deviceNumber)
+{
+  restart();
+}
+
+bool MasterDevice::hasCurrentDevice() {
+  return currentDeviceInfos[currentSnapshotNumber].device != nullptr;
+}
+
+Ptr<REagerGraphicsDevice> MasterDevice::getCurrentDevice() {
+  if (!hasCurrentDevice()) {
+    auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDirectory, deviceNumber, currentSnapshotNumber, currentScreenParameters);
+    currentDeviceInfos[currentSnapshotNumber].device = newDevice;
+  }
+  return currentDeviceInfos[currentSnapshotNumber].device;
+}
+
+void MasterDevice::addNewDevice() {
+  currentDeviceInfos.emplace_back(DeviceInfo());
+  currentSnapshotNumber++;
+}
 
 // Called by hooks "before.plot.new" for vanilla plots
 // and "before.grid.newpage" for ggplot2 (see "interop.R")
@@ -332,28 +279,40 @@ bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
 
   if (!device->isBlank()) {
     recordAndDumpIfNecessary(deviceInfo, number);
-    rescaleAndDumpIfNecessary(device, SnapshotType::NORMAL, newParameters);
+    rescaleAndDumpIfNecessary(device, newParameters);
     return true;
   } else {
     return false;
   }
 }
 
-void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters screenParameters) {
-  DEVICE_TRACE;
+void MasterDevice::finalize() {
+  if (hasCurrentDevice()) {
+    getCurrentDevice()->close();
+  }
+  if (masterDeviceDescriptor) {
+    delete masterDeviceDescriptor->dev;
+    masterDeviceDescriptor->dev = nullptr;
+    masterDeviceDescriptor = nullptr;
+  }
+}
 
+void MasterDevice::shutdown() {
   if (masterDeviceDescriptor) {
     GEkillDevice(masterDeviceDescriptor);
   }
+}
 
-  currentSnapshotDir = snapshotDirectory;
-  currentScreenParameters = screenParameters;
+void MasterDevice::restart() {
+  DEVICE_TRACE;
+
+  shutdown();
   if (currentDeviceInfos.empty()) {
     addNewDevice();
   }
 
   auto masterDevDesc = new DevDesc;
-  auto slaveDevice = SlaveDevice(snapshotDirectory + "/" + DUMMY_SNAPSHOT_NAME, screenParameters);
+  auto slaveDevice = SlaveDevice(currentSnapshotDirectory + "/" + DUMMY_SNAPSHOT_NAME, currentScreenParameters);
   auto slaveDevDesc = slaveDevice.getDescriptor();
 
   setMasterDeviceSize(masterDevDesc, slaveDevDesc);
@@ -379,7 +338,7 @@ void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters s
   masterDevDesc->startfont = slaveDevDesc->startfont;
   masterDevDesc->startgamma = slaveDevDesc->startgamma;
 
-  masterDevDesc->deviceSpecific = nullptr;
+  masterDevDesc->deviceSpecific = this;  // OOP confirmed
 
   masterDevDesc->displayListOn = TRUE;
 
@@ -446,6 +405,70 @@ void MasterDevice::init(const std::string& snapshotDirectory, ScreenParameters s
       addNewDevice();
     }
   }
+}
+
+MasterDevice* MasterDevice::from(pDevDesc descriptor) {
+  return reinterpret_cast<MasterDevice*>(descriptor->deviceSpecific);
+}
+
+void MasterDevice::recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) {
+  // Note: you may want to ask why we need such a strange condition for recording.
+  // After all, haven't we already recorded all plots with "before.plot.new" hook?
+  // Not quite: plots with multiple art boards (say, `pairs(iris)`)
+  // will emit "before.plot.new" event **every time** they start drawing a new art board.
+  // That means, if we just check for `hesRecorded` flag, we will skip the very last plot's state
+  // so we have to additionally record a plot after it's done.
+  // Why do we ensure it is the last plot?
+  // Because `recordPlot()` makes sense only for the last produced plot.
+  // If we call it on the previous plots, it will overwrite them with new contents
+  if (!deviceInfo.hasRecorded || (number == currentSnapshotNumber && !deviceInfo.hasDumped)) {
+    record(deviceInfo, number);
+  }
+  if (!deviceInfo.hasDumped) {
+    dumpNormalAndZoomed(deviceInfo);
+  }
+}
+
+void MasterDevice::rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters) {
+  auto previousParameters = device->logicScreenParameters();
+  if (!isClose(previousParameters, newParameters)) {
+    if (previousParameters.resolution != newParameters.resolution) {
+      rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
+    }
+    rescaleAndDump(device, SnapshotType::NORMAL, newParameters);
+  }
+}
+
+void MasterDevice::rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type) {
+  rescaleAndDump(device, type, currentScreenParameters);
+}
+
+void MasterDevice::rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters) {
+  device->rescale(type, newParameters);
+  device->replay();
+  device->dump();
+}
+
+void MasterDevice::dumpNormalAndZoomed(DeviceInfo &deviceInfo) {
+  auto device = deviceInfo.device;
+  device->dump();
+  deviceInfo.hasDumped = true;
+
+  // Note: there might be a temptation to dump "zoomed" version with a previous operator
+  // but, unfortunately, it doesn't produce any output for "partial" plots (i.e. produced by `points()` command)
+  rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
+  rescaleAndDump(device, SnapshotType::NORMAL);  // Dump full-screen "normal"
+}
+
+void MasterDevice::record(DeviceInfo& deviceInfo, int number) {
+  auto command = SnapshotUtil::makeRecordVariableCommand(deviceNumber, number);
+  Evaluator::evaluate(command);
+  deviceInfo.hasRecorded = true;
+}
+
+MasterDevice::~MasterDevice() {
+  rescaleAllLast(currentScreenParameters);
+  shutdown();
 }
 
 }  // graphics

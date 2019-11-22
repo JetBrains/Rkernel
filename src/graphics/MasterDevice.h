@@ -20,16 +20,53 @@
 
 #include <string>
 
+#include "Ptr.h"
+#include "InitHelper.h"
 #include "ScreenParameters.h"
+#include "REagerGraphicsDevice.h"
 
 namespace graphics {
 
 class MasterDevice {
+  struct DeviceInfo {
+    Ptr<REagerGraphicsDevice> device;
+    bool hasRecorded = false;
+    bool hasDumped = false;
+  };
+
+  InitHelper initHelper;  // Rollback to previous active GD when this is closed (used in device dtor)
+  std::string currentSnapshotDirectory;
+  ScreenParameters currentScreenParameters;
+  std::vector<DeviceInfo> currentDeviceInfos;
+  int currentSnapshotNumber;
+  int deviceNumber;
+
+  pGEDevDesc masterDeviceDescriptor;
+
+  void record(DeviceInfo& deviceInfo, int number);
+  static void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters);
+  void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type);
+  void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters);
+  void dumpNormalAndZoomed(DeviceInfo &deviceInfo);
+  void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number);
+
 public:
-  static void init(const std::string& snapshotDirectory, ScreenParameters screenParameters);
-  static void recordLast();
-  static bool rescaleAllLast(ScreenParameters newParameters);
-  static bool rescaleByNumber(int number, ScreenParameters newParameters);
+  MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber);
+
+  bool hasCurrentDevice();
+  Ptr<REagerGraphicsDevice> getCurrentDevice();
+  void addNewDevice();
+
+  void recordLast();
+  bool rescaleAllLast(ScreenParameters newParameters);
+  bool rescaleByNumber(int number, ScreenParameters newParameters);
+  void finalize();
+  void shutdown();
+  void restart();
+
+  static MasterDevice* from(pDevDesc descriptor);
+
+  ~MasterDevice();
 };
 
 }  // graphics

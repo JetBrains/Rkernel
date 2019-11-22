@@ -48,8 +48,10 @@ list(APPEND RWRAPPER_SOURCES
     src/graphics/Interface.cpp
     src/graphics/InitHelper.cpp
     src/graphics/MasterDevice.cpp
+    src/graphics/DeviceManager.cpp
     src/graphics/ScopeProtector.cpp
     src/graphics/SlaveDevice.cpp
+    src/graphics/SnapshotUtil.cpp
     src/graphics/REagerGraphicsDevice.cpp
     src/base64/base64.cpp
     src/base64/base64r.cpp
