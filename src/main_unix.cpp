@@ -22,9 +22,19 @@
 
 void setupForkHandler();
 
+#ifdef CRASHPAD_ENABLED
+bool setupCrashpadHandler();
+#endif
+
 int main(int argc, char* argv[]) {
   commandLineOptions.parse(argc, argv);
   setupForkHandler();
+
+#ifdef CRASHPAD_ENABLED
+  if (!setupCrashpadHandler()) {
+    std::cerr << "cannot initialize crashpad" << std::endl;
+  }
+#endif
 
   R_running_as_main_program = 1;
   const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save"};

@@ -40,6 +40,27 @@ if (NOT DEFINED R_INCLUDE)
 endif()
 message("R_INCLUDE is set to ${R_INCLUDE}")
 
+list(APPEND RWRAPPER_SOURCES
+    src/IO.cpp
+    src/RPIServiceImpl.cpp
+    src/RcppExports.cpp
+    src/graphics/Evaluator.cpp
+    src/graphics/Interface.cpp
+    src/graphics/InitHelper.cpp
+    src/graphics/MasterDevice.cpp
+    src/graphics/ScopeProtector.cpp
+    src/graphics/SlaveDevice.cpp
+    src/graphics/REagerGraphicsDevice.cpp
+    src/base64/base64.cpp
+    src/base64/base64r.cpp
+    src/RPIServiceMethods.cpp
+    src/RRefs.cpp
+    src/Repl.cpp
+    src/RLoader.cpp
+    src/DataFrame.cpp
+    src/RDebugger.cpp
+    src/Options.cpp)
+
 if(WIN32)
     add_definitions(-DNOMINMAX)
     add_definitions(-D_WIN32_WINNT=0x600)
@@ -48,6 +69,48 @@ if(WIN32)
       set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
     endif()
 endif()
+
+if (DEFINED CRASHPAD_DIR)
+    message("Crashpad is enabled")
+    add_definitions( -DCRASHPAD_ENABLED )
+    if(UNIX)
+        set(CRASHPAD_INCLUDE_DIR "${CRASHPAD_DIR}")
+        set(CRASHPAD_INNER_DIR "${CRASHPAD_DIR}/crashpad")
+        include_directories(SYSTEM ${CRASHPAD_INCLUDE_DIR})
+        include_directories(SYSTEM ${CRASHPAD_INNER_DIR})
+        include_directories(SYSTEM "${CRASHPAD_INNER_DIR}/third_party/mini_chromium/mini_chromium")
+        set(CRASHPAD_OUTPUT_DIR "${CRASHPAD_INNER_DIR}/out/Default")
+        set(CRASHPAD_LIBRARY_DIR "${CRASHPAD_OUTPUT_DIR}/obj")
+        list(APPEND RWRAPPER_SOURCES src/CrashpadHandler.cpp)
+    else()
+
+    endif()
+
+    if (UNIX)
+        if(APPLE)
+            find_library(APPLICATION_SERVICES_LIBRARY NAMES ApplicationServices)
+            list(APPEND CRASHPAD_LIBRARIES ${APPLICATION_SERVICES_LIBRARY})
+            find_library(CORE_FOUNDATION_LIBRARY NAMES CoreFoundation)
+            list(APPEND CRASHPAD_LIBRARIES ${CORE_FOUNDATION_LIBRARY})
+            find_library(FOUNDATION_LIBRARY NAMES Foundation)
+            list(APPEND CRASHPAD_LIBRARIES ${FOUNDATION_LIBRARY})
+            find_library(SECURITY_LIBRARY NAMES Security)
+            list(APPEND CRASHPAD_LIBRARIES ${SECURITY_LIBRARY})
+            find_library(IOKIT_LIBRARY NAMES IOKit)
+            list(APPEND CRASHPAD_LIBRARIES ${IOKIT_LIBRARY})
+            find_library(BSM_LIBRARY NAMES bsm)
+            list(APPEND CRASHPAD_LIBRARIES ${BSM_LIBRARY})
+        endif()
+
+        file(GLOB_RECURSE CRASHPAD_LIBCLIENT "${CRASHPAD_LIBRARY_DIR}/*libclient.a")
+        file(GLOB_RECURSE CRASHPAD_LIBUTIL   "${CRASHPAD_LIBRARY_DIR}/*libutil.a")
+        file(GLOB_RECURSE CRASHPAD_LIBBASE   "${CRASHPAD_LIBRARY_DIR}/*libbase.a")
+        list (APPEND CRASHPAD_LIBRARIES ${CRASHPAD_LIBCLIENT} ${CRASHPAD_LIBUTIL} ${CRASHPAD_LIBBASE})
+    else()
+
+    endif()
+endif()
+
 
 set(_PROTOBUF_PROTOC ${GRPC_DIST}/tools/protobuf/protoc${CMAKE_EXECUTABLE_SUFFIX})
 set(_GRPC_CPP_PLUGIN_EXECUTABLE ${GRPC_DIST}/tools/grpc/grpc_cpp_plugin${CMAKE_EXECUTABLE_SUFFIX})
@@ -117,29 +180,15 @@ endif()
 add_executable(
         rwrapper
         ${RWRAPPER_MAIN}
-        src/IO.cpp
-        src/RPIServiceImpl.cpp
-        src/RcppExports.cpp
-        src/graphics/Evaluator.cpp
-        src/graphics/Interface.cpp
-        src/graphics/InitHelper.cpp
-        src/graphics/MasterDevice.cpp
-        src/graphics/ScopeProtector.cpp
-        src/graphics/SlaveDevice.cpp
-        src/graphics/REagerGraphicsDevice.cpp
-        src/base64/base64.cpp
-        src/base64/base64r.cpp
-        src/RPIServiceMethods.cpp
-        src/RRefs.cpp
-        src/Repl.cpp
-        src/RLoader.cpp
-        src/DataFrame.cpp
-        src/RDebugger.cpp
-        src/Options.cpp
+        ${RWRAPPER_SOURCES}
         ${SYSTEM_SPECIFIC_SOURCES}
         ${service_proto_srcs}
         ${service_grpc_srcs}
 )
+
+if (DEFINED CRASHPAD_DIR)
+    target_link_libraries(rwrapper ${CRASHPAD_LIBRARIES})
+endif()
 
 add_library(rcpp_static ${CMAKE_HOME_DIRECTORY}/Rcpp/src/api.cpp
                         ${CMAKE_HOME_DIRECTORY}/Rcpp/src/attributes.cpp
