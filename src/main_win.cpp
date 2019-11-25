@@ -44,8 +44,19 @@ static int winMyReadConsole(const char* p, char* buf, int len, int a) {
   return myReadConsole(p, (unsigned char*)buf, len, a);
 }
 
+#ifdef CRASHPAD_ENABLED
+bool setupCrashpadHandler();
+#endif
+
+
 int main(int argc, char **argv) {
   commandLineOptions.parse(argc, argv);
+
+#ifdef CRASHPAD_ENABLED
+  if (!setupCrashpadHandler()) {
+    std::cerr << "cannot initialize crashpad" << std::endl;
+  }
+#endif
 
   structRstart rstart;
   Rstart Rs = &rstart;
