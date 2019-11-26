@@ -89,7 +89,14 @@ struct RObjects {
   Rcpp::Function evalWithVisible = evalCode("function(exprs, env) {\n"
                                             "  for (expr in exprs) {\n"
                                             "    v = base::withVisible(base::eval(expr, env))\n"
-                                            "    if (v$visible) base::print(v$value)\n"
+                                            "    if (v$visible) {\n"
+                                            // print(v$value) is called like this in order to pass
+                                            // "mimicsAutoPrint" check in print.data.table
+                                            "      knit_print.default = function() {\n"
+                                            "        (function() base::print(v$value))()\n"
+                                            "      }\n"
+                                            "      knit_print.default()\n"
+                                            "    }"
                                             "  }"
                                             "}", globalEnv);
 
