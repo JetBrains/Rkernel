@@ -26,6 +26,13 @@ if (length(arguments) != 1) {
 
 pName = arguments[1]
 
+namespace = tryCatch(loadNamespace(pName), error = function(e) {
+  cat("cannot-load-package")
+  message(e)
+  quit(save = "no", status = 1, runLast = FALSE)
+})
+
+
 pPriority = packageDescription(pName) $ Priority  # Seems to be more efficient than looking through all installed packages
 pPriority = if (is.null(pPriority)) {
     NA
@@ -34,7 +41,6 @@ pPriority = if (is.null(pPriority)) {
 }
 cat(pPriority)
 
-namespace = loadNamespace(pName)
 
 exportedSymbols = getNamespaceExports(namespace)
 allSymbols = ls(exportedSymbols, envir = namespace)
