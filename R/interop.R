@@ -164,9 +164,9 @@ setHook(hookName = "before.grid.newpage",
 }
 
 local({
-  env = as.environment("package:utils")
+  env <- as.environment("package:utils")
   unlockBinding("View", env)
-  env$View = function(x, title = paste(deparse(substitute(x)), collapse = " "))
+  env$View <- function(x, title = paste(deparse(substitute(x)), collapse = " "))
     invisible(.Call(".jetbrains_View", x, title))
   lockBinding("View", env)
 })

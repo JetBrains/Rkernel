@@ -84,15 +84,15 @@ struct RObjects {
   Rcpp::Function unclass = baseEnv["unclass"];
 
   Rcpp::Function mySysFrames = evalCode("function() sys.frames()", baseEnv);
-  Rcpp::Function mySysFunction = evalCode("function(n) tryCatch(sys.function(n - 9), error=function(...) NULL)", baseEnv);
+  Rcpp::Function mySysFunction = evalCode("function(n) tryCatch(sys.function(n - 9), error = function(...) NULL)", baseEnv);
 
   Rcpp::Function evalWithVisible = evalCode("function(exprs, env) {\n"
                                             "  for (expr in exprs) {\n"
-                                            "    v = base::withVisible(base::eval(expr, env))\n"
+                                            "    v <- base::withVisible(base::eval(expr, env))\n"
                                             "    if (v$visible) {\n"
                                             // print(v$value) is called like this in order to pass
                                             // "mimicsAutoPrint" check in print.data.table
-                                            "      knit_print.default = function() {\n"
+                                            "      knit_print.default <- function() {\n"
                                             "        (function() base::print(v$value))()\n"
                                             "      }\n"
                                             "      knit_print.default()\n"
@@ -104,10 +104,10 @@ struct RObjects {
       "function(f) {\n"
       "  f <- unclass(f)\n"
       "  attributes(f) <- NULL\n"
-      "  a = capture.output(f)\n"
+      "  a <- capture.output(f)\n"
       "  for (i in 1:length(a)) {\n"
       "    if (startsWith(a[i], '<environment:') || startsWith(a[i], '<bytecode:')) {\n"
-      "      a = a[1:(i-1)]\n"
+      "      a <- a[1:(i-1)]\n"
       "      break\n"
       "    }\n"
       "  }\n"
