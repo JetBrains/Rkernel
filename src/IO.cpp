@@ -27,17 +27,39 @@ void init_Rcpp_routines(DllInfo *info);
 
 using namespace grpc;
 
-OutputConsumer currentConsumer = emptyConsumer;
+static OutputConsumer currentConsumer = emptyConsumer;
+static int currentConsumerId = 0, maxConsumerId = 0;
+static std::mutex outputMutex;
+
+OutputConsumer const& getOutputConsumer() {
+  return currentConsumer;
+}
+
+int getOutputConsumerId() {
+  return currentConsumerId;
+}
+
+void setOutputConsumer(OutputConsumer const& consumer) {
+  std::unique_lock<std::mutex> lock(outputMutex);
+  currentConsumer = consumer;
+  currentConsumerId = ++maxConsumerId;
+}
 
 void emptyConsumer(const char*, int, OutputType) {
 }
 
-WithOutputConsumer::WithOutputConsumer(OutputConsumer const &c) : previous(currentConsumer) {
+WithOutputConsumer::WithOutputConsumer(OutputConsumer const& c) {
+  std::unique_lock<std::mutex> lock(outputMutex);
+  previous = currentConsumer;
+  previousId = currentConsumerId;
   currentConsumer = c;
+  currentConsumerId = ++maxConsumerId;
 }
 
 WithOutputConsumer::~WithOutputConsumer() {
+  std::unique_lock<std::mutex> lock(outputMutex);
   currentConsumer = previous;
+  currentConsumerId = previousId;
 }
 
 int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHistory) {
@@ -84,9 +106,15 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
 }
 
 void myWriteConsoleEx(const char* buf, int len, int type) {
-  static std::mutex mutex;
-  std::unique_lock<std::mutex> lock(mutex);
+  std::unique_lock<std::mutex> lock(outputMutex);
   currentConsumer(buf, len, (OutputType)type);
+}
+
+void myWriteConsoleExToSpecificConsumer(const char* buf, int len, int type, int id) {
+  std::unique_lock<std::mutex> lock(outputMutex);
+  if (currentConsumerId == id) {
+    currentConsumer(buf, len, (OutputType) type);
+  }
 }
 
 void mySuicide(const char* message) {

@@ -26,11 +26,15 @@ enum OutputType {
 
 typedef std::function<void(const char*, int, OutputType)> OutputConsumer;
 
+OutputConsumer const& getOutputConsumer();
+int getOutputConsumerId();
+void setOutputConsumer(OutputConsumer const& consumer);
+
 void emptyConsumer(const char*, int, OutputType);
-extern OutputConsumer currentConsumer;
 
 int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHistory);
 void myWriteConsoleEx(const char* buf, int len, int type);
+void myWriteConsoleExToSpecificConsumer(const char* buf, int len, int type, int id);
 void mySuicide(const char* message);
 
 class WithOutputConsumer {
@@ -39,6 +43,7 @@ public:
   ~WithOutputConsumer();
 private:
   OutputConsumer previous;
+  int previousId;
 };
 
 #endif

@@ -20,12 +20,17 @@ private:
 };
 
 static void prepareHandler() {
+  globalStdoutPipeFd[0] = globalStdoutPipeFd[1] = -1;
+  globalStderrPipeFd[0] = globalStderrPipeFd[1] = -1;
   if (pipe(globalStdoutPipeFd) || pipe(globalStderrPipeFd)) {
-    globalStdoutPipeFd[0] = globalStdoutPipeFd[1] = -1;
-    globalStderrPipeFd[0] = globalStderrPipeFd[1] = -1;
+    if (globalStdoutPipeFd[0] != -1) {
+      close(globalStdoutPipeFd[0]);
+      close(globalStdoutPipeFd[1]);
+    }
     perror("Failed to create pipe for child process");
     return;
   }
+  int outputConsumerId = getOutputConsumerId();
   for (int id = 0; id < 2; ++id) {
     int fd = (id == 0 ? globalStdoutPipeFd[0] : globalStderrPipeFd[0]);
     std::thread handlerThread([=] {
@@ -36,7 +41,7 @@ static void prepareHandler() {
         if (size <= 0) {
           break;
         }
-        myWriteConsoleEx(buf, size, id);
+        myWriteConsoleExToSpecificConsumer(buf, size, id, outputConsumerId);
       }
     });
     handlerThread.detach();
@@ -66,7 +71,7 @@ static void childHandler() {
   if (rpiService != nullptr) {
     rpiService->setChildProcessState();
   }
-  currentConsumer = [] (const char* buf, int size, OutputType type) {
+  setOutputConsumer([](const char* buf, int size, OutputType type) {
     while (size > 0) {
       int cnt;
       if (type == STDOUT) {
@@ -79,7 +84,7 @@ static void childHandler() {
       }
       size -= cnt;
     }
-  };
+  });
 }
 
 void setupForkHandler() {

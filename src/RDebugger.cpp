@@ -29,17 +29,17 @@ Status RPIServiceImpl::debugWhere(ServerContext*, const Empty*, StringValue* res
       isDebug = false;
       return;
     }
-    oldConsumer = currentConsumer;
-    currentConsumer = [&](const char* s, size_t c, OutputType type) {
+    oldConsumer = getOutputConsumer();
+    setOutputConsumer([&](const char* s, size_t c, OutputType type) {
       result.insert(result.end(), s, s + c);
-    };
+    });
     rState = REPL_BUSY;
     nextPromptSilent = true;
     breakEventLoop("where");
   });
   executeOnMainThreadAsync([&]{
     if (isDebug) {
-      currentConsumer = oldConsumer;
+      setOutputConsumer(oldConsumer);
     }
   });
   executeOnMainThread([]{});
