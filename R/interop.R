@@ -159,6 +159,46 @@ setHook(hookName = "before.grid.newpage",
   sink()
 }
 
+.jetbrains$saveRecordedPlotToFile <- function(snapshot, output.path) {
+  .jetbrains.recorded.snapshot <- snapshot
+  save(.jetbrains.recorded.snapshot, file = output.path)
+}
+
+.jetbrains$replayPlotFromFile <- function(input.path) {
+  load(input.path)
+  plot <- .jetbrains.recorded.snapshot
+
+  # restore native symbols for R >= 3.0
+  rVersion <- getRversion()
+  if (rVersion >= "3.0") {
+    for (i in 1:length(plot[[1]])) {
+      # get the symbol then test if it's a native symbol
+      symbol <- plot[[1]][[i]][[2]][[1]]
+      if ("NativeSymbolInfo" %in% class(symbol)) {
+        # determine the dll that the symbol lives in
+        name = if (!is.null(symbol$package)) symbol$package[["name"]] else symbol$dll[["name"]]
+        pkgDLL <- getLoadedDLLs()[[name]]
+
+        # reconstruct the native symbol and assign it into the plot
+        nativeSymbol <- getNativeSymbolInfo(name = symbol$name, PACKAGE = pkgDLL, withRegistrationInfo = TRUE);
+        plot[[1]][[i]][[2]][[1]] <- nativeSymbol;
+      }
+    }
+  }
+
+  # Replay obtained plot
+  suppressWarnings(grDevices::replayPlot(plot))
+}
+
+.jetbrains$dropRecordedSnapshots <- function(device.number, from, to) {
+  for (i in from:to) {
+    name <- paste0("recordedSnapshot_", device.number, "_", i)
+    if (exists(name, envir = .jetbrains)) {
+      assign(name, NULL, .jetbrains)
+    }
+  }
+}
+
 local({
   env <- as.environment("package:utils")
   unlockBinding("View", env)

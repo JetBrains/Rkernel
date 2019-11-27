@@ -61,6 +61,10 @@ namespace {
     }
   }
 
+  const char* getBooleanString(bool value) {
+    return value ? "TRUE" : "FALSE";
+  }
+
   const size_t REPL_OUTPUT_MAX_SIZE = 65536;
 }
 
@@ -95,7 +99,8 @@ Status RPIServiceImpl::graphicsInit(ServerContext* context, const GraphicsInitRe
        << "'" << request->snapshotdirectory() << "', "
        << parameters.width() << ", "
        << parameters.height() << ", "
-       << parameters.resolution() << ")";
+       << parameters.resolution() << ", "
+       << getBooleanString(request->inmemory()) << ")";
   return executeCommand(context, sout.str(), writer);
 }
 
@@ -112,6 +117,25 @@ Status RPIServiceImpl::graphicsRescale(ServerContext* context, const GraphicsRes
     std::to_string(request->newparameters().resolution()),
   };
   auto command = buildCallCommand(".Call", joinToString(arguments));
+  return executeCommand(context, command, writer);
+}
+
+Status RPIServiceImpl::graphicsRescaleStored(ServerContext* context, const GraphicsRescaleStoredRequest* request, ServerWriter<CommandOutput>* writer) {
+  auto strings = std::vector<std::string> {
+    ".jetbrains_ther_device_rescale_stored",
+    request->parentdirectory(),
+  };
+  auto stringArguments = joinToString(strings, &RPIServiceImpl::quote);
+  auto numbers = std::vector<int> {
+    request->snapshotnumber(),
+    request->snapshotversion(),
+    request->newparameters().width(),
+    request->newparameters().height(),
+    request->newparameters().resolution(),
+  };
+  auto numberArguments = joinToString(numbers, [](int n) { return std::to_string(n); });
+  auto arguments = joinToString(std::vector<std::string> { stringArguments, numberArguments });
+  auto command = buildCallCommand(".Call", arguments);
   return executeCommand(context, command, writer);
 }
 

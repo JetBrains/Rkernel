@@ -26,9 +26,11 @@
 
 namespace graphics {
 
-REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, ScreenParameters parameters)
-    : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber), parameters(parameters),
-      slaveDevice(nullptr), isDeviceBlank(true), snapshotVersion(0), snapshotType(SnapshotType::SKETCH) { getSlave(); }
+REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber,
+                                           int snapshotVersion, ScreenParameters parameters)
+    : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
+      snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
+      snapshotType(SnapshotType::SKETCH) { getSlave(); }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
@@ -179,10 +181,19 @@ bool REagerGraphicsDevice::isBlank() {
 }
 
 void REagerGraphicsDevice::replay() {
+  auto command = SnapshotUtil::makeReplayVariableCommand(deviceNumber, snapshotNumber);
+  replayWithCommand(command);
+}
+
+void REagerGraphicsDevice::replayFromFile(const std::string& parentDirectory, int number) {
+  auto command = SnapshotUtil::makeReplayFileCommand(parentDirectory, number);
+  replayWithCommand(command);
+}
+
+void REagerGraphicsDevice::replayWithCommand(const std::string &command) {
   getSlave();
   InitHelper helper;
   Rf_selectDevice(Rf_ndevNumber(slaveDevice->getDescriptor()));
-  auto command = SnapshotUtil::makeReplayVariableCommand(deviceNumber, snapshotNumber);
   Evaluator::evaluate(command);
 }
 

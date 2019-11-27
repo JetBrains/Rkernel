@@ -27,10 +27,10 @@ using namespace graphics;
 
 // [[Rcpp::plugins(cpp11)]]
 // [[Rcpp::export]]
-SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution) {
+SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution, bool inMemory) {
   auto path = as<std::string>(snapshotDir[0]);
   auto screenParameters = ScreenParameters{width, height, resolution};
-  DeviceManager::getInstance()->initNew(path, screenParameters);
+  DeviceManager::getInstance()->initNew(path, screenParameters, inMemory);
   return R_NilValue;
 }
 
@@ -53,14 +53,29 @@ SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double heig
   auto active = DeviceManager::getInstance()->getActive();
   auto isRescaled = false;
   if (active) {
-    auto newParameters = graphics::ScreenParameters{width, height, resolution};
-    if (snapshotNumber >= 0) {
-      isRescaled = active->rescaleByNumber(snapshotNumber, newParameters);
+    if (active->isOnlineRescalingEnabled()) {
+      auto newParameters = graphics::ScreenParameters{width, height, resolution};
+      if (snapshotNumber >= 0) {
+        isRescaled = active->rescaleByNumber(snapshotNumber, newParameters);
+      } else {
+        isRescaled = active->rescaleAllLast(newParameters);
+      }
     } else {
-      isRescaled = active->rescaleAllLast(newParameters);
+      std::cerr << "jetbrains_ther_device_rescale(): current device cannot be rescaled. Ignored\n";
     }
   } else {
     std::cerr << "jetbrains_ther_device_rescale(): nothing to rescale. Ignored\n";
   }
   return Rcpp::wrap(isRescaled);
+}
+
+SEXP jetbrains_ther_device_rescale_stored(const std::string& parentDirectory, int snapshotNumber, int snapshotVersion,
+                                          double width, double height, int resolution) {
+  auto active = DeviceManager::getInstance()->getActive();
+  if (active) {
+    auto newParameters = ScreenParameters{width, height, resolution};
+    return Rcpp::wrap(active->rescaleByPath(parentDirectory, snapshotNumber, snapshotVersion, newParameters));
+  } else {
+    return Rcpp::wrap(false);
+  }
 }

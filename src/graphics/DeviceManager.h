@@ -33,7 +33,7 @@ private:
   DeviceManager() = default;
 
 public:
-  void initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters);
+  void initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters, bool inMemory);
   void restartLast();
   void shutdownLast();
   Ptr<MasterDevice> getActive();

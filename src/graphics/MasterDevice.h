@@ -40,6 +40,7 @@ class MasterDevice {
   std::vector<DeviceInfo> currentDeviceInfos;
   int currentSnapshotNumber;
   int deviceNumber;
+  bool inMemory;
 
   pGEDevDesc masterDeviceDescriptor;
 
@@ -51,15 +52,17 @@ class MasterDevice {
   void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number);
 
 public:
-  MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber);
+  MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory);
 
   bool hasCurrentDevice();
   Ptr<REagerGraphicsDevice> getCurrentDevice();
   void addNewDevice();
 
   void recordLast();
+  bool isOnlineRescalingEnabled();
   bool rescaleAllLast(ScreenParameters newParameters);
   bool rescaleByNumber(int number, ScreenParameters newParameters);
+  bool rescaleByPath(const std::string& parentDirectory, int number, int version, ScreenParameters newParameters);
   void finalize();
   void shutdown();
   void restart();

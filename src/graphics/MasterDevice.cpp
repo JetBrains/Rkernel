@@ -17,6 +17,7 @@
 
 #include <string.h>
 #include <sstream>
+#include <fstream>
 
 #include "Common.h"
 #include "Evaluator.h"
@@ -195,9 +196,9 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
 
 } // anonymous
 
-MasterDevice::MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber)
+MasterDevice::MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory)
   : currentSnapshotDirectory(std::move(snapshotDirectory)), currentScreenParameters(screenParameters),
-    currentSnapshotNumber(-1), masterDeviceDescriptor(nullptr), deviceNumber(deviceNumber)
+    currentSnapshotNumber(-1), masterDeviceDescriptor(nullptr), deviceNumber(deviceNumber), inMemory(inMemory)
 {
   restart();
 }
@@ -208,7 +209,7 @@ bool MasterDevice::hasCurrentDevice() {
 
 Ptr<REagerGraphicsDevice> MasterDevice::getCurrentDevice() {
   if (!hasCurrentDevice()) {
-    auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDirectory, deviceNumber, currentSnapshotNumber, currentScreenParameters);
+    auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDirectory, deviceNumber, currentSnapshotNumber, 0, currentScreenParameters);
     currentDeviceInfos[currentSnapshotNumber].device = newDevice;
   }
   return currentDeviceInfos[currentSnapshotNumber].device;
@@ -284,6 +285,31 @@ bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
   } else {
     return false;
   }
+}
+
+bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number, int version, ScreenParameters newParameters) {
+  if (!masterDeviceDescriptor) {
+    return false;
+  }
+
+  if (newParameters.size.width < 0.0 || newParameters.size.height < 0.0 || newParameters.resolution == 0) {
+    std::cerr << "Invalid rescale parameters were provided: " << newParameters << "\n";
+    return false;
+  }
+
+  auto path = SnapshotUtil::makeFileName(parentDirectory, number);
+  if (!std::ifstream(path)) {
+    std::cerr << "No corresponding recorded file. Ignored\n";
+    return false;
+  }
+
+  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version, newParameters);
+
+  device->rescale(SnapshotType::NORMAL, newParameters);
+  device->replayFromFile(parentDirectory, number);
+  device->dump();
+
+  return true;
 }
 
 void MasterDevice::finalize() {
@@ -411,6 +437,10 @@ MasterDevice* MasterDevice::from(pDevDesc descriptor) {
   return reinterpret_cast<MasterDevice*>(descriptor->deviceSpecific);
 }
 
+bool MasterDevice::isOnlineRescalingEnabled() {
+  return inMemory;
+}
+
 void MasterDevice::recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) {
   // Note: you may want to ask why we need such a strange condition for recording.
   // After all, haven't we already recorded all plots with "before.plot.new" hook?
@@ -432,7 +462,7 @@ void MasterDevice::recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) 
 void MasterDevice::rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters) {
   auto previousParameters = device->logicScreenParameters();
   if (!isClose(previousParameters, newParameters)) {
-    if (previousParameters.resolution != newParameters.resolution) {
+    if (inMemory && previousParameters.resolution != newParameters.resolution) {
       rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
     }
     rescaleAndDump(device, SnapshotType::NORMAL, newParameters);
@@ -456,18 +486,28 @@ void MasterDevice::dumpNormalAndZoomed(DeviceInfo &deviceInfo) {
 
   // Note: there might be a temptation to dump "zoomed" version with a previous operator
   // but, unfortunately, it doesn't produce any output for "partial" plots (i.e. produced by `points()` command)
-  rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
+  if (inMemory) {
+    rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
+  }
   rescaleAndDump(device, SnapshotType::NORMAL);  // Dump full-screen "normal"
 }
 
 void MasterDevice::record(DeviceInfo& deviceInfo, int number) {
   auto command = SnapshotUtil::makeRecordVariableCommand(deviceNumber, number);
   Evaluator::evaluate(command);
+  if (!inMemory) {
+    auto saveCommand = SnapshotUtil::makeSaveVariableCommand(currentSnapshotDirectory, deviceNumber, number);
+    Evaluator::evaluate(saveCommand);
+  }
   deviceInfo.hasRecorded = true;
 }
 
 MasterDevice::~MasterDevice() {
   rescaleAllLast(currentScreenParameters);
+  if (!inMemory) {
+    auto command = SnapshotUtil::makeRemoveVariablesCommand(deviceNumber, 0, currentDeviceInfos.size());
+    Evaluator::evaluate(command);
+  }
   shutdown();
 }
 

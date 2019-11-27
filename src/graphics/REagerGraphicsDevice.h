@@ -60,9 +60,10 @@ private:
   const char* makeSnapshotTypeSuffix();
   void shutdownSlaveDevice();
   pDevDesc getSlave();
+  void replayWithCommand(const std::string& command);
 
 public:
-  REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, ScreenParameters parameters);
+  REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, int snapshotVersion, ScreenParameters parameters);
 
   void drawCircle(Point center, double radius, pGEcontext context);
   void clip(Point from, Point to);
@@ -93,6 +94,7 @@ public:
   void rescale(SnapshotType newType, ScreenParameters newParameters);
   bool isBlank();
   void replay();
+  void replayFromFile(const std::string& parentDirectory, int number);
 };
 
 }  // graphics

@@ -23,8 +23,8 @@ namespace graphics {
 
 Ptr<DeviceManager> DeviceManager::instance = Ptr<DeviceManager>();
 
-void DeviceManager::initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters) {
-  auto newDevice = makePtr<MasterDevice>(snapshotDirectory, screenParameters, deviceStack.size());
+void DeviceManager::initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters, bool inMemory) {
+  auto newDevice = makePtr<MasterDevice>(snapshotDirectory, screenParameters, deviceStack.size(), inMemory);
   deviceStack.push(newDevice);
 }
 
