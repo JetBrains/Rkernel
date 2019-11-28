@@ -86,7 +86,7 @@ if (length(args) != 3) {
 
 library_path <- args[1]
 file_path <- args[2]
-render_directory <- args[3]
+knit_root_directory <- args[3]
 
 # RMarkdown looks for Pandoc in PATH and RSTUDIO_PANDOC envs
 # We don't want to touch RStudio's envs that's why we'd rather adjust current PATH
@@ -102,4 +102,4 @@ if (!rmarkdown::pandoc_available(minimum_pandoc_version)) {
   install_pandoc(library_path)
 }
 
-rmarkdown::render(file_path, output_dir = render_directory)
+rmarkdown::render(file_path, output_dir = dirname(file_path), knit_root_dir = knit_root_directory)
