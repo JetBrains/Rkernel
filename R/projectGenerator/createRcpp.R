@@ -18,10 +18,17 @@
 initKittenStub <- function() {
   Real.kitten <- pkgKitten::kitten
   utils::assignInNamespace('kitten',
-    function(..., example_code = FALSE) {
+    function(...) {
       utils::assignInNamespace('kitten', Real.kitten, 'pkgKitten')
       assign('Rcpp.fake.fun', function() {}, envir = parent.frame(2))
-      package.skeleton(..., list = 'Rcpp.fake.fun')
+      call <- match.call()
+      call[[1]] <- package.skeleton
+      call[["force"]] <- TRUE
+      call[["list"]] <- 'Rcpp.fake.fun'
+      if ("example_code" %in% names(call)) {
+        call[["example_code"]] <- NULL
+      }
+      eval(call)
     }, 'pkgKitten')
 }
 
