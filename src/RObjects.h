@@ -33,7 +33,9 @@ struct RObjects {
   Rcpp::Function asInteger = baseEnv["as.integer"];
   Rcpp::Function asLogical = baseEnv["as.logical"];
   Rcpp::Function assign = baseEnv["assign"];
+  Rcpp::Function begin = baseEnv["{"];
   Rcpp::Function classes = baseEnv["class"];
+  Rcpp::Function conditionMessage = baseEnv["conditionMessage"];
   Rcpp::Function colon = baseEnv[":"];
   Rcpp::Function dataFrame = baseEnv["data.frame"];
   Rcpp::Function doubleSubscript = baseEnv["[["];
@@ -43,6 +45,7 @@ struct RObjects {
   Rcpp::Function eq = baseEnv["=="];
   Rcpp::Function eval = baseEnv["eval"];
   Rcpp::Function expression = baseEnv["expression"];
+  Rcpp::Function filePath = baseEnv["file.path"];
   Rcpp::Function formals = baseEnv["formals"];
   Rcpp::Function geq = baseEnv[">="];
   Rcpp::Function getOption = baseEnv["getOption"];
@@ -52,7 +55,6 @@ struct RObjects {
   Rcpp::Function identical = baseEnv["identical"];
   Rcpp::Function inherits = baseEnv["inherits"];
   Rcpp::Function isDataFrame = baseEnv["is.data.frame"];
-  Rcpp::Function isFunction = baseEnv["is.function"];
   Rcpp::Function isEnvironment = baseEnv["is.environment"];
   Rcpp::Function isNa = baseEnv["is.na"];
   Rcpp::Function isVector = baseEnv["is.vector"];
@@ -63,6 +65,7 @@ struct RObjects {
   Rcpp::Function loadedNamespaces = baseEnv["loadedNamespaces"];
   Rcpp::Function loadNamespace = baseEnv["loadNamespace"];
   Rcpp::Function ls = baseEnv["ls"];
+  Rcpp::Function message = baseEnv["message"];
   Rcpp::Function names = baseEnv["names"];
   Rcpp::Function nchar = baseEnv["nchar"];
   Rcpp::Function ncol = baseEnv["ncol"];
@@ -75,52 +78,16 @@ struct RObjects {
   Rcpp::Function q = baseEnv["q"];
   Rcpp::Function rm = baseEnv["rm"];
   Rcpp::Function setwd = baseEnv["setwd"];
+  Rcpp::Function srcfilecopy = baseEnv["srcfilecopy"];
+  Rcpp::Function srcref = baseEnv["srcref"];
   Rcpp::Function subscript = baseEnv["["];
   Rcpp::Function substring = baseEnv["substring"];
-  Rcpp::Function sysGetEnv = baseEnv["Sys.getenv"];
-  Rcpp::Function sysGetLocale = baseEnv["Sys.getlocale"];
-  Rcpp::Function sysSetEnv = baseEnv["Sys.setenv"];
-  Rcpp::Function sysSetLocale = baseEnv["Sys.setlocale"];
-  Rcpp::Function textConnection = baseEnv["textConnection"];
   Rcpp::Function type = baseEnv["typeof"];
   Rcpp::Function unclass = baseEnv["unclass"];
-
-  Rcpp::Function mySysFrames = evalCode("function() sys.frames()", baseEnv);
-  Rcpp::Function mySysFunction = evalCode("function(n) tryCatch(sys.function(n - 9), error = function(...) NULL)", baseEnv);
-
-  Rcpp::Function evalWithVisible = evalCode("function(exprs, env) {\n"
-                                            "  for (expr in exprs) {\n"
-                                            "    v <- base::withVisible(base::eval(expr, env))\n"
-                                            "    if (v$visible) {\n"
-                                            // print(v$value) is called like this in order to pass
-                                            // "mimicsAutoPrint" check in print.data.table
-                                            "      knit_print.default <- function() {\n"
-                                            "        (function() base::print(v$value))()\n"
-                                            "      }\n"
-                                            "      knit_print.default()\n"
-                                            "    }"
-                                            "  }"
-                                            "}", globalEnv);
-
-  Rcpp::Function getFunctionCode = evalCode(
-      "function(f) {\n"
-      "  f <- unclass(f)\n"
-      "  attributes(f) <- NULL\n"
-      "  a <- capture.output(f)\n"
-      "  for (i in 1:length(a)) {\n"
-      "    if (startsWith(a[i], '<environment:') || startsWith(a[i], '<bytecode:')) {\n"
-      "      a <- a[1:(i-1)]\n"
-      "      break\n"
-      "    }\n"
-      "  }\n"
-      "  return(paste(a, collapse='\\n'))\n"
-      "}", globalEnv);
+  Rcpp::Function withVisible = baseEnv["withVisible"];
 
   Rcpp::Environment compiler = loadNamespace("compiler");
   Rcpp::Function compilerEnableJIT = compiler["enableJIT"];
-
-  Rcpp::Environment utils = loadNamespace("utils");
-  Rcpp::Function captureOutput = utils["capture.output"];
 
   SEXP evalCode(std::string const& code, Rcpp::Environment const& env) {
     return eval(parse(Rcpp::Named("text", code)), Rcpp::Named("envir", env));
@@ -154,6 +121,64 @@ struct RObjects {
     }
     return true;
   }
+
+  // Attributes that are used in debugger
+  Rcpp::RObject srcrefAttr = Rf_install("srcref");
+  Rcpp::RObject srcfileAttr = Rf_install("srcfile");
+  Rcpp::RObject wholeSrcrefAttr = Rf_install("wholeSrcref");
+
+  Rcpp::RObject stopHereFlagAttr = Rf_install("rwr_stop_here");
+  Rcpp::RObject realEnvAttr = Rf_install("rwr_real_env");
+  Rcpp::RObject stackBottomAttr = Rf_install("rwr_stack_bottom");
+
+  Rcpp::RObject srcfilePtrAttr = Rf_install("rwr_srcfile_ptr");
+  Rcpp::RObject srcrefProcessedFlag = Rf_install("rwr_srcref_done");
+  Rcpp::RObject srcfileLineOffset = Rf_install("rwr_line_offset");
+  Rcpp::RObject breakpointInfoAttr = Rf_install("rwr_bp_info");
+  Rcpp::RObject isPhysicalFileFlag = Rf_install("rwr_physical");
+
+
+  Rcpp::RObject linesSymbol = Rf_install("lines");
+
+  Rcpp::Function wrapEval = evalCode(""
+      "function(expr, env, isDebug) {\n"
+      "  e <- environment()\n"
+      "  if (isDebug) {"
+      "    .Call(\".jetbrains_debugger_enable\")\n"
+      "    attr(e, \"rwr_stop_here\") <- TRUE\n"
+      "    on.exit(.Call(\".jetbrains_debugger_disable\"))\n"
+      "  }\n"
+      "  attr(e, \"rwr_stack_bottom\") <- TRUE\n"
+      "  attr(e, \"rwr_real_env\") <- env\n"
+      "  .Internal(eval(expr, env, baseenv()))\n"
+      "}\n", baseEnv);
+
+  // print(x) is called like this in order to pass "mimicsAutoPrint" check in print.data.table
+  Rcpp::Function printWrapper = evalCode(
+      "function(x) {\n"
+      "  knit_print.default <- function() {\n"
+      "    (function() {"
+      "      e <- environment()\n"
+      "      attr(e, \"rwr_stack_bottom\") <- TRUE\n"
+      "      base::print(x)"
+      "    })()\n"
+      "  }\n"
+      "  knit_print.default()\n"
+      "}\n", globalEnv);
+
+  Rcpp::Function withReplExceptionHandler = evalCode(
+    "function(x) withCallingHandlers(x, error = function(e) .Call(\".jetbrains_exception_handler\", e))\n",
+    baseEnv);
+
+  Rcpp::Function myFilePath = evalCode(
+      "function(wd, path) tryCatch({\n"
+      "  oldWd <- getwd()\n"
+      "  on.exit(setwd(oldWd))\n"
+      "  setwd(wd)\n"
+      "  return(normalizePath(path))\n"
+      "}, error = function(e) NULL)\n",
+      baseEnv
+  );
 };
 
 extern std::unique_ptr<RObjects> RI;

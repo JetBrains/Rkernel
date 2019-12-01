@@ -18,10 +18,15 @@
 #ifndef RWRAPPER_R_UTIL_H
 #define RWRAPPER_R_UTIL_H
 
-#include <Rcpp.h>
 #include <vector>
 #include <string>
+#include "../debugger/RDebugger.h"
+#include "../IO.h"
+#include "../RObjects.h"
+#include "../debugger/TextBuilder.h"
 #include "ScopedAssign.h"
+#include "../debugger/SourceFileManager.h"
+#include <Rcpp.h>
 
 const int DEFAULT_WIDTH = 80;
 const int R_MIN_WIDTH_OPT = 10;
@@ -56,10 +61,6 @@ inline std::string getPrintedValue(Rcpp::RObject const& a) {
   return result;
 }
 
-inline std::string getFunctionCode(Rcpp::RObject const& a) {
-  return Rcpp::as<std::string>(RI->getFunctionCode(a));
-}
-
 inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLength) {
   std::string result;
   bool limitReached = false;
@@ -86,21 +87,27 @@ inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLengt
   return result;
 }
 
-inline std::vector<Rcpp::Environment> getSysFrames() {
-  SEXP list = Rf_eval(Rf_lang1(RI->mySysFrames), RI->globalEnv);
-  std::vector<Rcpp::Environment> frames;
-  while (list != R_NilValue) {
-    frames.push_back(Rcpp::as<Rcpp::Environment>(CAR(list)));
-    list = CDR(list);
+inline SEXP getSrcref(SEXP srcrefs, int i) {
+  SEXP result;
+  if (!Rf_isNull(srcrefs) && Rf_length(srcrefs) > i
+      && !Rf_isNull(result = VECTOR_ELT(srcrefs, i))
+      && TYPEOF(result) == INTSXP && Rf_length(result) >= 6) {
+    return result;
+  } else {
+    return R_NilValue;
   }
-  if (!frames.empty()) {
-    frames.pop_back();
-  }
-  return frames;
 }
 
-inline Rcpp::RObject getSysFunction(int n) {
-  return RI->mySysFunction(n);
+inline SEXP getBlockSrcrefs(SEXP expr) {
+  SEXP srcrefs = Rf_getAttrib(expr, RI->srcrefAttr);
+  if (TYPEOF(srcrefs) == VECSXP) return srcrefs;
+  return R_NilValue;
+}
+
+inline std::string getFunctionHeader(SEXP func) {
+  TextBuilder builder;
+  builder.buildFunction(func, false);
+  return builder.getText();
 }
 
 inline SEXP invokeFunction(SEXP func, std::vector<SEXP> const& args) {
@@ -109,6 +116,49 @@ inline SEXP invokeFunction(SEXP func, std::vector<SEXP> const& args) {
     list = Rcpp::grow(args[i], list);
   }
   return Rcpp::Rcpp_fast_eval(Rcpp::Rcpp_lcons(func, list), R_GlobalEnv);
+}
+
+inline Rcpp::Environment currentEnvironment() {
+  SEXP env = rDebugger.lastFrame();
+  return TYPEOF(env) == ENVSXP ? Rcpp::as<Rcpp::Environment>(env) : RI->globalEnv;
+}
+
+inline const char* getCallFunctionName(SEXP call) {
+  if (TYPEOF(call) != LANGSXP) {
+    return "";
+  }
+  SEXP func = CAR(call);
+  return TYPEOF(func) == SYMSXP ? CHAR(PRINTNAME(func)) : "";
+}
+
+inline std::pair<const char*, int> srcrefToPosition(SEXP srcref) {
+  if (TYPEOF(srcref) == INTSXP && Rf_length(srcref) >= 1) {
+    SEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
+    const char* fileId = SourceFileManager::getSrcfileId(srcfile);
+    if (fileId != nullptr) {
+      SEXP lineOffsetAttr = Rf_getAttrib(srcfile, RI->srcfileLineOffset);
+      int lineOffset = 0;
+      if (TYPEOF(lineOffsetAttr) == INTSXP && Rf_length(lineOffsetAttr) == 1) {
+        lineOffset = INTEGER(lineOffsetAttr)[0];
+      }
+      return {fileId, INTEGER(srcref)[0] - 1 + lineOffset};
+    }
+  }
+  return {"", 0};
+}
+
+void executeCodeImpl(SEXP exprs, SEXP env, bool withEcho = true, bool isDebug = false, bool withExceptionHandler = false);
+
+template<class Func>
+inline SEXP createFinalizer(Func fin) {
+  SEXP e = R_MakeExternalPtr(new Func(std::move(fin)), R_NilValue, R_NilValue);
+  R_RegisterCFinalizer(e, [](SEXP e) {
+    auto ptr = (Func*)EXTPTR_PTR(e);
+    if (ptr == nullptr) return;
+    (*ptr)();
+    delete ptr;
+  });
+  return e;
 }
 
 #endif //RWRAPPER_R_UTIL_H

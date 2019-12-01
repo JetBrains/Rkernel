@@ -21,48 +21,18 @@
 #include "RObjects.h"
 #include "IO.h"
 #include "util/ScopedAssign.h"
-
-static void parseAndExecute(std::string const& code, SEXP env, bool withEcho = true) {
-  Rcpp::ExpressionVector expressions = RI->parse(Rcpp::Named("text", code));
-  if (withEcho) {
-    RI->evalWithVisible(expressions, env);
-  } else {
-    RI->eval(expressions, Rcpp::Named("envir", env));
-  }
-}
-
-static std::string prepareDebugSource(std::string const& s) {
-  std::string t;
-  for (size_t i = 0; i < s.size(); ++i) {
-    if (s[i] == '\\') {
-      if (i + 1 != s.size()) {
-        ++i;
-        switch (s[i]) {
-          case '<':
-            t += "{.doTrace(browser());";
-            break;
-          case '>':
-            t += "}";
-            break;
-          default:
-            t += s[i];
-        }
-      }
-    } else {
-      t += s[i];
-    }
-  }
-  return t;
-}
+#include "debugger/SourceFileManager.h"
+#include "util/RUtil.h"
 
 Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) {
   executeOnMainThread([&] {
     std::string const& code = request->code();
-    std::string const& debugFileId = request->debugfileid();
+    std::string const& sourceFileId = request->sourcefileid();
+    int sourceFileLineOffset = request->sourcefilelineoffset();
     bool withEcho = request->withecho();
     bool streamOutput = request->streamoutput() && writer != nullptr;
     bool isRepl = request->isrepl();
-    bool isDebug = !debugFileId.empty() && isRepl;
+    bool isDebug = isRepl && request->isdebug();
 
     ScopedAssign<bool> withIsReplOutput(isReplOutput, isRepl && !streamOutput);
     WithOutputHandler withOutputHandler(
@@ -75,33 +45,23 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
           }
         });
 
-    Rcpp::RObject prevJIT;
-    Rcpp::RObject prevLocale;
-    Rcpp::RObject prevEnvLang;
-    if (isDebug) {
-      prevJIT = RI->compilerEnableJIT(0);
-      prevLocale = RI->sysGetLocale("LC_MESSAGES");
-      RI->sysSetLocale("LC_MESSAGES", "en_US.UTF-8");
-      prevEnvLang = RI->sysGetEnv("LANGUAGE");
-      RI->sysSetEnv(Rcpp::Named("LANGUAGE", "en_US.UTF-8"));
-    }
-    Rcpp::Environment jetbrainsEnv = RI->globalEnv[".jetbrains"];
     try {
-      ScopedAssign<bool> withDebug(isDebugActive, isDebug);
       ScopedAssign<ReplState> withState(replState, isRepl ? REPL_BUSY : replState);
       if (isRepl) {
         AsyncEvent event;
         event.mutable_busy();
         asyncEvents.push(event);
       }
-      if (isDebug) {
-        jetbrainsEnv[debugFileId] = RI->textConnection(prepareDebugSource(code));
-        std::ostringstream command;
-        command << "source(" << debugFileId << ", keep.source = TRUE, print.eval = TRUE)";
-        RI->evalCode(command.str(), jetbrainsEnv);
-      } else {
-        parseAndExecute(code, currentEnvironment(), withEcho);
+      Rcpp::ExpressionVector expressions;
+      try {
+        expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
+      } catch (Rcpp::eval_error const& e) {
+        std::string message = '\n' + std::string(e.what()) + '\n';
+        myWriteConsoleEx(message.c_str(), message.size(), STDERR);
+        throw;
       }
+      if (isDebug) rDebugger.setCommand(CONTINUE);
+      executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, true);
     } catch (Rcpp::eval_error const& e) {
       if (writer != nullptr) {
         ExecuteCodeResponse response;
@@ -117,16 +77,14 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
     } catch (...) {
     }
 
-    if (isDebug) {
-      jetbrainsEnv.remove(debugFileId);
-      RI->compilerEnableJIT(prevJIT);
-      RI->sysSetEnv(Rcpp::Named("LANGUAGE", prevEnvLang));
-      RI->sysSetLocale("LC_MESSAGES", prevLocale);
-    }
-
     if (isRepl) {
       AsyncEvent event;
-      event.mutable_prompt()->set_isdebug(isDebugActive);
+      if (replState == DEBUG_PROMPT) {
+        event.mutable_debugprompt()->set_changed(false);
+      } else {
+        event.mutable_prompt();
+        rDebugger.clearStack();
+      }
       asyncEvents.push(event);
     }
   }, context);
@@ -145,33 +103,15 @@ std::string RPIServiceImpl::readLineHandler(std::string const& prompt) {
   return returnFromEventLoopValue;
 }
 
-std::string RPIServiceImpl::debugPromptHandler() {
-  if (replState != REPL_BUSY || !isDebugActive) return "f";
-  if (nextDebugPromptSilent) {
-    nextDebugPromptSilent = false;
-  } else {
-    AsyncEvent event;
-    event.mutable_prompt()->set_isdebug(true);
-    asyncEvents.push(event);
-  }
+void RPIServiceImpl::debugPromptHandler() {
+  if (replState != REPL_BUSY) return;
+  AsyncEvent event;
+  rDebugger.buildDebugPrompt(event.mutable_debugprompt());
+  asyncEvents.push(event);
   ScopedAssign<ReplState> withState(replState, DEBUG_PROMPT);
   eventLoop();
-  if (!nextDebugPromptSilent) {
-    AsyncEvent event;
-    event.mutable_busy();
-    asyncEvents.push(event);
-  }
-  return returnFromEventLoopValue;
-}
-
-
-static void parseAndExecuteWithPrintError(std::string const& code, SEXP env) {
-  try {
-    parseAndExecute(code, env, true);
-  } catch (Rcpp::eval_error const& e) {
-    std::string s = std::string("\n") + e.what() + '\n';
-    myWriteConsoleEx(s.c_str(), s.length(), STDERR);
-  }
+  event.mutable_busy();
+  asyncEvents.push(event);
 }
 
 Status RPIServiceImpl::executeCommand(ServerContext* context, const std::string& command, ServerWriter<CommandOutput>* writer) {
@@ -182,7 +122,13 @@ Status RPIServiceImpl::executeCommand(ServerContext* context, const std::string&
       response.set_text(buf, len);
       writer->Write(response);
     });
-    parseAndExecuteWithPrintError(command, currentEnvironment());
+    try {
+      Rcpp::ExpressionVector expressions = RI->parse(Rcpp::Named("text", command));
+      executeCodeImpl(expressions, currentEnvironment(), true, false, false);
+    } catch (Rcpp::eval_error const& e) {
+      std::string s = std::string("\n") + e.what() + '\n';
+      myWriteConsoleEx(s.c_str(), s.length(), STDERR);
+    }
   }, context);
   return Status::OK;
 }
@@ -207,41 +153,13 @@ Status RPIServiceImpl::replExecuteCommand(ServerContext* context, const std::str
   return executeCode(context, &request, nullptr);
 }
 
-
-Status RPIServiceImpl::sendReadLn(ServerContext* context, const StringValue* request, Empty*) {
+Status RPIServiceImpl::sendReadLn(ServerContext*, const StringValue* request, Empty*) {
   std::string text = request->value();
   text.erase(std::find(text.begin(), text.end(), '\n'), text.end());
-  executeOnMainThread([&] {
+  executeOnMainThreadAsync([=] {
     if (replState != READ_LINE) return;
     breakEventLoop(text);
-  }, context);
-  return Status::OK;
-}
-
-Status RPIServiceImpl::sendDebuggerCommand(ServerContext* context, const DebuggerCommandRequest* request, Empty*) {
-  DebuggerCommand command = request->command();
-  executeOnMainThread([&] {
-    if (replState != DEBUG_PROMPT) return;
-    switch (command) {
-      case DebuggerCommand::NEXT:
-        breakEventLoop("n");
-        break;
-      case DebuggerCommand::STEP:
-        breakEventLoop("s");
-        break;
-      case DebuggerCommand::CONTINUE:
-        breakEventLoop("c");
-        break;
-      case DebuggerCommand::FINISH:
-        breakEventLoop("f");
-        break;
-      case DebuggerCommand::QUIT:
-        breakEventLoop("Q");
-        break;
-      default:
-        ;
-    }
-  }, context);
+  });
   return Status::OK;
 }
 

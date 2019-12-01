@@ -20,12 +20,14 @@
 
 #include <string>
 #include <cstring>
+#include <vector>
+#include <sstream>
 
 inline bool startsWith(std::string const& s, const char* t) {
   return !strncmp(s.c_str(), t, strlen(t));
 }
 
-inline std::string escapeStringCharacters(std::string const& s) {
+inline std::string escape(std::string const& s, const char* alsoEscape = "") {
   std::string t;
   for (char c : s) {
     switch (c) {
@@ -44,17 +46,34 @@ inline std::string escapeStringCharacters(std::string const& s) {
       case '\r':
         t += "\\r";
         break;
-      case '"':
-        t += "\\\"";
-        break;
       case '\\':
         t += "\\\\";
         break;
       default:
+        for (const char* ptr = alsoEscape; *ptr; ++ptr) {
+          if (c == *ptr) {
+            t += '\\';
+            break;
+          }
+        }
         t += c;
     }
   }
   return t;
+}
+
+inline std::string escapeStringCharacters(std::string const& s) {
+  return escape(s, "\"");
+}
+
+inline std::vector<std::string> splitByLines(std::string const& s) {
+  std::istringstream stream(s);
+  std::vector<std::string> lines;
+  std::string line;
+  while (std::getline(stream, line)) {
+    lines.push_back(line);
+  }
+  return lines;
 }
 
 #endif //RWRAPPER_STRING_UTIL_H

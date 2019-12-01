@@ -26,6 +26,7 @@
 #include "IO.h"
 #include "Options.h"
 #include "RObjects.h"
+#include "debugger/RDebugger.h"
 #include <Rcpp.h>
 
 using namespace grpc;
@@ -44,11 +45,22 @@ public:
 
   Status executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) override;
   Status sendReadLn(ServerContext* context, const StringValue* request, Empty*) override;
-  Status sendDebuggerCommand(ServerContext* context, const DebuggerCommandRequest* request, Empty*) override;
   Status replInterrupt(ServerContext* context, const Empty*, Empty*) override;
   Status getNextAsyncEvent(ServerContext* context, const Empty*, AsyncEvent* response) override;
 
-  Status copyToPersistentRef(ServerContext* context, const RRef* request, Int32Value* response) override;
+  Status debugAddBreakpoint(ServerContext* context, const DebugAddBreakpointRequest* request, Empty*) override;
+  Status debugRemoveBreakpoint(ServerContext* context, const SourcePosition* request, Empty*) override;
+  Status debugCommandContinue(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandPause(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandStop(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandStepOver(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandStepInto(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandForceStepInto(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandStepOut(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandRunToPosition(ServerContext* context, const SourcePosition* request, Empty*) override;
+  Status debugMuteBreakpoints(ServerContext* context, const BoolValue* request, Empty*) override;
+
+  Status copyToPersistentRef(ServerContext* context, const RRef* request, CopyToPersistentRefResponse* response) override;
   Status disposePersistentRefs(ServerContext* context, const PersistentRefList* request, Empty*) override;
 
   Status loaderGetParentEnvs(ServerContext* context, const RRef* request, ParentEnvsResponse* response) override;
@@ -58,10 +70,14 @@ public:
   Status evaluateAsText(ServerContext* context, const RRef* request, StringValue* response) override;
   Status evaluateAsBoolean(ServerContext* context, const RRef* request, BoolValue* response) override;
   Status evaluateAsStringList(ServerContext* context, const RRef* request, StringList* response) override;
+  Status getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) override;
+  Status getSourceFileText(ServerContext* context, const StringValue* request, StringValue* response) override;
+  Status getSourceFileName(ServerContext* context, const StringValue* request, StringValue* response) override;
   Status loadObjectNames(ServerContext* context, const RRef* request, StringList* response) override;
   Status findAllNamedArguments(ServerContext* context, const RRef* request, StringList* response) override;
   Status getTableColumnsInfo(ServerContext* context, const TableColumnsInfoRequest* request, TableColumnsInfo* response) override;
   Status getFormalArguments(ServerContext* context, const RRef* request, StringList* response) override;
+  Status getEqualityObject(ServerContext* context, const RRef* request, Int64Value* response) override;
   Status getRMarkdownChunkOptions(ServerContext* context, const Empty*, StringList* response) override;
 
   Status graphicsInit(ServerContext* context, const GraphicsInitRequest* request, ServerWriter<CommandOutput>* writer) override;
@@ -89,10 +105,6 @@ public:
   Status dataFrameFilter(ServerContext* context, const DataFrameFilterRequest* request, Int32Value* response) override;
   Status dataFrameDispose(ServerContext* context, const Int32Value* request, Empty*) override;
 
-  Status updateSysFrames(ServerContext* context, const Empty*, Int32Value* response) override;
-  Status debugWhere(ServerContext* context, const Empty*, StringValue* response) override;
-  Status debugGetSysFunctionCode(ServerContext* context, const Int32Value* request, StringValue* response) override;
-
   Status getWorkingDir(ServerContext* context, const Empty*, StringValue* response) override;
   Status setWorkingDir(ServerContext* context, const StringValue* request, Empty*) override;
   Status clearEnvironment(ServerContext* context, const RRef* request, Empty*) override;
@@ -107,9 +119,10 @@ public:
 
   void mainLoop();
   std::string readLineHandler(std::string const& prompt);
-  std::string debugPromptHandler();
+  void debugPromptHandler();
   void viewHandler(SEXP x, SEXP title);
 
+  void sendAsyncEvent(AsyncEvent const& e);
   void eventLoop();
   void setChildProcessState();
   volatile bool terminate = false;
@@ -119,6 +132,8 @@ public:
 
   OutputHandler getOutputHandlerForChildProcess();
 
+  Rcpp::RObject dereference(RRef const& ref);
+
 private:
   BlockingQueue<AsyncEvent> asyncEvents{8};
 
@@ -126,7 +141,6 @@ private:
     PROMPT, DEBUG_PROMPT, READ_LINE, REPL_BUSY, CHILD_PROCESS
   };
   bool isReplOutput = false;
-  bool isDebugActive = false;
   ReplState replState = REPL_BUSY;
   volatile bool busy = true;
 
@@ -134,12 +148,8 @@ private:
 
   GetInfoResponse infoResponse;
   bool isInViewRequest = false;
-  bool nextDebugPromptSilent = false;
 
   std::unordered_set<int> dataFramesCache;
-
-  std::vector<Rcpp::Environment> sysFrames;
-  Rcpp::Environment const& currentEnvironment() { return sysFrames.empty() ? RI->globalEnv : sysFrames.back(); }
 
   BlockingQueue<std::function<void()>> executionQueue;
 
@@ -148,7 +158,6 @@ private:
   void breakEventLoop(std::string s = "");
 
   IndexedStorage<Rcpp::RObject> persistentRefStorage;
-  Rcpp::RObject dereference(RRef const& ref);
 
   Status executeCommand(ServerContext* context, const std::string& command, ServerWriter<CommandOutput>* writer);
 

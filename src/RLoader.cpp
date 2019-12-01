@@ -27,9 +27,10 @@ const int MAX_PREVIEW_STRING_LENGTH = 200;
 const int MAX_PREVIEW_PRINTED_COUNT = 20;
 
 void getValueInfo(SEXP var, ValueInfo* result) {
-  if (TYPEOF(var) == PROMSXP) {
+  auto type = TYPEOF(var);
+  if (type == PROMSXP) {
     if (PRVALUE(var) == R_UnboundValue) {
-      std::string code = Rcpp::as<std::string>(
+      auto code = Rcpp::as<std::string>(
           RI->paste(RI->deparse(RI->expression(PRCODE(var))), Rcpp::Named("collapse", " ")));
       const char* exprStr = "expression(";
       int exprLen = strlen(exprStr);
@@ -40,26 +41,23 @@ void getValueInfo(SEXP var, ValueInfo* result) {
       return;
     }
     getValueInfo(PRVALUE(var), result);
-    return;
-  }
-  if (Rcpp::as<bool>(RI->isFunction(var))) {
-    result->mutable_function()->set_code(getFunctionCode(var));
-  } else if (Rcpp::as<bool>(RI->isEnvironment(var))) {
+  } else if (type == CLOSXP || type == SPECIALSXP || type == BUILTINSXP) {
+    result->mutable_function()->set_header(getFunctionHeader(var));
+  } else if (type == ENVSXP) {
     result->mutable_environment()->set_name(Rcpp::as<std::string>(RI->environmentName(var)));
   } else {
     Rcpp::CharacterVector classes = RI->classes(var);
-    std::string type = Rcpp::as<std::string>(RI->type(var));
     if (contains(classes, "ggplot")) {
       result->mutable_graph();
     } else if (contains(classes, "data.frame")) {
       ValueInfo::DataFrame* dataFrame = result->mutable_dataframe();
       dataFrame->set_rows(Rcpp::as<int>(RI->nrow(var)));
       dataFrame->set_cols(Rcpp::as<int>(RI->ncol(var)));
-    } else if (type == "list" || type == "pairlist") {
+    } else if (type == VECSXP || type == LISTSXP) {
       result->mutable_list()->set_length(Rcpp::as<int>(RI->length(var)));
     } else {
       ValueInfo::Value* value = result->mutable_value();
-      if (type == "logical" || type == "integer" || type == "double" || type == "complex" || type == "NULL") {
+      if (type == LGLSXP || type == INTSXP || type == REALSXP || type == CPLXSXP || type == NILSXP) {
         int length = Rcpp::as<int>(RI->length(var));
         value->set_isvector(length > 1);
         if (length <= MAX_PREVIEW_PRINTED_COUNT) {
@@ -70,7 +68,7 @@ void getValueInfo(SEXP var, ValueInfo* result) {
               RI->subscript(var, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT)))));
           value->set_iscomplete(false);
         }
-      } else if (type == "character") {
+      } else if (type == STRSXP) {
         int length = Rcpp::as<int>(RI->length(var));
         value->set_isvector(length > 1);
         bool isComplete = length <= MAX_PREVIEW_PRINTED_COUNT;
@@ -114,7 +112,7 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
     if (Rcpp::as<bool>(RI->isEnvironment(obj))) {
       response->set_isenv(true);
       Rcpp::Environment environment = Rcpp::as<Rcpp::Environment>(obj);
-      Rcpp::CharacterVector ls = Rcpp::as<Rcpp::CharacterVector>(environment.ls(false));
+      Rcpp::CharacterVector ls = Rcpp::as<Rcpp::CharacterVector>(environment.ls(true));
       response->set_totalcount(ls.size());
       for (int i = std::max(0, reqStart); i < std::min<int>(ls.size(), reqEnd); ++i) {
         const char* name = ls[i];

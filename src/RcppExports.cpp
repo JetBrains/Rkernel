@@ -19,6 +19,7 @@
 // Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 #include "RPIServiceImpl.h"
+#include "util/RUtil.h"
 #include <Rcpp.h>
 
 using namespace Rcpp;
@@ -133,6 +134,28 @@ RcppExport SEXP _jetbrains_View(SEXP x, SEXP title) {
     rpiService->viewHandler(arg1, arg2);
   END_RCPP
 }
+
+// Debugger
+RcppExport SEXP _jetbrains_debugger_enable() {
+  BEGIN_RCPP
+  rDebugger.enable();
+  END_RCPP
+}
+
+// Debugger
+RcppExport SEXP _jetbrains_debugger_disable() {
+  BEGIN_RCPP
+    rDebugger.disable();
+  END_RCPP
+}
+
+// Exception handler
+RcppExport SEXP _jetbrains_exception_handler(SEXP e) {
+  BEGIN_RCPP
+    rDebugger.doHandleException(e);
+  END_RCPP
+}
+
 // Quit
 RcppExport SEXP _jetbrains_quitRPIService() {
   BEGIN_RCPP
@@ -150,6 +173,9 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_rescale_stored", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_rescale_stored, 6},
     {".jetbrains_ther_device_shutdown", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_shutdown, 0},
     {".jetbrains_View", (DL_FUNC) &_jetbrains_View, 2},
+    {".jetbrains_debugger_enable", (DL_FUNC) &_jetbrains_debugger_enable, 0},
+    {".jetbrains_debugger_disable", (DL_FUNC) &_jetbrains_debugger_disable, 0},
+    {".jetbrains_exception_handler", (DL_FUNC) &_jetbrains_exception_handler, 1},
     {".jetbrains_quitRPIService", (DL_FUNC) &_jetbrains_quitRPIService, 0},
     {NULL, NULL, 0}
 };

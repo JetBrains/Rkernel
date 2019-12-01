@@ -60,8 +60,13 @@ list(APPEND RWRAPPER_SOURCES
     src/ExecuteCode.cpp
     src/RLoader.cpp
     src/DataFrame.cpp
-    src/RDebugger.cpp
-    src/Options.cpp)
+    src/Options.cpp
+    src/debugger/SourceFileManager.cpp
+    src/debugger/RDebugger.cpp
+    src/debugger/DebuggerMethods.cpp
+    src/debugger/TextBuilder.cpp
+    src/RInternals/RInternals.cpp
+    src/util/RUtil.cpp)
 
 if(WIN32)
     add_definitions(-DNOMINMAX)
@@ -70,6 +75,10 @@ if(WIN32)
       set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
       set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
     endif()
+endif()
+
+if(APPLE)
+    add_definitions(-D_MACOS)
 endif()
 
 if (DEFINED CRASHPAD_DIR)

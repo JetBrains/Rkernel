@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
 #endif
 
   R_running_as_main_program = 1;
-  const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save"};
+  const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save", "--no-restore"};
   Rf_initialize_R(sizeof(rArgv) / sizeof(rArgv[0]), (char**)rArgv);
 
   R_Outputfile = nullptr;

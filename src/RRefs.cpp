@@ -20,6 +20,7 @@
 #include <grpcpp/server_builder.h>
 #include "RObjects.h"
 #include "util/RUtil.h"
+#include "debugger/SourceFileManager.h"
 
 const int EVALUATE_AS_TEXT_MAX_LENGTH = 500000;
 
@@ -35,7 +36,11 @@ Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
       return Rcpp::as<Rcpp::RObject>(currentEnvironment());
     case RRef::kSysFrameIndex: {
       int index = ref.sysframeindex();
-      return 0 <= index && index < sysFrames.size() ? Rcpp::as<Rcpp::RObject>(sysFrames[index]) : RI->nil;
+      return rDebugger.getFrame(index);
+    }
+    case RRef::kErrorStackSysFrameIndex: {
+      int index = ref.errorstacksysframeindex();
+      return rDebugger.getErrorStackFrame(index);
     }
     case RRef::kMember:
       return Rcpp::as<Rcpp::Environment>(dereference(ref.member().env())).get(ref.member().name());
@@ -65,9 +70,13 @@ Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
   }
 }
 
-Status RPIServiceImpl::copyToPersistentRef(ServerContext* context, const RRef* request, Int32Value* response) {
+Status RPIServiceImpl::copyToPersistentRef(ServerContext* context, const RRef* request, CopyToPersistentRefResponse* response) {
   executeOnMainThread([&] {
-    response->set_value(persistentRefStorage.add(dereference(*request)));
+    try {
+      response->set_persistentindex(persistentRefStorage.add(dereference(*request)));
+    } catch (Rcpp::eval_error const& e) {
+      response->set_error(e.what());
+    }
   }, context);
   return Status::OK;
 }
@@ -137,7 +146,8 @@ Status RPIServiceImpl::evaluateAsStringList(ServerContext* context, const RRef* 
 
 Status RPIServiceImpl::loadObjectNames(ServerContext* context, const RRef* request, StringList* response) {
   executeOnMainThread([&] {
-    for (const char* x : Rcpp::as<Rcpp::CharacterVector>(RI->ls(dereference(*request)))) {
+    Rcpp::CharacterVector names = RI->ls(dereference(*request), Rcpp::Named("all.names", true));
+    for (const char* x : names) {
       response->add_list(x);
     }
   }, context);
@@ -206,4 +216,35 @@ Status RPIServiceImpl::getRMarkdownChunkOptions(ServerContext* context, const Em
         }
     }, context);
     return Status::OK;
+}
+
+Status RPIServiceImpl::getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) {
+  executeOnMainThread([&] {
+    Rcpp::RObject function = dereference(*request);
+    std::string suggestedFileName;
+    switch (request->ref_case()) {
+      case RRef::kMember:
+        suggestedFileName = request->member().name();
+        break;
+      case RRef::kExpression:
+        suggestedFileName = request->expression().code();
+        break;
+      default:;
+    }
+    auto position = srcrefToPosition(sourceFileManager.getFunctionSrcref(function, suggestedFileName));
+    response->set_fileid(position.first);
+    response->set_line(position.second);
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::getEqualityObject(ServerContext* context, const RRef* request, Int64Value* response) {
+  executeOnMainThread([&] {
+    try {
+      response->set_value((long long)(SEXP)dereference(*request));
+    } catch (Rcpp::eval_error const&) {
+      response->set_value(0);
+    }
+  }, context);
+  return Status::OK;
 }

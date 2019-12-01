@@ -22,7 +22,6 @@
 #include <grpcpp/server_builder.h>
 #include "RObjects.h"
 #include "IO.h"
-#include "util/RUtil.h"
 #include <sstream>
 #include <cstdlib>
 #include <thread>
@@ -268,7 +267,7 @@ Status RPIServiceImpl::findPackagePathByPackageName(ServerContext* context, cons
 
 void RPIServiceImpl::mainLoop() {
   AsyncEvent event;
-  event.mutable_prompt()->set_isdebug(false);
+  event.mutable_prompt();
   asyncEvents.push(event);
   ScopedAssign<ReplState> withState(replState, PROMPT);
   eventLoop();
@@ -276,6 +275,7 @@ void RPIServiceImpl::mainLoop() {
 
 void RPIServiceImpl::eventLoop() {
   WithOutputHandler withOutputHandler(emptyOutputHandler);
+  WithDebuggerEnabled withDebugger(false);
   while (true) {
     busy = false;
     auto f = executionQueue.pop();
@@ -297,6 +297,10 @@ void RPIServiceImpl::setChildProcessState() {
   replState = CHILD_PROCESS;
 }
 
+void RPIServiceImpl::sendAsyncEvent(AsyncEvent const& e) {
+  asyncEvents.push(e);
+}
+
 void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerContext* context) {
   std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
@@ -304,9 +308,6 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
   volatile bool done = false;
   volatile bool cancelled = false;
   executionQueue.push([&] {
-    ScopedAssign<bool> withDebug(isDebugActive, false);
-    int prevDebugFlag = RDEBUG(R_GlobalEnv);
-    SET_RDEBUG(R_GlobalEnv, 0);
     R_interrupts_pending = 0;
     if (!cancelled) {
       try {
@@ -321,7 +322,6 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
     done = true;
     doneVar.notify_one();
     R_interrupts_pending = 0;
-    SET_RDEBUG(R_GlobalEnv, prevDebugFlag);
   });
   if (context == nullptr) {
     while (!done) {
@@ -345,12 +345,10 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
 
 void RPIServiceImpl::executeOnMainThreadAsync(std::function<void()> const& f) {
   executionQueue.push([=] {
-    R_interrupts_pending = 0;
     try {
       f();
     } catch (...) {
     }
-    R_interrupts_pending = 0;
   });
 }
 
@@ -445,6 +443,7 @@ TerminationTimer* terminationTimer;
 void initRPIService() {
   RI = std::make_unique<RObjects>();
   rpiService = std::make_unique<RPIServiceImpl>();
+  rDebugger.init();
   if (commandLineOptions.withTimeout) {
     terminationTimer = new TerminationTimer();
     terminationTimer->init();
