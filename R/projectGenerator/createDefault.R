@@ -16,11 +16,11 @@
 
 
 createDefault <- function(packageDirName, packageParentDirPath) {
-  assign('JB.fake.fun', function() {}, envir = .GlobalEnv);
-  utils::package.skeleton(name = packageDirName, path = packageParentDirPath, list = c('JB.fake.fun'), force = TRUE);
-  rm('JB.fake.fun', envir = .GlobalEnv);
+  assign('JB.fake.fun', function() {}, envir = .GlobalEnv)
+  utils::package.skeleton(name = packageDirName, path = packageParentDirPath, list = 'JB.fake.fun', force = TRUE)
+  rm('JB.fake.fun', envir = .GlobalEnv)
   dirPath <- file.path(packageParentDirPath, packageDirName)
-  unlink(file.path(dirPath, 'R'  , 'JB.fake.fun.R'));
+  unlink(file.path(dirPath, 'R'  , 'JB.fake.fun.R'))
   unlink(file.path(dirPath, 'man', 'JB.fake.fun.Rd'))
 }
 

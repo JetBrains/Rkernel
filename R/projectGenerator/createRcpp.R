@@ -16,22 +16,21 @@
 
 
 initKittenStub <- function() {
-  Real.kitten <- pkgKitten::kitten;
+  Real.kitten <- pkgKitten::kitten
   utils::assignInNamespace('kitten',
     function(..., example_code = FALSE) {
-      utils::assignInNamespace('kitten', Real.kitten, 'pkgKitten');
-      rm('Real.kitten', envir = .GlobalEnv);
-      assign('Rcpp.fake.fun', function() {}, envir = parent.frame(2));
-      package.skeleton(..., list = c('Rcpp.fake.fun'))
-    }, 'pkgKitten');
+      utils::assignInNamespace('kitten', Real.kitten, 'pkgKitten')
+      assign('Rcpp.fake.fun', function() {}, envir = parent.frame(2))
+      package.skeleton(..., list = 'Rcpp.fake.fun')
+    }, 'pkgKitten')
 }
 
 createDefault <- function(packageName, packageDirName, packageParentDirPath, extraOptions) {
   if ('pkgKitten' %in% .packages(TRUE)) {
     initKittenStub();
   }
-  initCall <- paste(packageName, '::', packageName, '.package.skeleton(name = \'', packageDirName,
-          '\', path = \'', packageParentDirPath, '\', force = TRUE', extraOptions, ')', sep = "")
+  initCall <- paste0(packageName, '::', packageName, '.package.skeleton(name = \'', packageDirName,
+          '\', path = \'', packageParentDirPath, '\', force = TRUE', extraOptions, ')')
   eval(parse(text = initCall), envir = parent.frame(1));
 }
 
