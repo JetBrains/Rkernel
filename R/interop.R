@@ -102,18 +102,30 @@ setHook(hookName = "before.grid.newpage",
 
 .jetbrains$findAllNamedArguments <- function(x) {
   ignoreErrors <- function(expr) {
-    as.list(tryCatch(expr, error = function(e) {}))
+    as.list(tryCatch(expr, error = function(e) { }))
   }
+
+  defenv <- if (!is.na(w <- .knownS3Generics[x])) {
+    asNamespace(w)
+  } else {
+    genfun <- get(x, mode = "function")
+    if (.isMethodsDispatchOn() && methods::is(genfun, "genericFunction")) {
+      genfun <- methods::finalDefaultMethod(genfun@default)
+    }
+    if (typeof(genfun) == "closure") environment(genfun)
+    else .BaseNamespaceEnv
+  }
+  s3_table <- get(".__S3MethodsTable__.", envir = defenv)
 
   getS3Names <- function(row) {
     functionName <- row[["functionName"]]
     from <- row[["from"]]
     envir <- tryCatch(as.environment(from), error = function(e) NULL)
     if (startsWith(from, "registered S3method")) {
-      envir <- get(".__S3MethodsTable__.")
+      envir <- s3_table
     }
     if (is.null(envir)) {
-      envir <- tryCatch(as.environment(paste("package:", from)), error = function(e) .GlobalEnv)
+      envir <- tryCatch(as.environment(paste0("package:", from)), error = function(e) .GlobalEnv)
     }
     names(formals(get(functionName, mode = "function", envir = envir)))
   }
@@ -122,7 +134,7 @@ setHook(hookName = "before.grid.newpage",
   s3Info <- attr(.S3methods(x), "info")
   s3Info[, "functionName"] <- rownames(s3Info)
   s3 <- ignoreErrors(apply(s3Info[, c("functionName", "from")], 1, getS3Names))
-  unique(unlist(c(s4, s3)))
+  unique(unlist(c(s4, s3, names(formals(x)))))
 }
 
 .jetbrains$printAllPackagesToFile <- function(repo.urls, output.path) {
