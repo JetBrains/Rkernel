@@ -23,7 +23,7 @@
 
 using namespace Rcpp;
 
-// jetbrains_ther_device_dump
+// jetbrains_ther_device_record
 SEXP jetbrains_ther_device_record();
 RcppExport SEXP _rplugingraphics_jetbrains_ther_device_record() {
 BEGIN_RCPP
@@ -32,6 +32,16 @@ BEGIN_RCPP
     rcpp_result_gen = Rcpp::wrap(jetbrains_ther_device_record());
     return rcpp_result_gen;
 END_RCPP
+}
+// jetbrains_ther_device_restart
+SEXP jetbrains_ther_device_restart();
+RcppExport SEXP _rplugingraphics_jetbrains_ther_device_restart() {
+  BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(jetbrains_ther_device_restart());
+    return rcpp_result_gen;
+  END_RCPP
 }
 // jetbrains_ther_device_rescale
 SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double height, int resolution);
@@ -125,6 +135,7 @@ RcppExport SEXP _jetbrains_View(SEXP x, SEXP title) {
 
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 0},
+    {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
     {"_rplugingraphics_rs_base64encode", (DL_FUNC) &_rplugingraphics_rs_base64encode, 2},
     {"_rplugingraphics_rs_base64decode", (DL_FUNC) &_rplugingraphics_rs_base64decode, 2},
     {".jetbrains_ther_device_init", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_init, 5},

@@ -17,7 +17,6 @@
 
 #include "SnapshotUtil.h"
 
-#include <iostream>
 #include <sstream>
 
 namespace graphics {
@@ -26,7 +25,6 @@ namespace {
 
 const auto ENVIRONMENT_NAME = ".jetbrains";
 const auto RECORDED_SNAPSHOT_PREFIX = "recordedSnapshot";
-const auto TEMP_SNAPSHOT_NAME = ".jetbrains.recorded.snapshot";
 const auto RECORD_COMMAND_NAME = "grDevices::recordPlot";
 const auto REPLAY_COMMAND_NAME = "grDevices::replayPlot";
 
@@ -73,32 +71,9 @@ std::string SnapshotUtil::makeFileName(const std::string &directory, int snapsho
   return sout.str();
 }
 
-std::string SnapshotUtil::makeRecordFileCommand(const std::string &directory, int snapshotNumber) {
-  auto sout = std::ostringstream();
-  auto fileName = makeFileName(directory, snapshotNumber);
-  sout << makeRecordCommand(TEMP_SNAPSHOT_NAME) << "; "
-       << "save(" << TEMP_SNAPSHOT_NAME << ", file = '" << fileName << "')";
-  return sout.str();
-}
-
 std::string SnapshotUtil::makeReplayFileCommand(const std::string &directory, int snapshotNumber) {
   auto filePath = makeFileName(directory, snapshotNumber);
   return makeLoadAndReplayCommand(filePath);
-}
-
-std::string SnapshotUtil::makeReplayFileCommand(const std::string &filePath) {
-  return makeLoadAndReplayCommand(filePath);
-}
-
-int SnapshotUtil::getSnapshotNumberFromFileName(const std::string &fileName) {
-  auto size = int(fileName.size());
-  try {
-    auto numberString = fileName.substr(9, size - 9);
-    return std::stoi(numberString);
-  } catch (std::exception& e) {
-    std::cerr << "Cannot get snapshot number from file name: '" << fileName << "'\n";
-    return -1;
-  }
 }
 
 std::string SnapshotUtil::makeSaveVariableCommand(const std::string &directory, int deviceNumber, int snapshotNumber) {

@@ -31,6 +31,11 @@ setHook(hookName = "before.grid.newpage",
         },
         action = "append")
 
+# Force interpreter to restart custom graphics device
+options(device = function() {
+  .Call(".jetbrains_ther_device_restart")
+})
+
 .jetbrains$init <- function(rsession.path, project.dir) {
  current.wd <- getwd()
   tryCatch({

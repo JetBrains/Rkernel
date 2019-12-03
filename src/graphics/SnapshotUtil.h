@@ -26,14 +26,11 @@ class SnapshotUtil {
 public:
   static std::string makeFileName(const std::string& directory, int snapshotNumber);
   static std::string makeSaveVariableCommand(const std::string& directory, int deviceNumber, int snapshotNumber);
-  static std::string makeRecordFileCommand(const std::string& directory, int snapshotNumber);
   static std::string makeReplayFileCommand(const std::string& directory, int snapshotNumber);
-  static std::string makeReplayFileCommand(const std::string& filePath);
   static std::string makeVariableName(int deviceNumber, int snapshotNumber);
   static std::string makeRecordVariableCommand(int deviceNumber, int snapshotNumber);
   static std::string makeReplayVariableCommand(int deviceNumber, int snapshotNumber);
   static std::string makeRemoveVariablesCommand(int deviceNumber, int from, int to);
-  static int getSnapshotNumberFromFileName(const std::string& fileName);
 };
 
 }  // graphics
