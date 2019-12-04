@@ -36,6 +36,13 @@ options(device = function() {
   .Call(".jetbrains_ther_device_restart")
 })
 
+# Some packages might be not available as binaries.
+# The default behaviour of interpreter in such a case
+# is to ask user whether he wants to install it from source instead.
+# This is not desirable that's why interpreter will be forced to install packages from source
+# **when necessary** without user permission
+options(install.packages.compile.from.source = "always")
+
 .jetbrains$init <- function(rsession.path, project.dir) {
  current.wd <- getwd()
   tryCatch({
