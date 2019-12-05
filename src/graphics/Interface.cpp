@@ -81,6 +81,7 @@ SEXP jetbrains_ther_device_rescale_stored(const std::string& parentDirectory, in
     auto newParameters = ScreenParameters{width, height, resolution};
     return Rcpp::wrap(active->rescaleByPath(parentDirectory, snapshotNumber, snapshotVersion, newParameters));
   } else {
+    std::cerr << "jetbrains_ther_device_rescale_stored(): device is not active. Ignored\n";
     return Rcpp::wrap(false);
   }
 }
