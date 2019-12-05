@@ -217,10 +217,14 @@ Status RPIServiceImpl::repoCheckPackageInstalled(ServerContext* context, const S
   return executeCommand(context, sout.str(), writer);
 }
 
-Status RPIServiceImpl::repoRemovePackage(ServerContext* context, const StringValue* request, Empty*) {
-  auto sout = std::ostringstream();
-  sout << "remove.packages('" << request->value() << "')";
-  return replExecuteCommand(context, sout.str());
+Status RPIServiceImpl::repoRemovePackage(ServerContext* context, const RepoRemovePackageRequest* request, Empty*) {
+  auto arguments = std::vector<std::string> {
+    request->packagename(),
+    request->librarypath(),
+  };
+  auto argumentString = joinToString(arguments, quote);
+  auto command = buildCallCommand("remove.packages", argumentString);
+  return replExecuteCommand(context, command);
 }
 
 Status RPIServiceImpl::convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request, ServerWriter<CommandOutput>* writer) {

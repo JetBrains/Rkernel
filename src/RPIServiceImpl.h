@@ -85,7 +85,7 @@ public:
   Status repoInstallPackage(ServerContext* context, const RepoInstallPackageRequest* request, Empty*) override;
   Status repoAddLibraryPath(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status repoCheckPackageInstalled(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
-  Status repoRemovePackage(ServerContext* context, const StringValue* request, Empty*) override;
+  Status repoRemovePackage(ServerContext* context, const RepoRemovePackageRequest* request, Empty*) override;
 
   Status dataFrameRegister(ServerContext* context, const RRef* request, Int32Value* response) override;
   Status dataFrameGetInfo(ServerContext* context, const RRef* request, DataFrameInfoResponse* response) override;
