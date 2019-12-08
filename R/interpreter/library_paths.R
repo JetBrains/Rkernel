@@ -7,4 +7,6 @@ if (length(args) != 0) {
   quit(save = "no", status = 1, runLast = FALSE)
 }
 
+cat(">>>RPLUGIN>>>")
 writeLines(.libPaths())
+cat("<<<RPLUGIN<<<")

@@ -12,6 +12,8 @@ if (!file.exists(p)) {
   p <- file.path(R.home("etc"), "repositories")
 }
 a <- tools:::.read_repositories(p)
+cat(">>>RPLUGIN>>>")
 writeLines(a[, "URL"])
 writeLines("")
 writeLines(unlist(unname(getOption("repos"))))
+cat("<<<RPLUGIN<<<")

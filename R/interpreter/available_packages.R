@@ -17,5 +17,7 @@ options(repos = repo_urls)
 p <- available.packages()[, c("Package", "Repository", "Version", "Depends")]
 p <- as.data.frame(p)
 p$Depends <- sapply(p$Depends, remove_newlines)
+cat(">>>RPLUGIN>>>")
 with(p, cat(paste(paste(Package, Repository, Version, sep = " "), Depends, sep = "\t"), sep = "\n"))
+cat("<<<RPLUGIN<<<")
 options(repos = old_repos)

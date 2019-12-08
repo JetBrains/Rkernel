@@ -8,4 +8,6 @@ if (length(args) != 0) {
 }
 
 mirrors <- getCRANmirrors()[, c('Name', 'URL')]
+cat(">>>RPLUGIN>>>")
 with(mirrors, cat(paste(Name, URL, sep = "\t"), sep = "\n"))
+cat("<<<RPLUGIN<<<")

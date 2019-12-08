@@ -8,4 +8,6 @@ if (length(args) != 1) {
 }
 
 env_name <- args[1]
+cat(">>>RPLUGIN>>>")
 cat(Sys.getenv(env_name), sep = "\n")
+cat("<<<RPLUGIN<<<")
