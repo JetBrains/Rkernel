@@ -14,4 +14,4 @@ if (!file.exists(p)) {
 a <- tools:::.read_repositories(p)
 writeLines(a[, "URL"])
 writeLines("")
-writeLines(getOption("repos"))
+writeLines(unlist(unname(getOption("repos"))))
