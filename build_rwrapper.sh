@@ -31,6 +31,10 @@ fi
 
 mkdir -p build
 cd build
-$CMAKE -Wdev .. "$@"
+if [ -e "crashpad/crashpad" ]; then
+  $CMAKE -Wdev -DCRASHPAD_DIR="$(pwd)/crashpad" .. "$@"
+else
+  $CMAKE -Wdev .. "$@"
+fi
 make -j4
 mv rwrapper ../rwrapper-$PACKAGE_NAME
