@@ -26,6 +26,7 @@ if (length(arguments) != 1) {
 
 pName = arguments[1]
 
+cat(">>>RPLUGIN>>>")
 namespace = tryCatch(loadNamespace(pName), error = function(e) {
   cat("cannot-load-package")
   message(e)
@@ -94,3 +95,4 @@ if (!(pName %in% c("base", "stats", "backports"))) {
     }
   }
 }
+cat("<<<RPLUGIN<<<")

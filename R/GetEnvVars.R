@@ -36,4 +36,6 @@ getLDLibraryPath <- function() {
   else ""
 }
 
+cat(">>>RPLUGIN>>>")
 cat(R.home(), R.home('share'), R.home('include'), R.home('doc'), Sys.getenv("PATH"), getLDLibraryPath(), sep='\n')
+cat("<<<RPLUGIN<<<")
