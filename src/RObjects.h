@@ -32,6 +32,7 @@ struct RObjects {
   Rcpp::Function asDouble = baseEnv["as.double"];
   Rcpp::Function asInteger = baseEnv["as.integer"];
   Rcpp::Function asLogical = baseEnv["as.logical"];
+  Rcpp::Function assign = baseEnv["assign"];
   Rcpp::Function classes = baseEnv["class"];
   Rcpp::Function colon = baseEnv[":"];
   Rcpp::Function dataFrame = baseEnv["data.frame"];

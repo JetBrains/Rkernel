@@ -441,6 +441,12 @@ static std::unique_ptr<Server> server;
 
 class TerminationTimer : public Server::GlobalCallbacks {
 public:
+  ~TerminationTimer() {
+    if (!termination) {
+      quit();
+    }
+  }
+
   void PreSynchronousRequest(grpc_impl::ServerContext* context) override {
     rpcHappened = true;
   }
@@ -455,7 +461,7 @@ public:
         rpcHappened = false;
         std::unique_lock<std::mutex> lock(mutex);
         auto time = std::chrono::steady_clock::now() + std::chrono::milliseconds(CLIENT_RPC_TIMEOUT_MILLIS);
-        condVar.wait_until(lock, time, [&] { return !termination && std::chrono::steady_clock::now() >= time; });
+        condVar.wait_until(lock, time, [&] { return termination || std::chrono::steady_clock::now() >= time; });
         if (termination) {
           break;
         }
@@ -486,14 +492,16 @@ private:
   std::mutex mutex;
   std::condition_variable condVar;
   std::thread thread;
-} terminationTimer;
+};
+
+TerminationTimer* terminationTimer;
 
 void initRPIService() {
   RI = std::make_unique<RObjects>();
-  //RI->loadNamespace("Rcpp");
   rpiService = std::make_unique<RPIServiceImpl>();
   if (commandLineOptions.withTimeout) {
-    terminationTimer.init();
+    terminationTimer = new TerminationTimer();
+    terminationTimer->init();
   }
   ServerBuilder builder;
   int port = 0;
@@ -505,14 +513,19 @@ void initRPIService() {
   } else {
     std::cout << "PORT " << port << std::endl;
   }
+  RI->assign(".Last.sys", RI->evalCode("function() .Call(\".jetbrains_quitRPIService\")", RI->baseEnv),
+      Rcpp::Named("envir", R_BaseNamespace));
 }
 
 void quitRPIService() {
+  static bool done = false;
+  if (done) return;
+  done = true;
   server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(1));
   server = nullptr;
   rpiService = nullptr;
   RI = nullptr;
   if (commandLineOptions.withTimeout) {
-    terminationTimer.quit();
+    terminationTimer->quit();
   }
 }

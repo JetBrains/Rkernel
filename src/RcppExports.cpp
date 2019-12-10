@@ -132,6 +132,12 @@ RcppExport SEXP _jetbrains_View(SEXP x, SEXP title) {
     rpiService->viewHandler(arg1, arg2);
   END_RCPP
 }
+// Quit
+RcppExport SEXP _jetbrains_quitRPIService() {
+  BEGIN_RCPP
+    quitRPIService();
+  END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 0},
@@ -143,6 +149,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_rescale_stored", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_rescale_stored, 6},
     {".jetbrains_ther_device_shutdown", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_shutdown, 0},
     {".jetbrains_View", (DL_FUNC) &_jetbrains_View, 2},
+    {".jetbrains_quitRPIService", (DL_FUNC) &_jetbrains_quitRPIService, 0},
     {NULL, NULL, 0}
 };
 
