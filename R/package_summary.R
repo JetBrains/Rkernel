@@ -28,8 +28,9 @@ pName = arguments[1]
 
 cat(">>>RPLUGIN>>>")
 namespace = tryCatch(loadNamespace(pName), error = function(e) {
-  cat("cannot-load-package")
+  cat("intellij-cannot-load-package")
   message(e)
+  cat("<<<RPLUGIN<<<")
   quit(save = "no", status = 1, runLast = FALSE)
 })
 
