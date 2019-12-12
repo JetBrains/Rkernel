@@ -24,12 +24,13 @@
 using namespace Rcpp;
 
 // jetbrains_ther_device_record
-SEXP jetbrains_ther_device_record();
-RcppExport SEXP _rplugingraphics_jetbrains_ther_device_record() {
+SEXP jetbrains_ther_device_record(bool isTriggeredByGgPlot);
+RcppExport SEXP _rplugingraphics_jetbrains_ther_device_record(SEXP isTriggeredByGgPlotSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(jetbrains_ther_device_record());
+    Rcpp::traits::input_parameter< bool >::type isTriggeredByGgPlot(isTriggeredByGgPlotSEXP);
+    rcpp_result_gen = Rcpp::wrap(jetbrains_ther_device_record(isTriggeredByGgPlot));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -140,7 +141,7 @@ RcppExport SEXP _jetbrains_quitRPIService() {
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 0},
+    {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
     {"_rplugingraphics_rs_base64encode", (DL_FUNC) &_rplugingraphics_rs_base64encode, 2},
     {"_rplugingraphics_rs_base64decode", (DL_FUNC) &_rplugingraphics_rs_base64decode, 2},

@@ -90,9 +90,7 @@ void newPage(pGEcontext context, pDevDesc descriptor) {
   // and use "before.plot.new" hook instead (see `recordLast()` below).
   // Well, because here graphics device will record nothing -- just a blank list (oh, but why???)
   auto masterDevice = masterOf(descriptor);
-  if (!masterDevice->getCurrentDevice()->isBlank()) {
-    masterDevice->addNewDevice();
-  }
+  masterDevice->onNewPage();
   masterDevice->getCurrentDevice()->newPage(context);  // Note: in general it's NOT the same device as the one above
 }
 
@@ -198,7 +196,8 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
 
 MasterDevice::MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory)
   : currentSnapshotDirectory(std::move(snapshotDirectory)), currentScreenParameters(screenParameters),
-    currentSnapshotNumber(-1), masterDeviceDescriptor(nullptr), deviceNumber(deviceNumber), inMemory(inMemory)
+    currentSnapshotNumber(-1), masterDeviceDescriptor(nullptr), isNextGgPlot(false),
+    deviceNumber(deviceNumber), inMemory(inMemory)
 {
   restart();
 }
@@ -218,13 +217,16 @@ Ptr<REagerGraphicsDevice> MasterDevice::getCurrentDevice() {
 void MasterDevice::addNewDevice() {
   currentDeviceInfos.emplace_back(DeviceInfo());
   currentSnapshotNumber++;
+  isNextGgPlot = false;
 }
 
-// Called by hooks "before.plot.new" for vanilla plots
-// and "before.grid.newpage" for ggplot2 (see "interop.R")
-void MasterDevice::recordLast() {
+// Called by hooks "before.plot.new" for vanilla plots (`isTriggeredByGgPlot = false`)
+// and "before.grid.newpage" for ggplot2 (`isTriggeredByGgPlot = true`)
+// (see "interop.R")
+void MasterDevice::recordLast(bool isTriggeredByGgPlot) {
   // If current device is neither null nor blank then it should be recorded
   if (masterDeviceDescriptor) {
+    isNextGgPlot = isTriggeredByGgPlot;
     auto& deviceInfo = currentDeviceInfos[currentSnapshotNumber];
     auto device = deviceInfo.device;
     if (device && !device->isBlank()) {
@@ -310,6 +312,15 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
   device->dump();
 
   return true;
+}
+
+void MasterDevice::onNewPage() {
+  auto hasGgPlot = isNextGgPlot;  // Note: store it here since `addNewDevice` will reset it to `false`
+  if (!getCurrentDevice()->isBlank()) {
+    addNewDevice();
+  }
+  currentDeviceInfos[currentSnapshotNumber].hasGgPlot = hasGgPlot;
+  isNextGgPlot = false;
 }
 
 void MasterDevice::finalize() {
@@ -493,7 +504,7 @@ void MasterDevice::dumpNormalAndZoomed(DeviceInfo &deviceInfo) {
 }
 
 void MasterDevice::record(DeviceInfo& deviceInfo, int number) {
-  auto command = SnapshotUtil::makeRecordVariableCommand(deviceNumber, number);
+  auto command = SnapshotUtil::makeRecordVariableCommand(deviceNumber, number, deviceInfo.hasGgPlot);
   Evaluator::evaluate(command);
   if (!inMemory) {
     auto saveCommand = SnapshotUtil::makeSaveVariableCommand(currentSnapshotDirectory, deviceNumber, number);

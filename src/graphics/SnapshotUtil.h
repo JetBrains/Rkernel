@@ -28,7 +28,7 @@ public:
   static std::string makeSaveVariableCommand(const std::string& directory, int deviceNumber, int snapshotNumber);
   static std::string makeReplayFileCommand(const std::string& directory, int snapshotNumber);
   static std::string makeVariableName(int deviceNumber, int snapshotNumber);
-  static std::string makeRecordVariableCommand(int deviceNumber, int snapshotNumber);
+  static std::string makeRecordVariableCommand(int deviceNumber, int snapshotNumber, bool hasGgPlot);
   static std::string makeReplayVariableCommand(int deviceNumber, int snapshotNumber);
   static std::string makeRemoveVariablesCommand(int deviceNumber, int from, int to);
 };

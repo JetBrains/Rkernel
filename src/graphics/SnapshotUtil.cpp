@@ -28,9 +28,10 @@ const auto RECORDED_SNAPSHOT_PREFIX = "recordedSnapshot";
 const auto RECORD_COMMAND_NAME = "grDevices::recordPlot";
 const auto REPLAY_COMMAND_NAME = "grDevices::replayPlot";
 
-std::string makeRecordCommand(const std::string& receiverName) {
+std::string makeRecordCommand(const std::string& receiverName, bool hasGgPlot) {
   auto sout = std::ostringstream();
-  sout << receiverName << " <- " << RECORD_COMMAND_NAME << "()";
+  auto arguments = hasGgPlot ? "(load='ggplot2')" : "()";
+  sout << receiverName << " <- " << RECORD_COMMAND_NAME << arguments;
   return sout.str();
 }
 
@@ -55,9 +56,9 @@ std::string SnapshotUtil::makeVariableName(int deviceNumber, int snapshotNumber)
   return sout.str();
 }
 
-std::string SnapshotUtil::makeRecordVariableCommand(int deviceNumber, int snapshotNumber) {
+std::string SnapshotUtil::makeRecordVariableCommand(int deviceNumber, int snapshotNumber, bool hasGgPlot) {
   auto name = makeVariableName(deviceNumber, snapshotNumber);
-  return makeRecordCommand(name);
+  return makeRecordCommand(name, hasGgPlot);
 }
 
 std::string SnapshotUtil::makeReplayVariableCommand(int deviceNumber, int snapshotNumber) {

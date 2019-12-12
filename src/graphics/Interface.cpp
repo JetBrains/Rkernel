@@ -44,10 +44,10 @@ SEXP jetbrains_ther_device_shutdown() {
   return R_NilValue;
 }
 
-SEXP jetbrains_ther_device_record() {
+SEXP jetbrains_ther_device_record(bool isTriggeredByGgPlot) {
   auto active = DeviceManager::getInstance()->getActive();
   if (active) {
-    active->recordLast();
+    active->recordLast(isTriggeredByGgPlot);
   } else {
     std::cerr << "jetbrains_ther_device_record(): nothing to record. Ignored\n";
   }

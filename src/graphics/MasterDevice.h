@@ -32,6 +32,7 @@ class MasterDevice {
     Ptr<REagerGraphicsDevice> device;
     bool hasRecorded = false;
     bool hasDumped = false;
+    bool hasGgPlot = false;
   };
 
   InitHelper initHelper;  // Rollback to previous active GD when this is closed (used in device dtor)
@@ -39,6 +40,7 @@ class MasterDevice {
   ScreenParameters currentScreenParameters;
   std::vector<DeviceInfo> currentDeviceInfos;
   int currentSnapshotNumber;
+  bool isNextGgPlot;
   int deviceNumber;
   bool inMemory;
 
@@ -58,11 +60,12 @@ public:
   Ptr<REagerGraphicsDevice> getCurrentDevice();
   void addNewDevice();
 
-  void recordLast();
+  void recordLast(bool isTriggeredByGgPlot);
   bool isOnlineRescalingEnabled();
   bool rescaleAllLast(ScreenParameters newParameters);
   bool rescaleByNumber(int number, ScreenParameters newParameters);
   bool rescaleByPath(const std::string& parentDirectory, int number, int version, ScreenParameters newParameters);
+  void onNewPage();
   void finalize();
   void shutdown();
   void restart();

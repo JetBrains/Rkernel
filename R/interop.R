@@ -20,14 +20,14 @@ assign(".jetbrains", new.env(), baseenv())
 # Set hook to record previous plot before new vanilla graphics are created
 setHook(hookName = "before.plot.new",
         value = function() {
-          .Call(".jetbrains_ther_device_record")
+          .Call(".jetbrains_ther_device_record", FALSE)
         },
         action = "append")
 
 # Set hook to record previous plot before new ggplot2 graphics are created
 setHook(hookName = "before.grid.newpage",
         value = function() {
-          .Call(".jetbrains_ther_device_record")
+          .Call(".jetbrains_ther_device_record", TRUE)  # Pass TRUE to indicate it was triggered by ggplot2
         },
         action = "append")
 
@@ -199,7 +199,7 @@ options(install.packages.compile.from.source = "always")
   }
 
   # Replay obtained plot
-  suppressWarnings(grDevices::replayPlot(plot))
+  suppressWarnings(grDevices::replayPlot(plot, reloadPkgs=TRUE))
 }
 
 .jetbrains$dropRecordedSnapshots <- function(device.number, from, to) {
