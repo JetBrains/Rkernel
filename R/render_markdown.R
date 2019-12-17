@@ -30,6 +30,13 @@ install_pandoc <- function(library_path) {
     URL
   }
 
+  clear_folder <- function(library_path) {
+    lapply(list.files(library_path), function(name) {
+      absolute_path <- paste0(library_path, "/", name)
+      file.remove(absolute_path)
+    })
+  }
+
   download_pandoc <- function(library_path, archive_extension, URL) {
     archive_path <- paste0(library_path, "/pandoc.", archive_extension)
     download.file(URL, destfile = archive_path, mode="wb")
@@ -38,25 +45,22 @@ install_pandoc <- function(library_path) {
     file.remove(archive_path)
   }
 
+  remove_nested_folder <- function(library_path, folder_pattern) {
+    library_contents <- list.files(library_path, pattern=folder_pattern)
+    if (length(library_contents) == 1) {
+      folder <- head(library_contents, 1)
+      folder_absolute <- paste0(library_path, "/", folder)
+      lapply(list.files(folder_absolute), function(name) {
+        full_name <- paste0(folder_absolute, "/", name)
+        new_name <- paste0(library_path, "/", name)
+        file.rename(full_name, new_name)
+      })
+      file.remove(folder_absolute)
+    }
+  }
+
   tune_pandoc <- function(library_path, executable_name) {
-    pandoc_folders <- list.files(library_path, pattern="pandoc*")
-    pandoc_folder <- head(pandoc_folders, 1)
-    pandoc_folder_absolute <- paste0(library_path, "/", pandoc_folder)
-    new_path <- paste0(library_path, "/pandoc")
-    file.rename(pandoc_folder_absolute, new_path)
-
-    # Some strange things are going on here.
-    # You need to note that MacOS and Linux versions of archive
-    # contains additional directory "bin" but Windows one doesn't.
-    # In order to unify process it's convenient to move contents of "pandoc/bin" to "pandoc"
-    bin_path <- paste0(new_path, "/bin")
-    lapply(list.files(bin_path), function(name) {
-      full_name <- paste0(bin_path, "/", name)
-      new_name <- paste0(new_path, "/", name)
-      file.rename(full_name, new_name)
-    })
-
-    pandoc_executable_path <- paste0(new_path, "/", executable_name)
+    pandoc_executable_path <- paste0(library_path, "/", executable_name)
     Sys.chmod(pandoc_executable_path, mode="0777")
   }
 
@@ -73,7 +77,10 @@ install_pandoc <- function(library_path) {
   archive_extension <- if (os_name == "Linux") "tar.gz" else "zip"
   executable_name <- if (os_name == "Windows") "pandoc.exe" else "pandoc"
   URL <- find_pandoc_url(os_suffix, archive_extension)
+  clear_folder(library_path)
   download_pandoc(library_path, archive_extension, URL)
+  remove_nested_folder(library_path, "pandoc*")
+  remove_nested_folder(library_path, "bin")
   tune_pandoc(library_path, executable_name)
 }
 
@@ -91,9 +98,8 @@ knit_root_directory <- args[3]
 # RMarkdown looks for Pandoc in PATH and RSTUDIO_PANDOC envs
 # We don't want to touch RStudio's envs that's why we'd rather adjust current PATH
 old_path <- Sys.getenv("PATH")
-pandoc_path <- paste0(library_path, "/pandoc")
 path_separator <- if (Sys.info()["sysname"] == "Windows") ";" else ":"
-new_path <- paste0(old_path, path_separator, pandoc_path)
+new_path <- paste0(old_path, path_separator, library_path)
 Sys.setenv(PATH = new_path)
 
 # First of all, we need to ensure Pandoc is really here (very important)
