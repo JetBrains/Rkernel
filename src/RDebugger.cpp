@@ -22,24 +22,24 @@
 
 Status RPIServiceImpl::debugWhere(ServerContext*, const Empty*, StringValue* response) {
   std::string result;
-  OutputConsumer oldConsumer;
+  OutputHandler oldHandler;
   bool isDebug = true;
   executeOnMainThreadAsync([&]{
-    if (rState != PROMPT_DEBUG) {
+    if (replState != DEBUG_PROMPT) {
       isDebug = false;
       return;
     }
-    oldConsumer = getOutputConsumer();
-    setOutputConsumer([&](const char* s, size_t c, OutputType type) {
+    oldHandler = mainOutputHandler;
+    mainOutputHandler = [&](const char* s, size_t c, OutputType type) {
       result.insert(result.end(), s, s + c);
-    });
-    rState = REPL_BUSY;
-    nextPromptSilent = true;
+    };
+    replState = REPL_BUSY;
+    nextDebugPromptSilent = true;
     breakEventLoop("where");
   });
   executeOnMainThreadAsync([&]{
     if (isDebug) {
-      setOutputConsumer(oldConsumer);
+      mainOutputHandler = oldHandler;
     }
   });
   executeOnMainThread([]{});
@@ -71,76 +71,5 @@ Status RPIServiceImpl::debugGetSysFunctionCode(ServerContext* context, const Int
     }
     response->set_value(result);
   }, context);
-  return Status::OK;
-}
-
-static std::string prepareDebugSource(std::string const& s) {
-  std::string t;
-  for (size_t i = 0; i < s.size(); ++i) {
-    if (s[i] == '\\') {
-      if (i + 1 != s.size()) {
-        ++i;
-        switch (s[i]) {
-        case '<':
-          t += "{.doTrace(browser());";
-          break;
-        case '>':
-          t += "}";
-          break;
-        default:
-          t += s[i];
-        }
-      }
-    } else {
-      t += s[i];
-    }
-  }
-  return t;
-}
-
-Status RPIServiceImpl::debugExecute(ServerContext*, const DebugExecuteRequest* request, Empty*) {
-  std::string const& code = request->code();
-  std::string const& fileId = request->fileid();
-  executeOnMainThreadAsync([=] {
-    if (rState != PROMPT_DEBUG && rState != PROMPT) return;
-    State prevState = rState;
-    rState = BUSY;
-
-    Rcpp::RObject prevJIT = RI->compilerEnableJIT(0);
-    Rcpp::RObject prevLocale = RI->sysGetLocale("LC_MESSAGES");
-    RI->sysSetLocale("LC_MESSAGES", "en_US.UTF-8");
-    Rcpp::RObject prevEnvLang = RI->sysGetEnv("LANGUAGE");
-    RI->sysSetEnv(Rcpp::Named("LANGUAGE", "en_US.UTF-8"));
-
-    rState = REPL_BUSY;
-    ReplEvent event;
-    event.mutable_busy();
-    replEvents.push(event);
-    isDebugEnabled = true;
-
-    Rcpp::Environment jetbrainsEnv = RI->globalEnv[".jetbrains"];
-    try {
-      jetbrainsEnv[fileId] = RI->textConnection(prepareDebugSource(code));
-      std::ostringstream command;
-      command << "source(" << fileId << ", keep.source = TRUE, print.eval = TRUE)";
-      RI->evalCode(command.str(), jetbrainsEnv);
-    } catch (Rcpp::eval_error const& e) {
-      CommandOutput* out = event.mutable_text();
-      out->set_text('\n' + std::string(e.what()) + '\n');
-      out->set_type(CommandOutput::STDERR);
-      replEvents.push(event);
-    } catch (...) {
-    }
-    jetbrainsEnv.remove(fileId);
-
-    isDebugEnabled = false;
-    RI->compilerEnableJIT(prevJIT);
-    RI->sysSetEnv(Rcpp::Named("LANGUAGE", prevEnvLang));
-    RI->sysSetLocale("LC_MESSAGES", prevLocale);
-
-    rState = prevState;
-    event.mutable_prompt()->set_isdebug(rState == PROMPT_DEBUG);
-    replEvents.push(event);
-  });
   return Status::OK;
 }

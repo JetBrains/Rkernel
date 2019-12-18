@@ -57,7 +57,7 @@ list(APPEND RWRAPPER_SOURCES
     src/base64/base64r.cpp
     src/RPIServiceMethods.cpp
     src/RRefs.cpp
-    src/Repl.cpp
+    src/ExecuteCode.cpp
     src/RLoader.cpp
     src/DataFrame.cpp
     src/RDebugger.cpp

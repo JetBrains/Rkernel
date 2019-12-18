@@ -27,39 +27,30 @@ void init_Rcpp_routines(DllInfo *info);
 
 using namespace grpc;
 
-static OutputConsumer currentConsumer = emptyConsumer;
-static int currentConsumerId = 0, maxConsumerId = 0;
+static OutputHandler outputHandler = emptyOutputHandler;
+static int currentHandlerId = 0, maxHandlerId = 0;
 static std::mutex outputMutex;
 
-OutputConsumer const& getOutputConsumer() {
-  return currentConsumer;
+OutputHandler mainOutputHandler = [] (const char* buf, int c, OutputType t) { outputHandler(buf, c, t); };
+
+void emptyOutputHandler(const char*, int, OutputType) { }
+
+int getCurrentOutputHandlerId() {
+  return currentHandlerId;
 }
 
-int getOutputConsumerId() {
-  return currentConsumerId;
-}
-
-void setOutputConsumer(OutputConsumer const& consumer) {
+WithOutputHandler::WithOutputHandler(OutputHandler const& handler) {
   std::unique_lock<std::mutex> lock(outputMutex);
-  currentConsumer = consumer;
-  currentConsumerId = ++maxConsumerId;
+  previous = outputHandler;
+  previousId = currentHandlerId;
+  outputHandler = handler;
+  currentHandlerId = ++maxHandlerId;
 }
 
-void emptyConsumer(const char*, int, OutputType) {
-}
-
-WithOutputConsumer::WithOutputConsumer(OutputConsumer const& c) {
+WithOutputHandler::~WithOutputHandler() {
   std::unique_lock<std::mutex> lock(outputMutex);
-  previous = currentConsumer;
-  previousId = currentConsumerId;
-  currentConsumer = c;
-  currentConsumerId = ++maxConsumerId;
-}
-
-WithOutputConsumer::~WithOutputConsumer() {
-  std::unique_lock<std::mutex> lock(outputMutex);
-  currentConsumer = previous;
-  currentConsumerId = previousId;
+  outputHandler = previous;
+  currentHandlerId = previousId;
 }
 
 int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHistory) {
@@ -71,24 +62,19 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
     registerFunctions();
     init_Rcpp_routines(dll);
     RcppExports_Init(dll);
-    rpiService->handlePrompt("> ", RPIServiceImpl::PROMPT);
+    rpiService->mainLoop();
     R_interrupts_pending = 0;
     quitRPIService();
     buf[0] = 0;
     return 0;
   }
-  RPIServiceImpl::State state;
+
+  std::string s;
   if (addToHistory) {
-    int level;
-    if (sscanf(prompt, "Browse[%d]> ", &level) == 1) { // NOLINT(cert-err34-c)
-      state = RPIServiceImpl::PROMPT_DEBUG;
-    } else {
-      state = RPIServiceImpl::PROMPT;
-    }
+    s = rpiService->debugPromptHandler();
   } else {
-    state = RPIServiceImpl::READ_LN;
+    s = rpiService->readLineHandler(prompt);
   }
-  std::string s = rpiService->handlePrompt(prompt, state);
   if (rpiService->terminate) {
     R_interrupts_pending = 1;
     buf[0] = 0;
@@ -105,15 +91,26 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   return s.size();
 }
 
+static const int OUTPUT_MESSAGE_MAX_SIZE = 65536;
+
 void myWriteConsoleEx(const char* buf, int len, int type) {
   std::unique_lock<std::mutex> lock(outputMutex);
-  currentConsumer(buf, len, (OutputType)type);
+  while (len > 0) {
+    int currentLen = std::min(len, OUTPUT_MESSAGE_MAX_SIZE);
+    mainOutputHandler(buf, currentLen, (OutputType) type);
+    buf += currentLen;
+    len -= currentLen;
+  }
 }
 
-void myWriteConsoleExToSpecificConsumer(const char* buf, int len, int type, int id) {
+void myWriteConsoleExToSpecificHandler(const char* buf, int len, int type, int id) {
   std::unique_lock<std::mutex> lock(outputMutex);
-  if (currentConsumerId == id) {
-    currentConsumer(buf, len, (OutputType) type);
+  if (id != currentHandlerId) return;
+  while (len > 0) {
+    int currentLen = std::min(len, OUTPUT_MESSAGE_MAX_SIZE);
+    mainOutputHandler(buf, currentLen, (OutputType) type);
+    buf += currentLen;
+    len -= currentLen;
   }
 }
 

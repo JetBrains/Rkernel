@@ -53,7 +53,6 @@ Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
     case RRef::kExpression: {
       Rcpp::Environment env = Rcpp::as<Rcpp::Environment>(dereference(ref.expression().env()));
       std::string code = ref.expression().code();
-      WithOutputConsumer with(emptyConsumer);
       return RI->evalCode(code, env);
     }
     case RRef::kListElement: {

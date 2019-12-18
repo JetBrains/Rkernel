@@ -15,36 +15,24 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#ifndef RWRAPPER_IO_H
-#define RWRAPPER_IO_H
+#ifndef RWRAPPER_SCOPED_ASSIGN_H
+#define RWRAPPER_SCOPED_ASSIGN_H
 
-#include <functional>
-
-enum OutputType {
-  STDOUT = 0, STDERR = 1
-};
-
-typedef std::function<void(const char*, int, OutputType)> OutputHandler;
-
-extern OutputHandler mainOutputHandler;
-
-int getCurrentOutputHandlerId();
-
-void emptyOutputHandler(const char*, int, OutputType);
-
-int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHistory);
-void myWriteConsoleEx(const char* buf, int len, int type);
-void myWriteConsoleExToSpecificHandler(const char* buf, int len, int type, int id);
-void mySuicide(const char* message);
-
-class WithOutputHandler {
+template <typename T>
+class ScopedAssign {
 public:
-  WithOutputHandler(OutputHandler const& c);
-  ~WithOutputHandler();
+  ScopedAssign(T& obj, T const& newValue) : obj(obj), oldValue(newValue) {
+    std::swap(obj, oldValue);
+  }
+
+  ScopedAssign(ScopedAssign const&) = delete;
+
+  ~ScopedAssign() {
+    std::swap(obj, oldValue);
+  }
 private:
-  OutputHandler previous;
-  int previousId;
+  T& obj;
+  T oldValue;
 };
 
-
-#endif
+#endif //RWRAPPER_SCOPED_ASSIGN_H

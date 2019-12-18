@@ -28,8 +28,8 @@ Status RPIServiceImpl::getInfo(ServerContext*, const google::protobuf::Empty*, G
   return Status::OK;
 }
 
-Status RPIServiceImpl::isBusy(ServerContext* context, const Empty*, BoolValue* response) {
-  response->set_value(rState == REPL_BUSY || rState == BUSY);
+Status RPIServiceImpl::isBusy(ServerContext*, const Empty*, BoolValue* response) {
+  response->set_value(busy);
   return Status::OK;
 }
 
@@ -49,35 +49,7 @@ Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerW
 Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, google::protobuf::Empty*) {
   executeOnMainThread([&] {
     terminate = true;
-    ReplEvent event;
-    event.mutable_termination();
-    replEvents.push(event);
   });
-  return Status::OK;
-}
-
-Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<CommandOutput>* writer) {
-  executeOnMainThread([&] {
-    try {
-      WithOutputConsumer with([&](const char *s, size_t c, OutputType type) {
-        CommandOutput out;
-        out.set_text(s, c);
-        out.set_type(type == STDOUT ? CommandOutput::STDOUT : CommandOutput::STDERR);
-        writer->Write(out);
-      });
-      Rcpp::ExpressionVector expressions = RI->parse(Rcpp::Named("text", request->code()));
-      if (request->withecho()) {
-        RI->evalWithVisible(expressions, currentEnvironment());
-      } else {
-        RI->eval(expressions, Rcpp::Named("envir", currentEnvironment()));
-      }
-    } catch (Rcpp::eval_error const& e) {
-      CommandOutput out;
-      out.set_text('\n' + std::string(e.what()) + '\n');
-      out.set_type(CommandOutput::STDERR);
-      writer->Write(out);
-    }
-  }, context);
   return Status::OK;
 }
 
@@ -126,21 +98,26 @@ void RPIServiceImpl::viewHandler(SEXP xSEXP, SEXP titleSEXP) {
     throw std::runtime_error("Title should be a string");
   }
   std::string title = Rcpp::as<std::string>(titleSEXP);
-  ReplEvent event;
+  AsyncEvent event;
   event.mutable_viewrequest()->set_persistentrefindex(persistentRefStorage.add(x));
   event.mutable_viewrequest()->set_title(title);
   getValueInfo(x, event.mutable_viewrequest()->mutable_value());
-  replEvents.push(event);
+  asyncEvents.push(event);
   isInViewRequest = true;
   eventLoop();
   isInViewRequest = false;
 }
 
-Status RPIServiceImpl::viewRequestFinished(ServerContext* context, const Empty* request, Empty* response) {
+Status RPIServiceImpl::viewRequestFinished(ServerContext* context, const Empty*, Empty*) {
   executeOnMainThread([&]{
     if (isInViewRequest) {
       breakEventLoop();
     }
   }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::getNextAsyncEvent(ServerContext*, const Empty*, AsyncEvent* response) {
+  response->CopyFrom(asyncEvents.pop());
   return Status::OK;
 }

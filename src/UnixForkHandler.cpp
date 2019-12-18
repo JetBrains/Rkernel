@@ -47,7 +47,7 @@ static void prepareHandler() {
     perror("Failed to create pipe for child process");
     return;
   }
-  int outputConsumerId = getOutputConsumerId();
+  auto outputHandler = rpiService->getOutputHandlerForChildProcess();
   for (int id = 0; id < 2; ++id) {
     int fd = (id == 0 ? globalStdoutPipeFd[0] : globalStderrPipeFd[0]);
     std::thread handlerThread([=] {
@@ -58,7 +58,7 @@ static void prepareHandler() {
         if (size <= 0) {
           break;
         }
-        myWriteConsoleExToSpecificConsumer(buf, size, id, outputConsumerId);
+        outputHandler(buf, size, (OutputType)id);
       }
     });
     handlerThread.detach();
@@ -88,7 +88,7 @@ static void childHandler() {
   if (rpiService != nullptr) {
     rpiService->setChildProcessState();
   }
-  setOutputConsumer([](const char* buf, int size, OutputType type) {
+  mainOutputHandler = [](const char* buf, int size, OutputType type) {
     while (size > 0) {
       int cnt;
       if (type == STDOUT) {
@@ -101,7 +101,7 @@ static void childHandler() {
       }
       size -= cnt;
     }
-  });
+  };
 }
 
 void setupForkHandler() {

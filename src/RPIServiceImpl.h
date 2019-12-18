@@ -42,16 +42,11 @@ public:
   Status init(ServerContext* context, const Init* request, ServerWriter<CommandOutput>* response) override;
   Status quit(ServerContext* context, const Empty* request, Empty* response) override;
 
-  Status executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<CommandOutput>* writer) override;
-
-  Status sourceFile(::grpc::ServerContext *context, const ::google::protobuf::StringValue *request,
-                    ::google::protobuf::Empty *response) override;
-
-  Status replExecute(ServerContext* context, const StringValue* request, Empty*) override;
-  Status replSendReadLn(ServerContext* context, const StringValue* request, Empty*) override;
-  Status replSendDebuggerCommand(ServerContext* context, const DebuggerCommandRequest* request, Empty*) override;
-  Status replGetNextEvent(ServerContext* context, const Empty*, ReplEvent* response) override;
+  Status executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) override;
+  Status sendReadLn(ServerContext* context, const StringValue* request, Empty*) override;
+  Status sendDebuggerCommand(ServerContext* context, const DebuggerCommandRequest* request, Empty*) override;
   Status replInterrupt(ServerContext* context, const Empty*, Empty*) override;
+  Status getNextAsyncEvent(ServerContext* context, const Empty*, AsyncEvent* response) override;
 
   Status copyToPersistentRef(ServerContext* context, const RRef* request, Int32Value* response) override;
   Status disposePersistentRefs(ServerContext* context, const PersistentRefList* request, Empty*) override;
@@ -97,7 +92,6 @@ public:
   Status updateSysFrames(ServerContext* context, const Empty*, Int32Value* response) override;
   Status debugWhere(ServerContext* context, const Empty*, StringValue* response) override;
   Status debugGetSysFunctionCode(ServerContext* context, const Int32Value* request, StringValue* response) override;
-  Status debugExecute(ServerContext* context, const DebugExecuteRequest* request, Empty*) override;
 
   Status getWorkingDir(ServerContext* context, const Empty*, StringValue* response) override;
   Status setWorkingDir(ServerContext* context, const StringValue* request, Empty*) override;
@@ -111,29 +105,36 @@ public:
   Status findPackagePathByTopic(ServerContext* context, const FindPackagePathByTopicRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status findPackagePathByPackageName(ServerContext* context, const FindPackagePathByPackageNameRequest* request,  ServerWriter<CommandOutput> *writer) override;
 
+  void mainLoop();
+  std::string readLineHandler(std::string const& prompt);
+  std::string debugPromptHandler();
   void viewHandler(SEXP x, SEXP title);
 
-  enum State {
-    PROMPT, PROMPT_DEBUG, READ_LN, REPL_BUSY, BUSY, CHILD_PROCESS
-  };
-
-  std::string handlePrompt(const char* prompt, State newState);
+  void eventLoop();
   void setChildProcessState();
   volatile bool terminate = false;
 
   void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);
   void executeOnMainThreadAsync(std::function<void()> const& f);
 
+  OutputHandler getOutputHandlerForChildProcess();
+
 private:
-  void eventLoop();
-  WithOutputConsumer defaultConsumer;
-  BlockingQueue<ReplEvent> replEvents{1};
+  BlockingQueue<AsyncEvent> asyncEvents{8};
+
+  enum ReplState {
+    PROMPT, DEBUG_PROMPT, READ_LINE, REPL_BUSY, CHILD_PROCESS
+  };
+  bool isReplOutput = false;
+  bool isDebugActive = false;
+  ReplState replState = REPL_BUSY;
+  volatile bool busy = true;
+
+  OutputHandler replOutputHandler;
 
   GetInfoResponse infoResponse;
-  volatile State rState = REPL_BUSY;
   bool isInViewRequest = false;
-  bool nextPromptSilent = false;
-  bool isDebugEnabled = false;
+  bool nextDebugPromptSilent = false;
 
   std::unordered_set<int> dataFramesCache;
 
@@ -143,7 +144,7 @@ private:
   BlockingQueue<std::function<void()>> executionQueue;
 
   bool doBreakEventLoop = false;
-  std::string returnFromReadConsoleValue;
+  std::string returnFromEventLoopValue;
   void breakEventLoop(std::string s = "");
 
   IndexedStorage<Rcpp::RObject> persistentRefStorage;

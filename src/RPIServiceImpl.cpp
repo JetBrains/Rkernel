@@ -27,6 +27,7 @@
 #include <cstdlib>
 #include <thread>
 #include <Rinternals.h>
+#include "util/ScopedAssign.h"
 
 namespace {
   const auto OLD_BROWSER_NAME = ".jetbrains_ther_old_browser";
@@ -64,8 +65,6 @@ namespace {
   const char* getBooleanString(bool value) {
     return value ? "TRUE" : "FALSE";
   }
-
-  const size_t REPL_OUTPUT_MAX_SIZE = 65536;
 }
 
 static std::string getRVersion() {
@@ -74,17 +73,11 @@ static std::string getRVersion() {
 }
 
 RPIServiceImpl::RPIServiceImpl() :
-  defaultConsumer([&](const char *s, size_t c, OutputType type) {
-    while (c > 0) {
-      size_t len = std::min(c, REPL_OUTPUT_MAX_SIZE);
-      ReplEvent event;
-      CommandOutput* out = event.mutable_text();
-      out->set_text(s, len);
-      s += len;
-      c -= len;
-      out->set_type(type == STDOUT ? CommandOutput::STDOUT : CommandOutput::STDERR);
-      replEvents.push(event);
-    }
+  replOutputHandler([&](const char* buf, int len, OutputType type) {
+    AsyncEvent event;
+    event.mutable_text()->set_type(type == STDOUT ? CommandOutput::STDOUT : CommandOutput::STDERR);
+    event.mutable_text()->set_text(buf, len);
+    asyncEvents.push(event);
   }) {
   std::cerr << "rpi service impl constructor\n";
   infoResponse.set_rversion(getRVersion());
@@ -273,68 +266,20 @@ Status RPIServiceImpl::findPackagePathByPackageName(ServerContext* context, cons
   return executeCommand(context, command, writer);
 }
 
-Status RPIServiceImpl::executeCommand(ServerContext* context, const std::string& command, ServerWriter<CommandOutput>* writer) {
-  auto executeCodeRequest = ExecuteCodeRequest();
-  executeCodeRequest.set_code(command);
-  executeCodeRequest.set_withecho(true);
-  return executeCode(context, &executeCodeRequest, writer);
-}
-
-Status RPIServiceImpl::sourceFile(ServerContext *context,
-                                  const ::google::protobuf::StringValue *request,
-                                  ::google::protobuf::Empty *response) {
-  auto sout = std::ostringstream();
-  sout << "source(\"" <<  escapeBackslashes(request->value()) << "\", print.eval=TRUE)";
-  return replExecuteCommand(context, sout.str());
-}
-
-Status RPIServiceImpl::replExecuteCommand(ServerContext* context, const std::string& command) {
-  auto empty = google::protobuf::Empty();
-  auto stringRequest = StringValue();
-  stringRequest.set_value(command);
-  return replExecute(context, &stringRequest, &empty);
-}
-
-std::string RPIServiceImpl::handlePrompt(const char* prompt, State newState) {
-  assert(newState != BUSY && newState != REPL_BUSY);
-  switch (rState) {
-    case REPL_BUSY:
-      rState = newState;
-      if (newState == READ_LN) {
-        ReplEvent event;
-        event.mutable_requestreadln()->set_prompt(prompt);
-        replEvents.push(event);
-      } else if (nextPromptSilent) {
-        nextPromptSilent = false;
-      } else if (rState == PROMPT_DEBUG && !isDebugEnabled) {
-        rState = REPL_BUSY;
-        return "f";
-      } else {
-        ReplEvent event;
-        event.mutable_prompt()->set_isdebug(rState == PROMPT_DEBUG);
-        replEvents.push(event);
-      }
-      break;
-    case BUSY:
-      if (newState == READ_LN) {
-        return "\n";
-      } else if (newState == PROMPT_DEBUG) {
-        return "f";
-      }
-      else assert(false);
-    case CHILD_PROCESS:
-      return "\n";
-    default:
-      assert(false);
-  }
+void RPIServiceImpl::mainLoop() {
+  AsyncEvent event;
+  event.mutable_prompt()->set_isdebug(false);
+  asyncEvents.push(event);
+  ScopedAssign<ReplState> withState(replState, PROMPT);
   eventLoop();
-  return returnFromReadConsoleValue;
 }
 
 void RPIServiceImpl::eventLoop() {
-  if (rState == CHILD_PROCESS) return;
+  WithOutputHandler withOutputHandler(emptyOutputHandler);
   while (true) {
+    busy = false;
     auto f = executionQueue.pop();
+    busy = true;
     f();
     if (terminate || doBreakEventLoop) {
       doBreakEventLoop = false;
@@ -345,11 +290,12 @@ void RPIServiceImpl::eventLoop() {
 
 void RPIServiceImpl::breakEventLoop(std::string s) {
   doBreakEventLoop = true;
-  returnFromReadConsoleValue = std::move(s);
+  returnFromEventLoopValue = std::move(s);
 }
 
 void RPIServiceImpl::setChildProcessState() {
-  rState = CHILD_PROCESS;
+  // TODO
+  replState = CHILD_PROCESS;
 }
 
 void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerContext* context) {
@@ -359,9 +305,7 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
   bool done = false;
   bool cancelled = false;
   executionQueue.push([&] {
-    WithOutputConsumer with(emptyConsumer);
-    State prevState = rState;
-    rState = BUSY;
+    ScopedAssign<bool> withDebug(isDebugActive, false);
     int prevDebugFlag = RDEBUG(R_GlobalEnv);
     SET_RDEBUG(R_GlobalEnv, 0);
     R_interrupts_pending = 0;
@@ -379,7 +323,6 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
     doneVar.notify_one();
     R_interrupts_pending = 0;
     SET_RDEBUG(R_GlobalEnv, prevDebugFlag);
-    rState = prevState;
   });
   if (context == nullptr) {
     while (!done) {

@@ -21,6 +21,7 @@
 #include <Rcpp.h>
 #include <vector>
 #include <string>
+#include "ScopedAssign.h"
 
 const int DEFAULT_WIDTH = 80;
 const int R_MIN_WIDTH_OPT = 10;
@@ -45,7 +46,7 @@ private:
 
 inline std::string getPrintedValue(Rcpp::RObject const& a) {
   std::string result;
-  WithOutputConsumer consumer([&](const char *s, size_t c, OutputType type) {
+  WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
     if (type == STDOUT) {
       result.insert(result.end(), s, s + c);
     }
@@ -63,7 +64,7 @@ inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLengt
   std::string result;
   bool limitReached = false;
   try {
-    WithOutputConsumer consumer([&](const char *s, size_t c, OutputType type) {
+    WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
       if (type == STDOUT) {
         if (result.size() + c > maxLength) {
           result.insert(result.end(), s, s + (maxLength - result.size()));
