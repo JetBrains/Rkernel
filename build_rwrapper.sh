@@ -17,6 +17,7 @@ cp -rp ../protos Rkernel-proto
 chmod -R +x grpc/tools
 if [[ "$OSTYPE" == "linux-gnu" ]]; then
   PACKAGE_NAME="x64-linux"
+  IS_MACOS=""
 else
   PACKAGE_NAME="x64-osx"
   IS_MACOS=true
