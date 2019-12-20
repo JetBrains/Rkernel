@@ -294,7 +294,6 @@ void RPIServiceImpl::breakEventLoop(std::string s) {
 }
 
 void RPIServiceImpl::setChildProcessState() {
-  // TODO
   replState = CHILD_PROCESS;
 }
 

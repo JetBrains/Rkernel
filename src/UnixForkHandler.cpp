@@ -39,6 +39,7 @@ private:
 static void prepareHandler() {
   globalStdoutPipeFd[0] = globalStdoutPipeFd[1] = -1;
   globalStderrPipeFd[0] = globalStderrPipeFd[1] = -1;
+  if (rpiService == nullptr) return;
   if (pipe(globalStdoutPipeFd) || pipe(globalStderrPipeFd)) {
     if (globalStdoutPipeFd[0] != -1) {
       close(globalStdoutPipeFd[0]);
@@ -66,6 +67,7 @@ static void prepareHandler() {
 }
 
 static void parentHandler() {
+  if (globalStderrPipeFd[1] == -1) return;
   close(globalStdoutPipeFd[1]);
   close(globalStderrPipeFd[1]);
 }
@@ -74,6 +76,7 @@ static int stdoutPipeFd = globalStdoutPipeFd[1];
 static int stderrPipeFd = globalStderrPipeFd[1];
 
 static void childHandler() {
+  if (globalStderrPipeFd[1] == -1) return;
   stdoutPipeFd = globalStdoutPipeFd[1];
   stderrPipeFd = globalStderrPipeFd[1];
   if (stdoutPipeFd == -1 || stderrPipeFd == -1) {
