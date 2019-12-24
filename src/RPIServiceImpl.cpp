@@ -301,8 +301,8 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
   std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
   std::condition_variable doneVar;
-  bool done = false;
-  bool cancelled = false;
+  volatile bool done = false;
+  volatile bool cancelled = false;
   executionQueue.push([&] {
     ScopedAssign<bool> withDebug(isDebugActive, false);
     int prevDebugFlag = RDEBUG(R_GlobalEnv);
