@@ -196,7 +196,7 @@ add_library(rcpp_static ${CMAKE_HOME_DIRECTORY}/Rcpp/src/api.cpp
 if (UNIX)
   target_link_libraries(rwrapper grpc++_unsecure grpc_unsecure protobuf libz libssl libcares libaddress_sorting  gpr)
   if (NOT APPLE)
-      target_link_libraries(rwrapper pthread)
+      target_link_libraries(rwrapper pthread dl)
   endif()
 endif()
 if (WIN32)
