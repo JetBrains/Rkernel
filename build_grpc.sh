@@ -11,6 +11,7 @@ else
 fi
 
 ./vcpkg install "grpc:$PACKAGE_NAME"
+./vcpkg install "tiny-process-library:$PACKAGE_NAME"
 rm  -rf ../grpc
 mv "installed/$PACKAGE_NAME" ../grpc
 cd ..
