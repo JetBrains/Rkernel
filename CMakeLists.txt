@@ -67,7 +67,8 @@ list(APPEND RWRAPPER_SOURCES
     src/debugger/TextBuilder.cpp
     src/RInternals/RInternals.cpp
     src/util/RUtil.cpp
-    src/HTMLViewer.cpp)
+    src/HTMLViewer.cpp
+    src/Subprocess.cpp)
 
 if(WIN32)
     add_definitions(-DNOMINMAX)
@@ -172,14 +173,14 @@ if (UNIX)
     set_target_properties(libcares PROPERTIES IMPORTED_LOCATION "${GRPC_DIST}/lib/libcares${CMAKE_STATIC_LIBRARY_SUFFIX}")
     add_library(libaddress_sorting STATIC IMPORTED)
     set_target_properties(libaddress_sorting PROPERTIES IMPORTED_LOCATION "${GRPC_DIST}/lib/libaddress_sorting${CMAKE_STATIC_LIBRARY_SUFFIX}")
-elseif(WIN32)
-    link_directories("${GRPC_DIST}/lib")
 endif()
 
+link_directories("${GRPC_DIST}/lib")
+
 if (UNIX)
-    set(SYSTEM_SPECIFIC_SOURCES src/UnixForkHandler.cpp)
+    set(SYSTEM_SPECIFIC_SOURCES src/UnixForkHandler.cpp src/SubprocessUnix.cpp)
 else()
-    set(SYSTEM_SPECIFIC_SOURCES)
+    set(SYSTEM_SPECIFIC_SOURCES src/SubprocessWin.cpp)
 endif()
 
 
@@ -217,3 +218,4 @@ endif()
 
 target_link_libraries(rwrapper rcpp_static)
 target_link_libraries(rwrapper R)
+target_link_libraries(rwrapper tiny-process-library)

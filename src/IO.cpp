@@ -40,7 +40,10 @@ int getCurrentOutputHandlerId() {
   return currentHandlerId;
 }
 
-WithOutputHandler::WithOutputHandler(OutputHandler const& handler) {
+WithOutputHandler::WithOutputHandler() : empty(true) {
+}
+
+WithOutputHandler::WithOutputHandler(OutputHandler const& handler): empty(false) {
   std::unique_lock<std::mutex> lock(outputMutex);
   previous = outputHandler;
   previousId = currentHandlerId;
@@ -48,7 +51,13 @@ WithOutputHandler::WithOutputHandler(OutputHandler const& handler) {
   currentHandlerId = ++maxHandlerId;
 }
 
+WithOutputHandler::WithOutputHandler(WithOutputHandler &&b)
+  : empty(b.empty), previous(std::move(b.previous)), previousId(b.previousId) {
+  b.empty = true;
+}
+
 WithOutputHandler::~WithOutputHandler() {
+  if (empty) return;
   std::unique_lock<std::mutex> lock(outputMutex);
   outputHandler = previous;
   currentHandlerId = previousId;

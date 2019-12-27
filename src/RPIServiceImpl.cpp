@@ -28,6 +28,9 @@
 #include <Rinternals.h>
 #include "util/ScopedAssign.h"
 #include "HTMLViewer.h"
+#include "Subprocess.h"
+
+using namespace grpc;
 
 namespace {
   template<typename TCollection, typename TMapper>
@@ -252,8 +255,8 @@ void RPIServiceImpl::mainLoop() {
   eventLoop();
 }
 
-void RPIServiceImpl::eventLoop() {
-  WithOutputHandler withOutputHandler(emptyOutputHandler);
+void RPIServiceImpl::eventLoop(bool disableOutput) {
+  WithOutputHandler withOutputHandler = disableOutput ? WithOutputHandler(emptyOutputHandler) : WithOutputHandler();
   WithDebuggerEnabled withDebugger(false);
   while (true) {
     busy = false;
@@ -421,6 +424,7 @@ TerminationTimer* terminationTimer;
 
 void initRPIService() {
   RI = std::make_unique<RObjects>();
+  initDoSystem();
   rpiService = std::make_unique<RPIServiceImpl>();
   rDebugger.init();
   htmlViewerInit();

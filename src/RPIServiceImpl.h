@@ -29,7 +29,9 @@
 #include "debugger/RDebugger.h"
 #include <Rcpp.h>
 
-using namespace grpc;
+using grpc::Status;
+using grpc::ServerContext;
+using grpc::ServerWriter;
 using namespace rplugininterop;
 using namespace google::protobuf;
 
@@ -45,6 +47,7 @@ public:
 
   Status executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) override;
   Status sendReadLn(ServerContext* context, const StringValue* request, Empty*) override;
+  Status sendEof(ServerContext* context, const Empty*, Empty*) override;
   Status replInterrupt(ServerContext* context, const Empty*, Empty*) override;
   Status getNextAsyncEvent(ServerContext* context, const Empty*, AsyncEvent* response) override;
 
@@ -119,18 +122,23 @@ public:
 
   void mainLoop();
   std::string readLineHandler(std::string const& prompt);
+  void subprocessHandler(
+      bool askInput,
+      std::function<void(std::string)> const& inputCallback, std::function<void()> const& interruptCallback);
+  void subprocessHandlerStop();
   void debugPromptHandler();
   void viewHandler(SEXP x, SEXP title);
   void showFileHandler(std::string const& filePath, std::string const& title);
   void showHelpHandler(std::string const& content, std::string const& url);
 
   void sendAsyncEvent(AsyncEvent const& e);
-  void eventLoop();
+  void eventLoop(bool disableOutput = true);
   void setChildProcessState();
   volatile bool terminate = false;
 
   void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);
   void executeOnMainThreadAsync(std::function<void()> const& f);
+  void breakEventLoop(std::string s = "");
 
   OutputHandler getOutputHandlerForChildProcess();
 
@@ -140,11 +148,13 @@ private:
   BlockingQueue<AsyncEvent> asyncEvents{8};
 
   enum ReplState {
-    PROMPT, DEBUG_PROMPT, READ_LINE, REPL_BUSY, CHILD_PROCESS
+    PROMPT, DEBUG_PROMPT, READ_LINE, REPL_BUSY, CHILD_PROCESS, SUBPROCESS_INPUT
   };
   bool isReplOutput = false;
   ReplState replState = REPL_BUSY;
   volatile bool busy = true;
+  volatile bool subprocessActive = false;
+  bool subprocessInterrupt = false;
 
   OutputHandler replOutputHandler;
 
@@ -157,7 +167,6 @@ private:
 
   bool doBreakEventLoop = false;
   std::string returnFromEventLoopValue;
-  void breakEventLoop(std::string s = "");
 
   IndexedStorage<Rcpp::RObject> persistentRefStorage;
 

@@ -39,9 +39,15 @@ void mySuicide(const char* message);
 
 class WithOutputHandler {
 public:
+  WithOutputHandler();
   WithOutputHandler(OutputHandler const& c);
+  WithOutputHandler(WithOutputHandler &&b);
   ~WithOutputHandler();
+
+  WithOutputHandler(WithOutputHandler const&) = delete;
+  WithOutputHandler& operator = (WithOutputHandler const&) = delete;
 private:
+  bool empty;
   OutputHandler previous;
   int previousId;
 };

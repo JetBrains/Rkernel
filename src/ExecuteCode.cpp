@@ -140,8 +140,17 @@ Status RPIServiceImpl::replInterrupt(ServerContext*, const Empty*, Empty*) {
     R_interrupts_pending = 1;
   } else if (replState == READ_LINE) {
     executeOnMainThreadAsync([=] {
-      R_interrupts_pending = 1;
-      breakEventLoop("");
+      if (replState == READ_LINE) {
+        R_interrupts_pending = 1;
+        breakEventLoop("");
+      }
+    });
+  } else if (replState == SUBPROCESS_INPUT && subprocessActive) {
+    executeOnMainThreadAsync([=] {
+      if (replState == SUBPROCESS_INPUT && subprocessActive) {
+        subprocessInterrupt = true;
+        breakEventLoop("");
+      }
     });
   }
   return Status::OK;
@@ -157,10 +166,13 @@ Status RPIServiceImpl::replExecuteCommand(ServerContext* context, const std::str
 
 Status RPIServiceImpl::sendReadLn(ServerContext*, const StringValue* request, Empty*) {
   std::string text = request->value();
-  text.erase(std::find(text.begin(), text.end(), '\n'), text.end());
-  executeOnMainThreadAsync([=] {
-    if (replState != READ_LINE) return;
-    breakEventLoop(text);
+  executeOnMainThreadAsync([=] () mutable {
+    if (replState == READ_LINE) {
+      text.erase(std::find(text.begin(), text.end(), '\n'), text.end());
+      breakEventLoop(text);
+    } else if (replState == SUBPROCESS_INPUT && !text.empty()) {
+      breakEventLoop(text);
+    }
   });
   return Status::OK;
 }

@@ -220,5 +220,9 @@ local({
 })
 
 if (.Platform$OS.type == "unix" && !("UTF-8" %in% localeToCharset(Sys.getlocale("LC_CTYPE")))) {
-  Sys.setlocale("LC_CTYPE", "C.UTF-8")
+  if (grepl("^darwin", R.version$os)) {
+    Sys.setlocale("LC_CTYPE", "UTF-8")
+  } else {
+    Sys.setlocale("LC_CTYPE", "C.UTF-8")
+  }
 }
