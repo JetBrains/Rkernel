@@ -72,6 +72,7 @@ struct RObjects {
   Rcpp::Function parse = baseEnv["parse"];
   Rcpp::Function paste = baseEnv["paste"];
   Rcpp::Function print = baseEnv["print"];
+  Rcpp::Function q = baseEnv["q"];
   Rcpp::Function rm = baseEnv["rm"];
   Rcpp::Function setwd = baseEnv["setwd"];
   Rcpp::Function subscript = baseEnv["["];

@@ -47,8 +47,8 @@ Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerW
 }
 
 Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, google::protobuf::Empty*) {
-  executeOnMainThread([&] {
-    terminate = true;
+  executeOnMainThreadAsync([] {
+    RI->q();
   });
   return Status::OK;
 }
@@ -118,6 +118,10 @@ Status RPIServiceImpl::viewRequestFinished(ServerContext* context, const Empty*,
 }
 
 Status RPIServiceImpl::getNextAsyncEvent(ServerContext*, const Empty*, AsyncEvent* response) {
-  response->CopyFrom(asyncEvents.pop());
+  if (terminate) {
+    response->mutable_termination();
+  } else {
+    response->CopyFrom(asyncEvents.pop());
+  }
   return Status::OK;
 }

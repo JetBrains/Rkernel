@@ -331,9 +331,14 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
   }
   while (!done) {
     doneVar.wait_for(lock, std::chrono::milliseconds(25));
-    if (!cancelled && context->IsCancelled()) {
-      cancelled = true;
-      R_interrupts_pending = 1;
+    if (context->IsCancelled()) {
+      if (!cancelled) {
+        cancelled = true;
+        R_interrupts_pending = 1;
+      }
+      if (terminate) {
+        return;
+      }
     }
   }
 }
@@ -408,13 +413,12 @@ public:
           break;
         }
         if (!rpcHappened) {
-          std::cerr << "No RPC for " << CLIENT_RPC_TIMEOUT_MILLIS << "ms, terminating\n";
-          rpiService->terminate = true;
           R_interrupts_pending = 1;
-          rpiService->executeOnMainThreadAsync([]{});
-          std::this_thread::sleep_for(std::chrono::seconds(5));
+          rpiService->executeOnMainThreadAsync([]{ RI->q(); });
+          time = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+          condVar.wait_until(lock, time, [&] { return termination || std::chrono::steady_clock::now() >= time; });
           if (!termination) {
-            exit(0);
+            abort();
           }
           break;
         }
@@ -463,6 +467,10 @@ void quitRPIService() {
   static bool done = false;
   if (done) return;
   done = true;
+  rpiService->terminate = true;
+  AsyncEvent event;
+  event.mutable_termination();
+  rpiService->asyncEvents.push(event);
   server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(1));
   server = nullptr;
   rpiService = nullptr;

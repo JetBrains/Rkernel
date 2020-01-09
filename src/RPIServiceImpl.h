@@ -158,6 +158,8 @@ private:
   static std::string replaceAll(string buffer, char from, const char *s);
   static std::string buildCallCommand(const char* functionName, const std::string& argumentString = "");
   Status replExecuteCommand(ServerContext* context, const std::string& command);
+
+  friend void quitRPIService();
 };
 
 const int CLIENT_RPC_TIMEOUT_MILLIS = 60000;
