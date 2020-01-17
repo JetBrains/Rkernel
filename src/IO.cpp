@@ -69,6 +69,11 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
     return 0;
   }
 
+  if (rpiService == nullptr) {
+    // Read console happened during termination
+    abort();
+  }
+
   std::string s;
   if (addToHistory) {
     // That's browser prompt, we ignore them
