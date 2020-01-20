@@ -109,6 +109,7 @@ public:
   Status setWorkingDir(ServerContext* context, const StringValue* request, Empty*) override;
   Status clearEnvironment(ServerContext* context, const RRef* request, Empty*) override;
   Status loadLibrary(ServerContext* context, const StringValue* request, Empty*) override;
+  Status unloadLibrary(ServerContext* context, const StringValue* request, Empty*) override;
   Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty* response) override;
   Status viewRequestFinished(ServerContext* context, const Empty*, Empty*) override;
 

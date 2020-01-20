@@ -76,10 +76,15 @@ Status RPIServiceImpl::clearEnvironment(ServerContext* context, const RRef* requ
 }
 
 Status RPIServiceImpl::loadLibrary(ServerContext* context, const StringValue* request, Empty*) {
-  executeOnMainThread([&] {
-    RI->library(request->value());
-  }, context);
-  return Status::OK;
+  auto detachCommandBuilder = std::ostringstream();
+  detachCommandBuilder << "library(" << request->value() << ")\n";
+  return replExecuteCommand(context, detachCommandBuilder.str());
+}
+
+Status RPIServiceImpl::unloadLibrary(ServerContext* context, const StringValue* request, Empty*) {
+  auto detachCommandBuilder = std::ostringstream();
+  detachCommandBuilder << "detach('package:" << request->value() << "', unload = TRUE)\n";
+  return replExecuteCommand(context, detachCommandBuilder.str());
 }
 
 Status RPIServiceImpl::setOutputWidth(ServerContext* context, const Int32Value* request, Empty*) {
