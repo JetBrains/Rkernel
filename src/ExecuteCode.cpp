@@ -123,7 +123,7 @@ Status RPIServiceImpl::executeCommand(ServerContext* context, const std::string&
       writer->Write(response);
     });
     try {
-      Rcpp::ExpressionVector expressions = RI->parse(Rcpp::Named("text", command));
+      Rcpp::ExpressionVector expressions = parseCode(command);
       executeCodeImpl(expressions, currentEnvironment(), true, false, false);
     } catch (Rcpp::eval_error const& e) {
       std::string s = std::string("\n") + e.what() + '\n';

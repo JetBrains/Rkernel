@@ -82,6 +82,7 @@ struct RObjects {
   Rcpp::Function srcref = baseEnv["srcref"];
   Rcpp::Function subscript = baseEnv["["];
   Rcpp::Function substring = baseEnv["substring"];
+  Rcpp::Function textConnection = baseEnv["textConnection"];
   Rcpp::Function type = baseEnv["typeof"];
   Rcpp::Function unclass = baseEnv["unclass"];
   Rcpp::Function unique = baseEnv["unique"];

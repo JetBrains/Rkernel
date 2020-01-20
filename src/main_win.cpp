@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
   }
   Rs->rhome = rHome;
   Rs->home = getRUser();
-  Rs->CharacterMode = LinkDLL;
+  Rs->CharacterMode = RGui;
   Rs->ReadConsole = winMyReadConsole;
   Rs->WriteConsole = nullptr;
   Rs->WriteConsoleEx = myWriteConsoleEx;

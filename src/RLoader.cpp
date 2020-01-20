@@ -30,8 +30,8 @@ void getValueInfo(SEXP var, ValueInfo* result) {
   auto type = TYPEOF(var);
   if (type == PROMSXP) {
     if (PRVALUE(var) == R_UnboundValue) {
-      auto code = Rcpp::as<std::string>(
-          RI->paste(RI->deparse(RI->expression(PRCODE(var))), Rcpp::Named("collapse", " ")));
+      std::string code = translateToUTF8(
+        RI->paste(RI->deparse(RI->expression(PRCODE(var))), Rcpp::Named("collapse", " ")));
       const char* exprStr = "expression(";
       int exprLen = strlen(exprStr);
       if (!strncmp(exprStr, code.c_str(), exprLen) && code.back() == ')') {
@@ -44,7 +44,7 @@ void getValueInfo(SEXP var, ValueInfo* result) {
   } else if (type == CLOSXP || type == SPECIALSXP || type == BUILTINSXP) {
     result->mutable_function()->set_header(getFunctionHeader(var));
   } else if (type == ENVSXP) {
-    result->mutable_environment()->set_name(Rcpp::as<std::string>(RI->environmentName(var)));
+    result->mutable_environment()->set_name(translateToUTF8(RI->environmentName(var)));
   } else {
     Rcpp::CharacterVector classes = RI->classes(var);
     if (contains(classes, "ggplot")) {
@@ -97,7 +97,7 @@ Status RPIServiceImpl::loaderGetParentEnvs(ServerContext* context, const RRef* r
     while (environment != Rcpp::Environment::empty_env()) {
       environment = environment.parent();
       ParentEnvsResponse::EnvInfo* envInfo = response->add_envs();
-      envInfo->set_name(Rcpp::as<std::string>(RI->environmentName(environment)));
+      envInfo->set_name(translateToUTF8(RI->environmentName(environment)));
     }
   }, context);
   return Status::OK;
@@ -117,7 +117,7 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
       for (int i = std::max(0, reqStart); i < std::min<int>(ls.size(), reqEnd); ++i) {
         const char* name = ls[i];
         VariablesResponse::Variable* var = response->add_vars();
-        var->set_name(name);
+        var->set_name(ls[i]);
         try {
           getValueInfo(Rf_findVar(Rf_install(name), environment), var->mutable_value());
         } catch (Rcpp::eval_error const& e) {
@@ -132,7 +132,7 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
       Rcpp::CharacterVector names = namesObj == R_NilValue ? Rcpp::CharacterVector() : Rcpp::as<Rcpp::CharacterVector>(namesObj);
       for (int i = std::max(0, reqStart); i < std::min(length, reqEnd); ++i) {
         VariablesResponse::Variable* var = response->add_vars();
-        var->set_name(i < names.size() && !Rcpp::CharacterVector::is_na(names[i]) ? (const char*)names[i] : "");
+        var->set_name(i < names.size() && !Rcpp::CharacterVector::is_na(names[i]) ? names[i] : "");
         try {
           getValueInfo(RI->doubleSubscript(obj, i + 1), var->mutable_value());
         } catch (Rcpp::eval_error const& e) {

@@ -111,8 +111,7 @@ Rcpp::ExpressionVector SourceFileManager::parseSourceFile(std::string const& cod
     fileId = getNewFileId();
     name = "tmp";
   }
-  Rcpp::ExpressionVector expressions = RI->parse(Rcpp::Named("text", code),
-                                                 Rcpp::Named("keep.source", true));
+  Rcpp::ExpressionVector expressions = parseCode(code, true);
   SEXP srcfile = Rf_getAttrib(expressions, RI->srcfileAttr);
   if (lineOffset != 0) {
     Rf_setAttrib(srcfile, RI->srcfileLineOffset, Rf_ScalarInteger(lineOffset));

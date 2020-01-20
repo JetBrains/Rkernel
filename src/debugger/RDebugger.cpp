@@ -175,7 +175,7 @@ static bool checkCondition(std::string const& condition, SEXP env) {
   }
   try {
     WithDebuggerEnabled with(false);
-    Rcpp::RObject expr = RI->parse(Rcpp::Named("text", condition));
+    Rcpp::RObject expr = parseCode(condition);
     Rcpp::RObject obj = RI->asLogical(Rcpp::Rcpp_eval(expr, env));
     return Rcpp::is<bool>(obj) && Rcpp::as<bool>(obj);
   } catch (Rcpp::eval_error const&) {
@@ -189,7 +189,7 @@ static void evaluateAndLog(std::string const& expression, SEXP env) {
   }
   try {
     WithDebuggerEnabled with(false);
-    Rcpp::RObject expr = RI->parse(Rcpp::Named("text", expression));
+    Rcpp::RObject expr = parseCode(expression);
     RI->message(getPrintedValue(Rcpp::Rcpp_eval(expr, env)), Rcpp::Named("appendLF", false));
   } catch (Rcpp::eval_error const& e) {
     RI->message(e.what());

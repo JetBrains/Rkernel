@@ -87,6 +87,54 @@ inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLengt
   return result;
 }
 
+inline SEXP mkCharUTF8(const char* s) {
+  return Rf_mkCharCE(s, CE_UTF8);
+}
+
+inline SEXP mkCharUTF8(std::string const& s) {
+  return Rf_mkCharCE(s.c_str(), CE_UTF8);
+}
+
+inline SEXP mkStringUTF8(const char* s) {
+  SEXP t;
+  PROTECT(t = Rf_allocVector(STRSXP, 1));
+  SET_STRING_ELT(t, 0, mkCharUTF8(s));
+  UNPROTECT(1);
+  return t;
+}
+
+inline SEXP mkStringUTF8(std::string const& s) {
+  return mkStringUTF8(s.c_str());
+}
+
+inline const char* translateToNative(const char* s) {
+  return Rf_translateChar(mkCharUTF8(s));
+}
+
+inline const char* translateToNative(std::string const& s) {
+  return translateToNative(s.c_str());
+}
+
+inline const char* translateToUTF8(SEXP e) {
+  if (TYPEOF(e) == CHARSXP) return Rf_translateCharUTF8(e);
+  if (TYPEOF(e) == STRSXP && Rf_length(e) == 1) return Rf_translateCharUTF8(STRING_ELT(e, 0));
+  return "";
+}
+
+inline SEXP parseCode(std::string const& s, bool keepSource = false) {
+  SEXP code = mkStringUTF8(s);
+#ifdef _WIN32_WINNT
+  return RI->parse(RI->textConnection(code, Rcpp::Named("encoding", "UTF-8")),
+                   Rcpp::Named("encoding", "UTF-8"),
+                   Rcpp::Named("keep.source", keepSource),
+                   Rcpp::Named("srcfile", keepSource ? RI->srcfilecopy("<text>", code) : R_NilValue));
+#else
+  return RI->parse(Rcpp::Named("text", code),
+                   Rcpp::Named("encoding", "UTF-8"),
+                   Rcpp::Named("keep.source", keepSource));
+#endif
+}
+
 inline SEXP getSrcref(SEXP srcrefs, int i) {
   SEXP result;
   if (!Rf_isNull(srcrefs) && Rf_length(srcrefs) > i

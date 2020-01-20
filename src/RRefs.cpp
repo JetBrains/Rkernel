@@ -43,7 +43,7 @@ Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
       return rDebugger.getErrorStackFrame(index);
     }
     case RRef::kMember:
-      return Rcpp::as<Rcpp::Environment>(dereference(ref.member().env())).get(ref.member().name());
+      return Rcpp::as<Rcpp::Environment>(dereference(ref.member().env())).get(mkStringUTF8(ref.member().name()));
     case RRef::kParentEnv: {
       Rcpp::Environment env = Rcpp::as<Rcpp::Environment>(dereference(ref.parentenv().env()));
       int count = ref.parentenv().index();
@@ -58,7 +58,7 @@ Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
     case RRef::kExpression: {
       Rcpp::Environment env = Rcpp::as<Rcpp::Environment>(dereference(ref.expression().env()));
       std::string code = ref.expression().code();
-      return RI->evalCode(code, env);
+      return RI->eval(parseCode(code), Rcpp::Named("envir", env));
     }
     case RRef::kListElement: {
       Rcpp::List list = Rcpp::as<Rcpp::List>(dereference(ref.listelement().list()));
@@ -130,7 +130,7 @@ Status RPIServiceImpl::getDistinctStrings(ServerContext* context, const RRef* re
     int sumLength = 0;
     for (int i = 0; i < vector.length(); ++i) {
       if (!vector.is_na(vector[i])) {
-        std::string s = Rcpp::as<std::string>(vector[i]);
+        std::string s = translateToUTF8(vector[i]);
         sumLength += s.length();
         if (sumLength > EVALUATE_AS_TEXT_MAX_LENGTH) break;
         response->add_list(s);
@@ -185,8 +185,8 @@ Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableCo
     Rcpp::CharacterVector names = table.names();
     for (int i = 0; i < (int)table.ncol(); ++i) {
       TableColumnsInfo::Column *column = response->add_columns();
-      column->set_name(names[i]);
-      column->set_type(Rcpp::as<std::string>(RI->paste(RI->classes(table[i]), Rcpp::Named("collapse", ","))));
+      column->set_name(translateToUTF8(names[i]));
+      column->set_type(translateToUTF8(RI->paste(RI->classes(table[i]), Rcpp::Named("collapse", ","))));
     }
   }, context);
   return Status::OK;

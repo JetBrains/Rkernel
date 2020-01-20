@@ -142,7 +142,8 @@ Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameG
           if (isNa[j]) {
             columnProto->add_values()->mutable_na();
           } else {
-            columnProto->add_values()->set_stringvalue(Rcpp::as<std::string>(RI->paste(column[j], Rcpp::Named("collapse", "; "))));
+            columnProto->add_values()->set_stringvalue(
+              translateToUTF8(RI->paste(column[j], Rcpp::Named("collapse", "; "))));
           }
         }
       }

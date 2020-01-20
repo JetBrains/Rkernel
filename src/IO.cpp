@@ -21,6 +21,7 @@
 #include "RPIServiceImpl.h"
 #include <Rcpp.h>
 #include "RcppExports.h"
+#include "util/RUtil.h"
 
 void registerFunctions();
 void init_Rcpp_routines(DllInfo *info);
@@ -79,7 +80,7 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
     // That's browser prompt, we ignore them
     s = "f\n";
   } else {
-    s = rpiService->readLineHandler(prompt);
+    s = translateToNative(rpiService->readLineHandler(prompt));
   }
   if (rpiService->terminate) {
     R_interrupts_pending = 1;
@@ -99,8 +100,11 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
 
 static const int OUTPUT_MESSAGE_MAX_SIZE = 65536;
 
-void myWriteConsoleEx(const char* buf, int len, int type) {
-  std::unique_lock<std::mutex> lock(outputMutex);
+#ifdef _WIN32_WINNT
+static const char UTF8in[4] = "\002\377\376", UTF8out[4] = "\003\377\376";
+#endif
+
+static void sendText(const char* buf, int len, int type) {
   while (len > 0) {
     int currentLen = std::min(len, OUTPUT_MESSAGE_MAX_SIZE);
     mainOutputHandler(buf, currentLen, (OutputType) type);
@@ -109,15 +113,35 @@ void myWriteConsoleEx(const char* buf, int len, int type) {
   }
 }
 
+inline void myWriteConsoleExImpl(const char* buf, int len, int type) {
+#ifdef _WIN32_WINNT
+  for (int i = 0; i < len; ) {
+    int j = i;
+    while (j + 3 <= len) {
+      if ((buf[j] == UTF8in[0] && buf[j + 1] == UTF8in[1] && buf[j + 2] == UTF8in[2]) ||
+          (buf[j] == UTF8out[0] && buf[j + 1] == UTF8out[1] && buf[j + 2] == UTF8out[2])) {
+        break;
+      }
+      ++j;
+    }
+    if (j + 3 > len) j = len;
+    if (i != j) sendText(buf + i, j - i, type);
+    i = j + 3;
+  }
+#else
+  sendText(buf, len, type);
+#endif
+}
+
+void myWriteConsoleEx(const char* buf, int len, int type) {
+  std::unique_lock<std::mutex> lock(outputMutex);
+  myWriteConsoleExImpl(buf, len, type);
+}
+
 void myWriteConsoleExToSpecificHandler(const char* buf, int len, int type, int id) {
   std::unique_lock<std::mutex> lock(outputMutex);
   if (id != currentHandlerId) return;
-  while (len > 0) {
-    int currentLen = std::min(len, OUTPUT_MESSAGE_MAX_SIZE);
-    mainOutputHandler(buf, currentLen, (OutputType) type);
-    buf += currentLen;
-    len -= currentLen;
-  }
+  myWriteConsoleExImpl(buf, len, type);
 }
 
 void mySuicide(const char* message) {

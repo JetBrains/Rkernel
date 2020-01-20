@@ -55,7 +55,7 @@ Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, goog
 
 Status RPIServiceImpl::getWorkingDir(ServerContext* context, const Empty*, StringValue* response) {
   executeOnMainThread([&] {
-    response->set_value(Rcpp::as<std::string>(RI->getwd()));
+    response->set_value(translateToUTF8(RI->getwd()));
   }, context);
   return Status::OK;
 }
@@ -102,7 +102,7 @@ void RPIServiceImpl::viewHandler(SEXP xSEXP, SEXP titleSEXP) {
   if (!Rcpp::is<std::string>(titleSEXP)) {
     throw std::runtime_error("Title should be a string");
   }
-  std::string title = Rcpp::as<std::string>(titleSEXP);
+  std::string title = translateToUTF8(titleSEXP);
   AsyncEvent event;
   event.mutable_viewrequest()->set_persistentrefindex(persistentRefStorage.add(x));
   event.mutable_viewrequest()->set_title(title);
