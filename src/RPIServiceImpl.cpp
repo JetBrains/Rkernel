@@ -458,6 +458,7 @@ void initRPIService() {
   } else {
     std::cout << "PORT " << port << std::endl;
   }
+  RI->options(Rcpp::Named("warn", 1));
   RI->assign(".Last.sys", RI->evalCode("function() .Call(\".jetbrains_quitRPIService\")", RI->baseEnv),
       Rcpp::Named("envir", R_BaseNamespace));
 }
