@@ -77,7 +77,8 @@ Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* requ
     Rcpp::CharacterVector names = RI->names(dataFrame);
     for (int i = 0; i < (int)dataFrame.ncol(); ++i) {
       DataFrameInfoResponse::Column *columnInfo = response->add_columns();
-      std::string cls = getClasses(RI->doubleSubscript(dataFrame, i + 1));
+      Rcpp::RObject column = RI->doubleSubscript(dataFrame, i + 1);
+      std::string cls = getClasses(column);
       if (names[i] == ROW_NAMES_COL) {
         columnInfo->set_isrownames(true);
       } else {
@@ -94,7 +95,7 @@ Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* requ
         columnInfo->set_sortable(true);
       } else {
         columnInfo->set_type(DataFrameInfoResponse::STRING);
-        columnInfo->set_sortable(cls == "character" || cls == "factor");
+        columnInfo->set_sortable(cls == "character" || Rf_inherits(column, "factor"));
       }
     }
   }, context);
