@@ -120,24 +120,20 @@ Status RPIServiceImpl::evaluateAsBoolean(ServerContext* context, const RRef* req
 }
 
 
-Status RPIServiceImpl::evaluateAsStringList(ServerContext* context, const RRef* request, StringList* response) {
+Status RPIServiceImpl::getDistinctStrings(ServerContext* context, const RRef* request, StringList* response) {
   executeOnMainThread([&] {
     Rcpp::RObject object = dereference(*request);
-    if (!Rcpp::is<Rcpp::GenericVector>(object) && !Rcpp::is<Rcpp::CharacterVector>(object)) {
-      if (Rf_inherits(object, "factor")) {
-        Rcpp::CharacterVector vector = Rcpp::as<Rcpp::CharacterVector>(object);
-        for (auto const& x : vector) {
-          response->add_list(Rcpp::as<std::string>(x));
-        }
-      }
+    if (!Rcpp::is<Rcpp::CharacterVector>(object) && !Rf_inherits(object, "factor")) {
       return;
     }
-    Rcpp::GenericVector vector = Rcpp::as<Rcpp::GenericVector>(object);
-    for (auto const& x : vector) {
-      if (Rcpp::is<std::string>(x) && !Rcpp::as<bool>(RI->isNa(x))) {
-        response->add_list(Rcpp::as<std::string>(x));
-      } else {
-        response->add_list("");
+    Rcpp::CharacterVector vector = RI->unique(object);
+    int sumLength = 0;
+    for (int i = 0; i < vector.length(); ++i) {
+      if (!vector.is_na(vector[i])) {
+        std::string s = Rcpp::as<std::string>(vector[i]);
+        sumLength += s.length();
+        if (sumLength > EVALUATE_AS_TEXT_MAX_LENGTH) break;
+        response->add_list(s);
       }
     }
   }, context);

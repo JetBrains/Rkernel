@@ -69,7 +69,7 @@ public:
   Status loaderGetValueInfo(ServerContext* context, const RRef* request, ValueInfo* response) override;
   Status evaluateAsText(ServerContext* context, const RRef* request, StringValue* response) override;
   Status evaluateAsBoolean(ServerContext* context, const RRef* request, BoolValue* response) override;
-  Status evaluateAsStringList(ServerContext* context, const RRef* request, StringList* response) override;
+  Status getDistinctStrings(ServerContext* context, const RRef* request, StringList* response) override;
   Status getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) override;
   Status getSourceFileText(ServerContext* context, const StringValue* request, StringValue* response) override;
   Status getSourceFileName(ServerContext* context, const StringValue* request, StringValue* response) override;

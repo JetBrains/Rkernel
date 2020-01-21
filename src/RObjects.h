@@ -84,6 +84,7 @@ struct RObjects {
   Rcpp::Function substring = baseEnv["substring"];
   Rcpp::Function type = baseEnv["typeof"];
   Rcpp::Function unclass = baseEnv["unclass"];
+  Rcpp::Function unique = baseEnv["unique"];
   Rcpp::Function withVisible = baseEnv["withVisible"];
 
   Rcpp::Environment compiler = loadNamespace("compiler");
