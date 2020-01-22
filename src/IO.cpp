@@ -58,11 +58,11 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   static bool inited = false;
   if (!inited) {
     inited = true;
-    initRPIService();
     DllInfo *dll = R_getEmbeddingDllInfo();
     registerFunctions();
     init_Rcpp_routines(dll);
     RcppExports_Init(dll);
+    initRPIService();
     rpiService->mainLoop();
     R_interrupts_pending = 0;
     quitRPIService();
