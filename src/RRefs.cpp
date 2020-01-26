@@ -169,18 +169,12 @@ Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableCo
   executeOnMainThread([&] {
     Rcpp::RObject tableObj = dereference(request->ref());
     if (!Rcpp::is<Rcpp::DataFrame>(tableObj)) return;
-    switch (request->tabletype()) {
-      case TableColumnsInfoRequest_TableType_DPLYR:
-        if (!Rcpp::as<bool>(RI->inherits(tableObj, "tbl_df"))) return;
-        break;
-      case TableColumnsInfoRequest_TableType_DATA_TABLE:
-        if (!Rcpp::as<bool>(RI->inherits(tableObj, "data.table"))) return;
-        break;
-      case TableColumnsInfoRequest_TableType_DATA_FRAME:
-        if (!Rcpp::as<bool>(RI->inherits(tableObj, "data.frame"))) return;
-        break;
-      default:;
-    }
+
+    response->set_tabletype(Rcpp::as<bool>(RI->inherits(tableObj, "tbl_df")) ? TableColumnsInfo_TableType_DPLYR :
+     (Rcpp::as<bool>(RI->inherits(tableObj, "data.table")) ? TableColumnsInfo_TableType_DATA_TABLE :
+     (Rcpp::as<bool>(RI->inherits(tableObj, "data.frame")) ? TableColumnsInfo_TableType_DATA_FRAME
+                                                           : TableColumnsInfo_TableType_UNKNOWN)));
+
     Rcpp::DataFrame table = tableObj;
     Rcpp::CharacterVector names = table.names();
     for (int i = 0; i < (int)table.ncol(); ++i) {
