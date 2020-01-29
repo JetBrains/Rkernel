@@ -61,15 +61,17 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         throw;
       }
       if (isDebug) rDebugger.setCommand(CONTINUE);
-      executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, true);
+      executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl);
     } catch (Rcpp::eval_error const& e) {
       if (writer != nullptr) {
         ExecuteCodeResponse response;
         response.set_exception(e.what());
         writer->Write(response);
       }
-      std::string msg = std::string("\n") + e.what() + "\n";
-      myWriteConsoleEx(msg.c_str(), msg.length(), STDERR);
+      if (!isRepl) {
+        std::string msg = std::string("\n") + e.what() + "\n";
+        myWriteConsoleEx(msg.c_str(), msg.length(), STDERR);
+      }
     } catch (Rcpp::internal::InterruptedException const& e) {
       ExecuteCodeResponse response;
       response.set_exception("Interrupted");
