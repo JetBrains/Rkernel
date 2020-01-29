@@ -20,6 +20,7 @@
 
 #include "RPIServiceImpl.h"
 #include "util/RUtil.h"
+#include "HTMLViewer.h"
 #include <Rcpp.h>
 
 using namespace Rcpp;
@@ -163,6 +164,21 @@ RcppExport SEXP _jetbrains_quitRPIService() {
   END_RCPP
 }
 
+RcppExport SEXP _jetbrains_showFile(SEXP arg1, SEXP arg2) {
+  BEGIN_RCPP
+    Rcpp::traits::input_parameter<std::string>::type path(arg1);
+    Rcpp::traits::input_parameter<std::string>::type title(arg2);
+    rpiService->showFileHandler(path, title);
+  END_RCPP
+}
+
+RcppExport SEXP _jetbrains_processBrowseURL(SEXP arg) {
+  BEGIN_RCPP
+    Rcpp::traits::input_parameter<std::string>::type url(arg);
+    return Rf_ScalarLogical(processBrowseURL(url));
+  END_RCPP
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -177,6 +193,8 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_debugger_disable", (DL_FUNC) &_jetbrains_debugger_disable, 0},
     {".jetbrains_exception_handler", (DL_FUNC) &_jetbrains_exception_handler, 1},
     {".jetbrains_quitRPIService", (DL_FUNC) &_jetbrains_quitRPIService, 0},
+    {".jetbrains_showFile", (DL_FUNC) &_jetbrains_showFile, 2},
+    {".jetbrains_processBrowseURL", (DL_FUNC) &_jetbrains_processBrowseURL, 1},
     {NULL, NULL, 0}
 };
 

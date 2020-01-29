@@ -108,14 +108,29 @@ void RPIServiceImpl::viewHandler(SEXP xSEXP, SEXP titleSEXP) {
   event.mutable_viewrequest()->set_title(title);
   getValueInfo(x, event.mutable_viewrequest()->mutable_value());
   asyncEvents.push(event);
-  isInViewRequest = true;
+  ScopedAssign<bool> with(isInClientRequest, true);
   eventLoop();
-  isInViewRequest = false;
 }
 
-Status RPIServiceImpl::viewRequestFinished(ServerContext* context, const Empty*, Empty*) {
+void RPIServiceImpl::showFileHandler(std::string const& filePath, std::string const& title) {
+  AsyncEvent event;
+  event.mutable_showfilerequest()->set_filepath(filePath);
+  event.mutable_showfilerequest()->set_title(title);
+  asyncEvents.push(event);
+  ScopedAssign<bool> with(isInClientRequest, true);
+  eventLoop();
+}
+
+void RPIServiceImpl::showHelpHandler(std::string const& content, std::string const& url) {
+  AsyncEvent event;
+  event.mutable_showhelprequest()->set_content(content);
+  event.mutable_showhelprequest()->set_url(url);
+  asyncEvents.push(event);
+}
+
+Status RPIServiceImpl::clientRequestFinished(ServerContext* context, const Empty*, Empty*) {
   executeOnMainThread([&]{
-    if (isInViewRequest) {
+    if (isInClientRequest) {
       breakEventLoop();
     }
   }, context);

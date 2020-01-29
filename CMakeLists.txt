@@ -66,7 +66,8 @@ list(APPEND RWRAPPER_SOURCES
     src/debugger/DebuggerMethods.cpp
     src/debugger/TextBuilder.cpp
     src/RInternals/RInternals.cpp
-    src/util/RUtil.cpp)
+    src/util/RUtil.cpp
+    src/HTMLViewer.cpp)
 
 if(WIN32)
     add_definitions(-DNOMINMAX)

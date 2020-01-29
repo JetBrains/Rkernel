@@ -86,8 +86,7 @@ public:
   Status graphicsRescaleStored(ServerContext* context, const GraphicsRescaleStoredRequest* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsShutdown(ServerContext* context, const Empty* request, ServerWriter<CommandOutput>* writer) override;
 
-  Status htmlViewerInit(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
-  Status htmlViewerReset(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) override;
+  Status httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
 
   Status beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) override;
   Status afterChunkExecution(ServerContext *context, const ::google::protobuf::Empty *request, ServerWriter<CommandOutput> *writer) override;
@@ -111,7 +110,7 @@ public:
   Status loadLibrary(ServerContext* context, const StringValue* request, Empty*) override;
   Status unloadLibrary(ServerContext* context, const StringValue* request, Empty*) override;
   Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty* response) override;
-  Status viewRequestFinished(ServerContext* context, const Empty*, Empty*) override;
+  Status clientRequestFinished(ServerContext* context, const Empty*, Empty*) override;
 
   Status convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status makeRdFromRoxygen(ServerContext* context, const MakeRdFromRoxygenRequest* request,  ServerWriter<CommandOutput> *writer) override;
@@ -122,6 +121,8 @@ public:
   std::string readLineHandler(std::string const& prompt);
   void debugPromptHandler();
   void viewHandler(SEXP x, SEXP title);
+  void showFileHandler(std::string const& filePath, std::string const& title);
+  void showHelpHandler(std::string const& content, std::string const& url);
 
   void sendAsyncEvent(AsyncEvent const& e);
   void eventLoop();
@@ -148,7 +149,7 @@ private:
   OutputHandler replOutputHandler;
 
   GetInfoResponse infoResponse;
-  bool isInViewRequest = false;
+  bool isInClientRequest = false;
 
   std::unordered_set<int> dataFramesCache;
 

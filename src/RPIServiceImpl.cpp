@@ -27,10 +27,9 @@
 #include <thread>
 #include <Rinternals.h>
 #include "util/ScopedAssign.h"
+#include "HTMLViewer.h"
 
 namespace {
-  const auto OLD_BROWSER_NAME = ".jetbrains_ther_old_browser";
-
   template<typename TCollection, typename TMapper>
   std::string joinToString(const TCollection& collection, const TMapper& mapper, const char* prefix = "", const char* suffix = "", const char* separator = ", ") {
     auto sout = std::ostringstream();
@@ -155,28 +154,8 @@ Status RPIServiceImpl::beforeChunkExecution(ServerContext *context, const ChunkP
   return executeCommand(context, command, writer);
 }
 
-Status RPIServiceImpl::afterChunkExecution(ServerContext *context, const ::google::protobuf::Empty *request,ServerWriter<CommandOutput> *writer) {
+Status RPIServiceImpl::afterChunkExecution(ServerContext *context, const ::google::protobuf::Empty *, ServerWriter<CommandOutput> *writer) {
   return executeCommand(context, ".jetbrains$runAfterChunk()", writer);
-}
-
-Status RPIServiceImpl::htmlViewerInit(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) {
-  auto& path = request->value();
-  auto sout = std::ostringstream();
-  sout << OLD_BROWSER_NAME << " <- getOption('browser'); "
-       << "options(browser = function(url) {"
-       << " if (grepl('^https?:', url)) {"
-       << "  browseURL(url, " << OLD_BROWSER_NAME << ")"
-       << " } else {"
-       << "  cat(url, sep = '\\n', file = '" << path << "')"
-       << " }"
-       << "})";
-  return executeCommand(context, sout.str(), writer);
-}
-
-Status RPIServiceImpl::htmlViewerReset(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) {
-  auto sout = std::ostringstream();
-  sout << "options(browser = " << OLD_BROWSER_NAME << ")";
-  return executeCommand(context, sout.str(), writer);
 }
 
 Status RPIServiceImpl::repoGetPackageVersion(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) {
@@ -444,6 +423,7 @@ void initRPIService() {
   RI = std::make_unique<RObjects>();
   rpiService = std::make_unique<RPIServiceImpl>();
   rDebugger.init();
+  htmlViewerInit();
   if (commandLineOptions.withTimeout) {
     terminationTimer = new TerminationTimer();
     terminationTimer->init();
@@ -459,6 +439,7 @@ void initRPIService() {
     std::cout << "PORT " << port << std::endl;
   }
   RI->options(Rcpp::Named("warn", 1));
+  RI->options(Rcpp::Named("demo.ask", true));
   RI->assign(".Last.sys", RI->evalCode("function() .Call(\".jetbrains_quitRPIService\")", RI->baseEnv),
       Rcpp::Named("envir", R_BaseNamespace));
 }

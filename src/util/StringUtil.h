@@ -27,6 +27,10 @@ inline bool startsWith(std::string const& s, const char* t) {
   return !strncmp(s.c_str(), t, strlen(t));
 }
 
+inline bool startsWith(std::string const& s, std::string const& t) {
+  return startsWith(s, t.c_str());
+}
+
 inline std::string escape(std::string const& s, const char* alsoEscape = "") {
   std::string t;
   for (char c : s) {

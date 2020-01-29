@@ -91,6 +91,10 @@ struct RObjects {
   Rcpp::Environment compiler = loadNamespace("compiler");
   Rcpp::Function compilerEnableJIT = compiler["enableJIT"];
 
+  Rcpp::Environment tools = loadNamespace("tools");
+  Rcpp::Function httpd = tools["httpd"];
+  Rcpp::Function httpdPort = tools["httpdPort"];
+
   SEXP evalCode(std::string const& code, Rcpp::Environment const& env) {
     return eval(parse(Rcpp::Named("text", code)), Rcpp::Named("envir", env));
   }
