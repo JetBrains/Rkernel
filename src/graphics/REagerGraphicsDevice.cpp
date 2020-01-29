@@ -36,7 +36,7 @@ Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
   auto sout = std::ostringstream();
   sout << snapshotDirectory << "/snapshot" << makeSnapshotTypeSuffix()
-       << "_" << snapshotNumber << "_" << snapshotVersion << ".png";
+       << "_" << snapshotNumber << "_" << snapshotVersion << "_" << parameters.resolution << ".png";
   return makePtr<SlaveDevice>(sout.str(), parameters);
 }
 
