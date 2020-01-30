@@ -77,7 +77,7 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case SYMSXP: {
-      text << quoteIfNeeded(CHAR(PRINTNAME(expr)));
+      text << quoteIfNeeded(translateToUTF8(PRINTNAME(expr)));
       break;
     }
     case LISTSXP: {
@@ -86,7 +86,7 @@ void TextBuilder::build(SEXP expr) {
       int i = 0;
       while (expr != R_NilValue) {
         if (i > 0) text << ", ";
-        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? CHAR(STRING_ELT(names, i)) : "";
+        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : "";
         if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
         build(CAR(expr));
         expr = CDR(expr);
@@ -112,7 +112,7 @@ void TextBuilder::build(SEXP expr) {
     case LANGSXP: {
       SEXP function = CAR(expr);
       SEXP args = CDR(expr);
-      std::string functionName = TYPEOF(function) == SYMSXP ? CHAR(PRINTNAME(function)) : "";
+      std::string functionName = TYPEOF(function) == SYMSXP ? translateToUTF8(PRINTNAME(function)) : "";
       if (functionName == "{") {
         std::vector<Srcref> srcrefs;
         srcrefs.push_back({currentLine, currentPosition(), currentLine, currentPosition() + 1});
@@ -169,7 +169,7 @@ void TextBuilder::build(SEXP expr) {
         while (args != R_NilValue) {
           if (i > 1) text << ", ";
           ++i;
-          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? CHAR(STRING_ELT(names, i)) : "";
+          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : "";
           if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
           build(CAR(args));
           args = CDR(args);
@@ -200,7 +200,7 @@ void TextBuilder::build(SEXP expr) {
         while (args != R_NilValue) {
           if (i > 0) text << ", ";
           ++i;
-          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? CHAR(STRING_ELT(names, i)) : "";
+          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : "";
           if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
           build(CAR(args));
           args = CDR(args);
@@ -213,7 +213,7 @@ void TextBuilder::build(SEXP expr) {
       if (expr == R_NaString) {
         text << "NA_character_";
       } else {
-        text << '"' << escapeStringCharacters(CHAR(expr)) << '"';
+        text << '"' << escapeStringCharacters(translateToUTF8(expr)) << '"';
       }
       break;
     }
@@ -337,7 +337,7 @@ void TextBuilder::build(SEXP expr) {
       int length = Rf_length(expr);
       for (int i = 0; i < length; ++i) {
         if (i > 0) text << ", ";
-        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? CHAR(STRING_ELT(names, i)) : "";
+        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : "";
         if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
         build(VECTOR_ELT(expr, i));
       }
@@ -385,7 +385,7 @@ void TextBuilder::buildFunctionHeader(SEXP args) {
   int i = 0;
   while (TYPEOF(args) == LISTSXP) {
     if (i > 0) text << ", ";
-    const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? CHAR(STRING_ELT(names, i)) : ".";
+    const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : ".";
     text << quoteIfNeeded(name);
     if (TYPEOF(CAR(args)) != SYMSXP || strlen(CHAR(PRINTNAME(CAR(args)))) > 0) {
       text << " = ";

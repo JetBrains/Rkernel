@@ -176,7 +176,7 @@ inline const char* getCallFunctionName(SEXP call) {
     return "";
   }
   SEXP func = CAR(call);
-  return TYPEOF(func) == SYMSXP ? CHAR(PRINTNAME(func)) : "";
+  return TYPEOF(func) == SYMSXP ? translateToUTF8(PRINTNAME(func)) : "";
 }
 
 inline std::pair<const char*, int> srcrefToPosition(SEXP srcref) {

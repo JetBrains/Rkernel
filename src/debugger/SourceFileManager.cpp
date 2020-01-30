@@ -217,7 +217,7 @@ std::string SourceFileManager::getSourceFileText(std::string const& fileId) {
   if (TYPEOF(lines) != STRSXP) return "";
   std::string result;
   for (int i = 0; i < Rf_length(lines); ++i) {
-    result += CHAR(STRING_ELT(lines, i));
+    result += translateToUTF8(STRING_ELT(lines, i));
     result += '\n';
   }
   return result;

@@ -320,7 +320,7 @@ void RDebugger::doHandleException(SEXP e) {
   AsyncEvent event;
   if (Rf_inherits(e, "condition")) {
     SEXP conditionMessage = Rf_eval(Rf_lang2(RI->conditionMessage, e), R_BaseEnv);
-    event.mutable_exception()->set_text(CHAR(STRING_ELT(conditionMessage, 0)));
+    event.mutable_exception()->set_text(translateToUTF8(conditionMessage));
   } else {
     event.mutable_exception()->set_text("Error");
   }
