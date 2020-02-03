@@ -110,7 +110,8 @@ Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameG
     int end = request->end();
     for (int i = 0; i < (int)dataFrame.ncol(); ++i) {
       DataFrameGetDataResponse::Column* columnProto = response->add_columns();
-      Rcpp::RObject columnObj = RI->subscript(RI->doubleSubscript(dataFrame, i + 1), RI->colon(start + 1, end));
+      Rcpp::RObject columnObj = RI->subscript(Rcpp::Shield<SEXP>(RI->doubleSubscript(dataFrame, i + 1)),
+                                              Rcpp::Shield<SEXP>(RI->colon(start + 1, end)));
       std::string cls = getClasses(columnObj);
       Rcpp::GenericVector column = Rcpp::as<Rcpp::GenericVector>(columnObj);
       Rcpp::LogicalVector isNa = RI->isNa(columnObj);
