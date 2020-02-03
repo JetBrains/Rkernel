@@ -115,17 +115,27 @@ static void sendText(const char* buf, int len, int type) {
 
 inline void myWriteConsoleExImpl(const char* buf, int len, int type) {
 #ifdef _WIN32_WINNT
+  static bool isUTF8[2] = {false, false};
   for (int i = 0; i < len; ) {
     int j = i;
+    bool currentlyUTF8 = isUTF8[type];
     while (j + 3 <= len) {
       if ((buf[j] == UTF8in[0] && buf[j + 1] == UTF8in[1] && buf[j + 2] == UTF8in[2]) ||
           (buf[j] == UTF8out[0] && buf[j + 1] == UTF8out[1] && buf[j + 2] == UTF8out[2])) {
+        isUTF8[type] = (buf[j] == UTF8in[0]);
         break;
       }
       ++j;
     }
     if (j + 3 > len) j = len;
-    if (i != j) sendText(buf + i, j - i, type);
+    if (i != j) {
+      if (currentlyUTF8) {
+        sendText(buf + i, j - i, type);
+      } else {
+        const char* s = nativeToUTF8(buf + i, j - i);
+        sendText(s, strlen(s), type);
+      }
+    }
     i = j + 3;
   }
 #else

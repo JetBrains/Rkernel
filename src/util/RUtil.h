@@ -121,6 +121,10 @@ inline const char* translateToUTF8(SEXP e) {
   return "";
 }
 
+inline const char* nativeToUTF8(const char* s, int len) {
+  return translateToUTF8(Rf_mkCharLen(s, len));
+}
+
 inline SEXP parseCode(std::string const& s, bool keepSource = false) {
   SEXP code = mkStringUTF8(s);
 #ifdef _WIN32_WINNT
