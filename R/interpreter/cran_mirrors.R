@@ -7,7 +7,7 @@ if (length(args) != 0) {
   quit(save = "no", status = 1, runLast = FALSE)
 }
 
-mirrors <- getCRANmirrors()[, c('Name', 'URL')]
+mirrors <- getCRANmirrors(local.only = TRUE)[, c('Name', 'URL')]
 cat(">>>RPLUGIN>>>")
 with(mirrors, cat(paste(Name, URL, sep = "\t"), sep = "\n"))
 cat("<<<RPLUGIN<<<")
