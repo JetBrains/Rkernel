@@ -159,7 +159,7 @@ Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSort
   executeOnMainThread([&] {
     if (!RI->initDplyr()) return;
     Rcpp::RObject dataFrame = dereference(request->ref());
-    std::vector<SEXP> arrangeArgs = {dataFrame};
+    std::vector<Rcpp::RObject> arrangeArgs = {dataFrame};
     for (auto const& key : request->keys()) {
       if (key.descending()) {
         arrangeArgs.push_back(RI->dplyr->desc(RI->doubleSubscript(dataFrame, key.columnindex() + 1)));

@@ -202,6 +202,7 @@ void RDebugger::doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint,
   if (currentCommand == STOP) {
     setCommand(CONTINUE);
     R_interrupts_pending = 1;
+    R_CheckUserInterrupt();
     return;
   }
 

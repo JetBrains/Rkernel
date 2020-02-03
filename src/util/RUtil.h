@@ -162,7 +162,7 @@ inline std::string getFunctionHeader(SEXP func) {
   return builder.getText();
 }
 
-inline SEXP invokeFunction(SEXP func, std::vector<SEXP> const& args) {
+inline SEXP invokeFunction(SEXP func, std::vector<Rcpp::RObject> const& args) {
   SEXP list = R_NilValue;
   for (int i = (int)args.size() - 1; i >= 0; --i) {
     list = Rcpp::grow(args[i], list);

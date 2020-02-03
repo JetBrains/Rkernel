@@ -33,12 +33,12 @@ void executeCodeImpl(SEXP exprs, SEXP env, bool withEcho, bool isDebug, bool wit
   Rcpp::RObject srcrefs = getBlockSrcrefs(exprs);
   for (int i = 0; i < length; ++i) {
     Rcpp::RObject expr = RI->subscript(exprs, i + 1);
-    SEXP forEval = expr;
+    Rcpp::RObject forEval = expr;
     if (isDebug) {
       Rcpp::RObject srcref = getSrcref(srcrefs, i);
       if (srcref != R_NilValue) {
         forEval = Rf_lang2(Rf_install("{"), forEval);
-        SEXP newSrcrefs = Rf_allocVector(VECSXP, 2);
+        Rcpp::RObject newSrcrefs = Rf_allocVector(VECSXP, 2);
         SET_VECTOR_ELT(newSrcrefs, 0, cloneSrcref(srcref));
         SET_VECTOR_ELT(newSrcrefs, 1, srcref);
         Rf_setAttrib(forEval, RI->srcrefAttr, newSrcrefs);
