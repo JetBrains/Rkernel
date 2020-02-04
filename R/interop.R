@@ -44,7 +44,7 @@ options(device = function() {
 options(install.packages.compile.from.source = "always")
 
 .jetbrains$init <- function(rsession.path, project.dir) {
- current.wd <- getwd()
+  current.wd <- getwd()
   tryCatch({
     tools.path <- file.path(rsession.path, "Tools.R")
     modules.path <- file.path(rsession.path, "modules")
@@ -218,3 +218,7 @@ local({
     invisible(.Call(".jetbrains_View", x, title))
   lockBinding("View", env)
 })
+
+if (.Platform$OS.type == "unix" && !("UTF-8" %in% localeToCharset(Sys.getlocale("LC_CTYPE")))) {
+  Sys.setlocale("LC_CTYPE", "C.UTF-8")
+}
