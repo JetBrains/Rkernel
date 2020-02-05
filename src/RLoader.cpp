@@ -117,7 +117,7 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
       for (int i = std::max(0, reqStart); i < std::min<int>(ls.size(), reqEnd); ++i) {
         const char* name = ls[i];
         VariablesResponse::Variable* var = response->add_vars();
-        var->set_name(ls[i]);
+        var->set_name(translateToUTF8(ls[i]));
         try {
           getValueInfo(Rf_findVar(Rf_install(name), environment), var->mutable_value());
         } catch (Rcpp::eval_error const& e) {
@@ -132,7 +132,7 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
       Rcpp::CharacterVector names = namesObj == R_NilValue ? Rcpp::CharacterVector() : Rcpp::as<Rcpp::CharacterVector>(namesObj);
       for (int i = std::max(0, reqStart); i < std::min(length, reqEnd); ++i) {
         VariablesResponse::Variable* var = response->add_vars();
-        var->set_name(i < names.size() && !Rcpp::CharacterVector::is_na(names[i]) ? names[i] : "");
+        var->set_name(i < names.size() && !Rcpp::CharacterVector::is_na(names[i]) ? translateToUTF8(names[i]) : "");
         try {
           getValueInfo(RI->doubleSubscript(obj, i + 1), var->mutable_value());
         } catch (Rcpp::eval_error const& e) {
