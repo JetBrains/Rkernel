@@ -1,0 +1,97 @@
+0-Cloud [https]	https://cloud.r-project.org/
+Algeria [https]	https://cran.usthb.dz/
+Argentina (La Plata)	http://mirror.fcaglp.unlp.edu.ar/CRAN/
+Australia (Canberra) [https]	https://cran.csiro.au/
+Australia (Melbourne 1) [https]	https://mirror.aarnet.edu.au/pub/CRAN/
+Australia (Melbourne 2) [https]	https://cran.ms.unimelb.edu.au/
+Australia (Perth) [https]	https://cran.curtin.edu.au/
+Austria [https]	https://cran.wu.ac.at/
+Belgium (Antwerp) [https]	https://www.freestatistics.org/cran/
+Belgium (Ghent) [https]	https://lib.ugent.be/CRAN/
+Brazil (BA) [https]	https://nbcgib.uesc.br/mirrors/cran/
+Brazil (PR) [https]	https://cran-r.c3sl.ufpr.br/
+Brazil (RJ) [https]	https://cran.fiocruz.br/
+Brazil (SP 1) [https]	https://vps.fmvz.usp.br/CRAN/
+Brazil (SP 2) [https]	https://brieger.esalq.usp.br/CRAN/
+Bulgaria [https]	https://ftp.uni-sofia.bg/CRAN/
+Canada (BC) [https]	https://mirror.its.sfu.ca/mirror/CRAN/
+Canada (MB) [https]	https://muug.ca/mirror/cran/
+Canada (NS) [https]	https://mirror.its.dal.ca/cran/
+Canada (ON)	http://cran.utstat.utoronto.ca/
+Chile (Santiago) [https]	https://cran.dcc.uchile.cl/
+Chile (Temuco) [https]	https://cran.dme.ufro.cl/
+China (Beijing) [https]	https://mirrors.tuna.tsinghua.edu.cn/CRAN/
+China (Hefei) [https]	https://mirrors.ustc.edu.cn/CRAN/
+China (Hong Kong) [https]	https://mirror-hk.koddos.net/CRAN/
+China (Guangzhou) [https]	https://mirrors.e-ducation.cn/CRAN/
+China (Lanzhou) [https]	https://mirror.lzu.edu.cn/CRAN/
+China (Shanghai) [https]	https://mirrors.tongji.edu.cn/CRAN/
+Colombia (Cali) [https]	https://www.icesi.edu.co/CRAN/
+Costa Rica [https]	https://mirror.uned.ac.cr/cran/
+Czech Republic [https]	https://mirrors.nic.cz/R/
+Denmark [https]	https://mirrors.dotsrc.org/cran/
+East Asia [https]	https://cran.asia/
+Ecuador (Cuenca) [https]	https://mirror.cedia.org.ec/CRAN/
+Ecuador (Quito) [https]	https://mirror.epn.edu.ec/CRAN/
+El Salvador	http://cran.salud.gob.sv/
+Estonia [https]	https://ftp.eenet.ee/pub/cran/
+France (Lyon 1) [https]	https://pbil.univ-lyon1.fr/CRAN/
+France (Lyon 2) [https]	https://mirror.ibcp.fr/pub/CRAN/
+France (Marseille) [https]	https://cran.biotools.fr/
+France (Montpellier) [https]	https://ftp.igh.cnrs.fr/pub/CRAN/
+France (Paris 1)	http://cran.irsn.fr/
+Germany (Erlangen) [https]	https://ftp.fau.de/cran/
+Germany (Göttingen) [https]	https://ftp.gwdg.de/pub/misc/cran/
+Germany (Münster) [https]	https://cran.uni-muenster.de/
+Germany (Regensburg) [https]	https://packages.othr.de/cran/
+Greece [https]	https://ftp.cc.uoc.gr/mirrors/CRAN/
+Hungary [https]	https://cran.rapporter.net/
+Iceland [https]	https://cran.hafro.is/
+Indonesia (Jakarta) [https]	https://repo.bppt.go.id/cran/
+Iran [https]	https://cran.um.ac.ir/
+Ireland [https]	https://ftp.heanet.ie/mirrors/cran.r-project.org/
+Italy (Milano)	http://cran.mirror.garr.it/mirrors/CRAN/
+Italy (Padua) [https]	https://cran.stat.unipd.it/
+Japan (Tokyo) [https]	https://cran.ism.ac.jp/
+Japan (Yonezawa) [https]	https://ftp.yz.yamagata-u.ac.jp/pub/cran/
+Korea (Busan) [https]	https://ftp.harukasan.org/CRAN/
+Korea (Gyeongsan-si) [https]	https://cran.yu.ac.kr/
+Korea (Seoul 1) [https]	https://cran.seoul.go.kr/
+Korea (Seoul 2)	http://healthstat.snu.ac.kr/CRAN/
+Korea (Ulsan) [https]	https://cran.biodisk.org/
+Malaysia [https]	https://wbc.upm.edu.my/cran/
+Mexico (Mexico City) [https]	https://cran.itam.mx/
+Mexico (Texcoco)	http://www.est.colpos.mx/R-mirror/
+Morocco [https]	https://mirror.marwan.ma/cran/
+New Zealand [https]	https://cran.stat.auckland.ac.nz/
+Norway [https]	https://cran.uib.no/
+Philippines [https]	https://cran.stat.upd.edu.ph/
+Portugal (Lisbon)	http://cran.radicaldevelop.com/
+Portugal (Porto)	http://cran.dcc.fc.up.pt/
+Russia [https]	https://cran.cmm.msu.ru/
+South Africa (Cape Town)	http://r.adu.org.za/
+South Africa (Johannesburg)	http://cran.mirror.ac.za/
+Spain (Madrid) [https]	https://cran.rediris.es/
+Sweden [https]	https://ftp.acc.umu.se/mirror/CRAN/
+Switzerland [https]	https://stat.ethz.ch/CRAN/
+Taiwan (Chungli) [https]	https://ftp.yzu.edu.tw/CRAN/
+Taiwan (Taipei)	http://cran.csie.ntu.edu.tw/
+Thailand	http://mirrors.psu.ac.th/pub/cran/
+Turkey (Denizli) [https]	https://cran.pau.edu.tr/
+Turkey (Mersin) [https]	https://cran.ncc.metu.edu.tr/
+UK (Bristol) [https]	https://www.stats.bris.ac.uk/R/
+UK (London 1) [https]	https://cran.ma.imperial.ac.uk/
+USA (IA) [https]	https://mirror.las.iastate.edu/CRAN/
+USA (IN) [https]	https://ftp.ussg.iu.edu/CRAN/
+USA (KS) [https]	https://rweb.crmda.ku.edu/cran/
+USA (MI 1) [https]	https://cran.mtu.edu/
+USA (MI 2) [https]	https://repo.miserver.it.umich.edu/cran/
+USA (MO)	http://cran.wustl.edu/
+USA (NC)	http://archive.linux.duke.edu/cran/
+USA (OH) [https]	https://cran.case.edu/
+USA (OR) [https]	https://ftp.osuosl.org/pub/cran/
+USA (PA 1)	http://lib.stat.cmu.edu/R/CRAN/
+USA (PA 2)	http://cran.mirrors.hoobly.com/
+USA (TN) [https]	https://mirrors.nics.utk.edu/cran/
+USA (TX 1) [https]	https://cran.revolutionanalytics.com/
+Uruguay [https]	https://espejito.fder.edu.uy/cran/
