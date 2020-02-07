@@ -238,3 +238,36 @@ Status RPIServiceImpl::getEqualityObject(ServerContext* context, const RRef* req
   }, context);
   return Status::OK;
 }
+
+void RPIServiceImpl::setValueImpl(RRef const& ref, Rcpp::RObject const& value) {
+  switch (ref.ref_case()) {
+    case RRef::kMember: {
+      Rcpp::RObject env = dereference(ref.member().env());
+      RI->assign(mkStringUTF8(ref.member().name()), value, Rcpp::Named("envir", env));
+      break;
+    }
+    case RRef::kListElement: {
+      Rcpp::RObject list = Rcpp::as<Rcpp::RObject>(dereference(ref.listelement().list()));
+      Rcpp::RObject newList = RI->doubleSubscriptAssign(list, ref.listelement().index() + 1, value);
+      setValueImpl(ref.listelement().list(), newList);
+      break;
+    }
+    default: {
+      throw std::invalid_argument("Invalid reference for setValue");
+    }
+  }
+}
+
+Status RPIServiceImpl::setValue(ServerContext* context, const SetValueRequest* request, SetValueResponse* response) {
+  executeOnMainThread([&] {
+    try {
+      setValueImpl(request->ref(), dereference(request->value()));
+      response->mutable_ok();
+    } catch (Rcpp::eval_error const& e) {
+      response->set_error(e.what());
+    } catch (...) {
+      response->set_error("Error");
+    }
+  }, context);
+  return Status::OK;
+}

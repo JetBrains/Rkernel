@@ -81,6 +81,8 @@ public:
   Status getTableColumnsInfo(ServerContext* context, const TableColumnsInfoRequest* request, TableColumnsInfo* response) override;
   Status getFormalArguments(ServerContext* context, const RRef* request, StringList* response) override;
   Status getEqualityObject(ServerContext* context, const RRef* request, Int64Value* response) override;
+  Status setValue(ServerContext* context, const SetValueRequest* request, SetValueResponse* response) override;
+
   Status getRMarkdownChunkOptions(ServerContext* context, const Empty*, StringList* response) override;
 
   Status graphicsInit(ServerContext* context, const GraphicsInitRequest* request, ServerWriter<CommandOutput>* writer) override;
@@ -142,6 +144,7 @@ public:
 
   OutputHandler getOutputHandlerForChildProcess();
 
+  void setValueImpl(RRef const& ref, Rcpp::RObject const& value);
   Rcpp::RObject dereference(RRef const& ref);
 
 private:

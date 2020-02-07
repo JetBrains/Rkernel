@@ -39,6 +39,7 @@ struct RObjects {
   Rcpp::Function colon = baseEnv[":"];
   Rcpp::Function dataFrame = baseEnv["data.frame"];
   Rcpp::Function doubleSubscript = baseEnv["[["];
+  Rcpp::Function doubleSubscriptAssign = baseEnv["[[<-"];
   Rcpp::Function deparse = baseEnv["deparse"];
   Rcpp::Function environment = baseEnv["environment"];
   Rcpp::Function environmentName = baseEnv["environmentName"];
