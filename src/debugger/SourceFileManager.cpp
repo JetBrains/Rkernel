@@ -58,7 +58,6 @@ void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<in
     SEXP oldSrcref = steps[line];
     SEXP flag = Rf_getAttrib(oldSrcref, RI->srcrefProcessedFlag);
     if (TYPEOF(flag) == EXTPTRSXP) R_ClearExternalPtr(flag);
-    Rf_setAttrib(oldSrcref, RI->srcrefProcessedFlag, R_NilValue);
   }
   steps[line] = srcref;
   Rf_setAttrib(srcref, RI->srcrefProcessedFlag, createFinalizer([=] {
