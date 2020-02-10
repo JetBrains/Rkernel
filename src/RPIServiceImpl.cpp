@@ -456,6 +456,9 @@ void quitRPIService() {
   AsyncEvent event;
   event.mutable_termination();
   rpiService->asyncEvents.push(event);
+  for (int iter = 0; iter < 100 && !rpiService->terminateProceed; ++iter) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+  }
   server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(1));
   server = nullptr;
   rpiService = nullptr;

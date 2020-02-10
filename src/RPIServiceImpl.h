@@ -43,7 +43,8 @@ public:
   Status getInfo(ServerContext* context, const Empty* request, GetInfoResponse* response) override;
   Status isBusy(ServerContext* context, const Empty*, BoolValue* response) override;
   Status init(ServerContext* context, const Init* request, ServerWriter<CommandOutput>* response) override;
-  Status quit(ServerContext* context, const Empty* request, Empty* response) override;
+  Status quit(ServerContext* context, const Empty*, Empty*) override;
+  Status quitProceed(ServerContext* context, const Empty*, Empty*) override;
 
   Status executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) override;
   Status sendReadLn(ServerContext* context, const StringValue* request, Empty*) override;
@@ -137,6 +138,7 @@ public:
   void eventLoop(bool disableOutput = true);
   void setChildProcessState();
   volatile bool terminate = false;
+  volatile bool terminateProceed = false;
 
   void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);
   void executeOnMainThreadAsync(std::function<void()> const& f);

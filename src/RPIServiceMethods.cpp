@@ -47,9 +47,16 @@ Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerW
 }
 
 Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, google::protobuf::Empty*) {
+  R_interrupts_pending = true;
   executeOnMainThreadAsync([] {
+    R_interrupts_pending = false;
     RI->q();
   });
+  return Status::OK;
+}
+
+Status RPIServiceImpl::quitProceed(ServerContext*, const Empty*, Empty*) {
+  if (terminate) terminateProceed = true;
   return Status::OK;
 }
 
