@@ -63,13 +63,11 @@ inline std::string getPrintedValue(Rcpp::RObject const& a) {
 
 inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLength) {
   std::string result;
-  bool limitReached = false;
   try {
     WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
       if (type == STDOUT) {
         if (result.size() + c > maxLength) {
           result.insert(result.end(), s, s + (maxLength - result.size()));
-          limitReached = true;
           R_interrupts_pending = 1;
         } else {
           result.insert(result.end(), s, s + c);
@@ -81,9 +79,6 @@ inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLengt
   } catch (Rcpp::internal::InterruptedException const&) {
   }
   R_interrupts_pending = 0;
-  if (limitReached) {
-    result += "...";
-  }
   return result;
 }
 
