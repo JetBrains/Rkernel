@@ -18,10 +18,11 @@
 #include "../RPIServiceImpl.h"
 #include "RDebugger.h"
 #include "SourceFileManager.h"
+#include "../EventLoop.h"
 
 Status RPIServiceImpl::debugAddBreakpoint(ServerContext*, const DebugAddBreakpointRequest* req, Empty*) {
   auto request = *req;
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     BreakpointInfo& breakpoint = rDebugger.addBreakpoint(request.position().fileid(), request.position().line());
     breakpoint.suspend = request.suspend();
     breakpoint.evaluateAndLog = request.evaluateandlog();
@@ -32,14 +33,14 @@ Status RPIServiceImpl::debugAddBreakpoint(ServerContext*, const DebugAddBreakpoi
 
 Status RPIServiceImpl::debugRemoveBreakpoint(ServerContext*, const SourcePosition* req, Empty*) {
   auto request = *req;
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     rDebugger.removeBreakpoint(request.fileid(), request.line());
   });
   return Status::OK;
 }
 
 Status RPIServiceImpl::debugCommandContinue(ServerContext*, const Empty*, Empty*) {
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     if (replState == DEBUG_PROMPT) {
       rDebugger.setCommand(CONTINUE);
       breakEventLoop("");
@@ -59,7 +60,7 @@ Status RPIServiceImpl::debugCommandStop(ServerContext*, const Empty*, Empty*) {
   if (replState == REPL_BUSY && rDebugger.isEnabled()) {
     rDebugger.setCommand(STOP);
   } else {
-    executeOnMainThreadAsync([=] {
+    eventLoopExecute([=] {
       if (replState == DEBUG_PROMPT) {
         rDebugger.setCommand(STOP);
         breakEventLoop("");
@@ -70,7 +71,7 @@ Status RPIServiceImpl::debugCommandStop(ServerContext*, const Empty*, Empty*) {
 }
 
 Status RPIServiceImpl::debugCommandStepOver(ServerContext*, const Empty*, Empty*) {
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     if (replState == DEBUG_PROMPT) {
       rDebugger.setCommand(STEP_OVER);
       breakEventLoop("");
@@ -80,7 +81,7 @@ Status RPIServiceImpl::debugCommandStepOver(ServerContext*, const Empty*, Empty*
 }
 
 Status RPIServiceImpl::debugCommandStepInto(ServerContext*, const Empty*, Empty*) {
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     if (replState == DEBUG_PROMPT) {
       rDebugger.setCommand(STEP_INTO);
       breakEventLoop("");
@@ -90,7 +91,7 @@ Status RPIServiceImpl::debugCommandStepInto(ServerContext*, const Empty*, Empty*
 }
 
 Status RPIServiceImpl::debugCommandForceStepInto(ServerContext*, const Empty*, Empty*) {
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     if (replState == DEBUG_PROMPT) {
       rDebugger.setCommand(FORCE_STEP_INTO);
       breakEventLoop("");
@@ -100,7 +101,7 @@ Status RPIServiceImpl::debugCommandForceStepInto(ServerContext*, const Empty*, E
 }
 
 Status RPIServiceImpl::debugCommandStepOut(ServerContext*, const Empty*, Empty*) {
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     if (replState == DEBUG_PROMPT) {
       rDebugger.setCommand(STEP_OUT);
       breakEventLoop("");
@@ -112,7 +113,7 @@ Status RPIServiceImpl::debugCommandStepOut(ServerContext*, const Empty*, Empty*)
 Status RPIServiceImpl::debugCommandRunToPosition(ServerContext*, const SourcePosition* request, Empty*) {
   std::string fileId = request->fileid();
   int line = request->line();
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     if (replState == DEBUG_PROMPT) {
       rDebugger.setRunToPositionCommand(fileId, line);
       breakEventLoop("");
@@ -123,7 +124,7 @@ Status RPIServiceImpl::debugCommandRunToPosition(ServerContext*, const SourcePos
 
 Status RPIServiceImpl::debugMuteBreakpoints(ServerContext*, const BoolValue* request, Empty*) {
   bool mute = request->value();
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     rDebugger.muteBreakpoints(mute);
   });
   return Status::OK;

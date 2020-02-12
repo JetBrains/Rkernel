@@ -14,12 +14,17 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef RWRAPPER_HTML_VIEWER_H
-#define RWRAPPER_HTML_VIEWER_H
+#ifndef RWRAPPER_EVENT_LOOP_H
+#define RWRAPPER_EVENT_LOOP_H
 
+#include <functional>
 #include <string>
 
-void htmlViewerInit();
-bool processBrowseURL(std::string const& url);
+void initEventLoop();
+void quitEventLoop();
+void eventLoopExecute(std::function<void()> const& f);
+void breakEventLoop(std::string s = "");
+std::string runEventLoop(bool disableOutput = true);
+bool isEventHandlerRunning();
 
-#endif //RWRAPPER_HTML_VIEWER_H
+#endif //RWRAPPER_EVENT_LOOP_H

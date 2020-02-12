@@ -68,11 +68,13 @@ list(APPEND RWRAPPER_SOURCES
     src/RInternals/RInternals.cpp
     src/util/RUtil.cpp
     src/HTMLViewer.cpp
-    src/Subprocess.cpp)
+    src/Subprocess.cpp
+    src/Init.cpp)
 
 if(WIN32)
     add_definitions(-DNOMINMAX)
     add_definitions(-D_WIN32_WINNT=0x600)
+    add_definitions(-DWin32)
     if (DEFINED MSVC)
       set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
       set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
@@ -178,9 +180,9 @@ endif()
 link_directories("${GRPC_DIST}/lib")
 
 if (UNIX)
-    set(SYSTEM_SPECIFIC_SOURCES src/UnixForkHandler.cpp src/SubprocessUnix.cpp)
+    set(SYSTEM_SPECIFIC_SOURCES src/UnixForkHandler.cpp src/SubprocessUnix.cpp src/EventLoopUnix.cpp)
 else()
-    set(SYSTEM_SPECIFIC_SOURCES src/SubprocessWin.cpp)
+    set(SYSTEM_SPECIFIC_SOURCES src/SubprocessWin.cpp src/EventLoopWin.cpp)
 endif()
 
 

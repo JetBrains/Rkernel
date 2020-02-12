@@ -22,7 +22,7 @@
 #include <setjmp.h>
 #include <Rversion.h>
 
-#ifdef _WIN32_WINNT
+#ifdef Win32
 typedef std::aligned_storage_t<256 + 16, 8> JMP_BUF;
 #else
 # ifdef _MACOS

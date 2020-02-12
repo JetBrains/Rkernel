@@ -67,7 +67,11 @@ inline std::string escape(std::string const& s, const char* alsoEscape = "") {
 }
 
 inline std::string escapeStringCharacters(std::string const& s) {
-  return escape(s, "\"");
+  return escape(s, "\"'");
+}
+
+inline std::string quote(std::string const& s) {
+  return "'" + s + "'";
 }
 
 inline std::vector<std::string> splitByLines(std::string const& s) {
@@ -78,6 +82,35 @@ inline std::vector<std::string> splitByLines(std::string const& s) {
     lines.push_back(line);
   }
   return lines;
+}
+
+inline std::string replaceAll(std::string buffer, char from, const char *to) {
+  for (std::string::size_type n = buffer.find(from, 0); n != std::string::npos; n = buffer.find(from, n + 2)) {
+    buffer.replace(n, 1, to);
+  }
+  return buffer;
+}
+
+template<typename TCollection, typename TMapper>
+inline std::string joinToString(const TCollection& collection, const TMapper& mapper, const char* prefix = "", const char* suffix = "", const char* separator = ", ") {
+  auto sout = std::ostringstream();
+  sout << prefix;
+  auto isFirst = true;
+  for (const auto& value : collection) {
+    if (!isFirst) {
+      sout << separator;
+    }
+    sout << mapper(value);
+    isFirst = false;
+  }
+  sout << suffix;
+  return sout.str();
+}
+
+template<typename TCollection>
+inline std::string joinToString(const TCollection& collection) {
+  using T = typename TCollection::value_type;
+  return joinToString(collection, [](const T& t) { return t; });
 }
 
 #endif //RWRAPPER_STRING_UTIL_H

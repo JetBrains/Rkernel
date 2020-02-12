@@ -135,14 +135,11 @@ public:
   void showHelpHandler(std::string const& content, std::string const& url);
 
   void sendAsyncEvent(AsyncEvent const& e);
-  void eventLoop(bool disableOutput = true);
   void setChildProcessState();
   volatile bool terminate = false;
   volatile bool terminateProceed = false;
 
   void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);
-  void executeOnMainThreadAsync(std::function<void()> const& f);
-  void breakEventLoop(std::string s = "");
 
   OutputHandler getOutputHandlerForChildProcess();
 
@@ -168,20 +165,10 @@ private:
 
   std::unordered_set<int> dataFramesCache;
 
-  BlockingQueue<std::function<void()>> executionQueue;
-
-  bool doBreakEventLoop = false;
-  std::string returnFromEventLoopValue;
-
   IndexedStorage<Rcpp::RObject> persistentRefStorage;
 
   Status executeCommand(ServerContext* context, const std::string& command, ServerWriter<CommandOutput>* writer);
 
-  static std::string quote(const std::string& s);
-  static std::string escape(std::string str);
-  static std::string escapeBackslashes(std::string str);
-  static std::string replaceAll(string buffer, char from, const char *s);
-  static std::string buildCallCommand(const char* functionName, const std::string& argumentString = "");
   Status replExecuteCommand(ServerContext* context, const std::string& command);
 
   friend void quitRPIService();

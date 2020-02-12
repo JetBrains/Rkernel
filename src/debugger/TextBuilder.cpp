@@ -25,16 +25,16 @@ const std::unordered_set<std::string> RESERVED_WORDS = {
   "NULL", "Inf", "NaN", "NA", "NA_integer_", "NA_real_", "NA_complex_", "NA_character_"
 };
 
-static std::string quote(std::string const& s) {
+static std::string quoteIdentifier(std::string const& s) {
   return '`' + escape(s, "`") + '`';
 }
 
 static std::string quoteIfNeeded(std::string const& s) {
-  if (RESERVED_WORDS.count(s)) return quote(s);
+  if (RESERVED_WORDS.count(s)) return quoteIdentifier(s);
   for (size_t i = 0; i < s.size(); ++i) {
     char c = s[i];
     bool isValid = c == '.' || isalpha(c) || (i > 0 && (isdigit(c) || c == '_'));
-    if (!isValid) return quote(s);
+    if (!isValid) return quoteIdentifier(s);
   }
   return s;
 }

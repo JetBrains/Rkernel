@@ -46,6 +46,14 @@ public:
     return result;
   }
 
+  bool poll(T &value) {
+    std::unique_lock<std::mutex> lock(mutex);
+    if (queue.empty()) return false;
+    value = std::move(queue.back());
+    queue.pop_back();
+    return true;
+  }
+
 private:
   std::deque<T> queue;
   std::mutex mutex;

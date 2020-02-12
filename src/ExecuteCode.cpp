@@ -23,6 +23,7 @@
 #include "util/ScopedAssign.h"
 #include "debugger/SourceFileManager.h"
 #include "util/RUtil.h"
+#include "EventLoop.h"
 
 Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) {
   executeOnMainThread([&] {
@@ -99,10 +100,10 @@ std::string RPIServiceImpl::readLineHandler(std::string const& prompt) {
   event.mutable_requestreadln()->set_prompt(prompt);
   asyncEvents.push(event);
   ScopedAssign<ReplState> withState(replState, READ_LINE);
-  eventLoop();
+  std::string result = runEventLoop();
   event.mutable_busy();
   asyncEvents.push(event);
-  return returnFromEventLoopValue;
+  return result;
 }
 
 void RPIServiceImpl::debugPromptHandler() {
@@ -111,7 +112,7 @@ void RPIServiceImpl::debugPromptHandler() {
   rDebugger.buildDebugPrompt(event.mutable_debugprompt());
   asyncEvents.push(event);
   ScopedAssign<ReplState> withState(replState, DEBUG_PROMPT);
-  eventLoop();
+  runEventLoop();
   event.mutable_busy();
   asyncEvents.push(event);
 }
@@ -136,17 +137,17 @@ Status RPIServiceImpl::executeCommand(ServerContext* context, const std::string&
 }
 
 Status RPIServiceImpl::replInterrupt(ServerContext*, const Empty*, Empty*) {
-  if (replState == REPL_BUSY) {
+  if (replState == REPL_BUSY || isEventHandlerRunning()) {
     R_interrupts_pending = 1;
   } else if (replState == READ_LINE) {
-    executeOnMainThreadAsync([=] {
+    eventLoopExecute([=] {
       if (replState == READ_LINE) {
         R_interrupts_pending = 1;
         breakEventLoop("");
       }
     });
   } else if (replState == SUBPROCESS_INPUT && subprocessActive) {
-    executeOnMainThreadAsync([=] {
+    eventLoopExecute([=] {
       if (replState == SUBPROCESS_INPUT && subprocessActive) {
         subprocessInterrupt = true;
         breakEventLoop("");
@@ -166,7 +167,7 @@ Status RPIServiceImpl::replExecuteCommand(ServerContext* context, const std::str
 
 Status RPIServiceImpl::sendReadLn(ServerContext*, const StringValue* request, Empty*) {
   std::string text = request->value();
-  executeOnMainThreadAsync([=] () mutable {
+  eventLoopExecute([=] () mutable {
     if (replState == READ_LINE) {
       text.erase(std::find(text.begin(), text.end(), '\n'), text.end());
       breakEventLoop(text);

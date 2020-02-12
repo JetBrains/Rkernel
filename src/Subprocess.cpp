@@ -17,6 +17,7 @@
 #include "RPIServiceImpl.h"
 #include "util/ScopedAssign.h"
 #include "Subprocess.h"
+#include "EventLoop.h"
 #include <Rcpp.h>
 #include <Rdefines.h>
 #include <iostream>
@@ -123,12 +124,12 @@ void RPIServiceImpl::subprocessHandler(
   ScopedAssign<ReplState> withState(replState, askInput ? SUBPROCESS_INPUT : replState);
   while (true) {
     subprocessInterrupt = false;
-    eventLoop(false);
+    std::string result = runEventLoop(false);
     if (!subprocessActive) break;
     if (subprocessInterrupt) {
       interruptCallback();
     } else {
-      inputCallback(returnFromEventLoopValue);
+      inputCallback(result);
     }
   }
   if (askInput) {
@@ -139,7 +140,7 @@ void RPIServiceImpl::subprocessHandler(
 }
 
 void RPIServiceImpl::subprocessHandlerStop() {
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     if (subprocessActive) {
       subprocessActive = false;
       breakEventLoop("");

@@ -15,7 +15,7 @@
 #  along with this program.  If not, see <https:#www.gnu.org/licenses/>.
 
 
-assign(".jetbrains", new.env(), baseenv())
+assign(".jetbrains", new.env(), envir = baseenv())
 
 # Set hook to record previous plot before new vanilla graphics are created
 setHook(hookName = "before.plot.new",
@@ -226,3 +226,7 @@ if (.Platform$OS.type == "unix" && !("UTF-8" %in% localeToCharset(Sys.getlocale(
     Sys.setlocale("LC_CTYPE", "C.UTF-8")
   }
 }
+
+options(warn = 1)
+options(demo.ask = TRUE);
+assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = baseenv())

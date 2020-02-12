@@ -29,32 +29,12 @@
 #include "util/ScopedAssign.h"
 #include "HTMLViewer.h"
 #include "Subprocess.h"
+#include "util/StringUtil.h"
+#include "EventLoop.h"
 
 using namespace grpc;
 
 namespace {
-  template<typename TCollection, typename TMapper>
-  std::string joinToString(const TCollection& collection, const TMapper& mapper, const char* prefix = "", const char* suffix = "", const char* separator = ", ") {
-    auto sout = std::ostringstream();
-    sout << prefix;
-    auto isFirst = true;
-    for (const auto& value : collection) {
-      if (!isFirst) {
-        sout << separator;
-      }
-      sout << mapper(value);
-      isFirst = false;
-    }
-    sout << suffix;
-    return sout.str();
-  }
-
-  template<typename TCollection>
-  std::string joinToString(const TCollection& collection) {
-    using T = typename TCollection::value_type;
-    return joinToString(collection, [](const T& t) { return t; });
-  }
-
   std::string getResolutionString(int resolution) {
     if (resolution > 0) {
       return std::to_string(resolution);
@@ -66,6 +46,13 @@ namespace {
   const char* getBooleanString(bool value) {
     return value ? "TRUE" : "FALSE";
   }
+
+  std::string buildCallCommand(const char* functionName, const std::string& argumentString) {
+    auto sout = std::ostringstream();
+    sout << functionName << "(" << argumentString << ")";
+    return sout.str();
+  }
+
 }
 
 static std::string getRVersion() {
@@ -119,7 +106,7 @@ Status RPIServiceImpl::graphicsRescaleStored(ServerContext* context, const Graph
     ".jetbrains_ther_device_rescale_stored",
     request->parentdirectory(),
   };
-  auto stringArguments = joinToString(strings, &RPIServiceImpl::quote);
+  auto stringArguments = joinToString(strings, quote);
   auto numbers = std::vector<int> {
     request->snapshotnumber(),
     request->snapshotversion(),
@@ -148,7 +135,7 @@ Status RPIServiceImpl::beforeChunkExecution(ServerContext *context, const ChunkP
     request->height()
   };
   auto joinedStrings = joinToString(stringArguments, [](const std::string& s) {
-    return quote(escape(s));
+    return quote(escapeStringCharacters(s));
   });
   auto joinedNumbers = joinToString(numericArguments);
   auto resolutionString = getResolutionString(request->resolution());
@@ -169,8 +156,7 @@ Status RPIServiceImpl::repoGetPackageVersion(ServerContext* context, const Strin
 
 Status RPIServiceImpl::repoInstallPackage(ServerContext* context, const RepoInstallPackageRequest* request, Empty*) {
   auto sout = std::ostringstream();
-  sout << "install.packages("
-       << "'" << request->packagename() << "'";
+  sout << "install.packages('" << escapeStringCharacters(request->packagename()) << "'";
   auto& arguments = request->arguments();
   for (auto& pair : arguments) {
     sout << ", " << pair.first << " = " << pair.second;
@@ -252,27 +238,8 @@ void RPIServiceImpl::mainLoop() {
   event.mutable_prompt();
   asyncEvents.push(event);
   ScopedAssign<ReplState> withState(replState, PROMPT);
-  eventLoop();
-}
-
-void RPIServiceImpl::eventLoop(bool disableOutput) {
-  WithOutputHandler withOutputHandler = disableOutput ? WithOutputHandler(emptyOutputHandler) : WithOutputHandler();
-  WithDebuggerEnabled withDebugger(false);
-  while (true) {
-    busy = false;
-    auto f = executionQueue.pop();
-    busy = true;
-    f();
-    if (terminate || doBreakEventLoop) {
-      doBreakEventLoop = false;
-      return;
-    }
-  }
-}
-
-void RPIServiceImpl::breakEventLoop(std::string s) {
-  doBreakEventLoop = true;
-  returnFromEventLoopValue = std::move(s);
+  WithOutputHandler withOutputHandler(replOutputHandler);
+  runEventLoop(); // Does not return
 }
 
 void RPIServiceImpl::setChildProcessState() {
@@ -289,7 +256,7 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
   std::condition_variable doneVar;
   volatile bool done = false;
   volatile bool cancelled = false;
-  executionQueue.push([&] {
+  eventLoopExecute([&] {
     R_interrupts_pending = 0;
     if (!cancelled) {
       try {
@@ -325,43 +292,6 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
   }
 }
 
-void RPIServiceImpl::executeOnMainThreadAsync(std::function<void()> const& f) {
-  executionQueue.push([=] {
-    try {
-      f();
-    } catch (...) {
-    }
-  });
-}
-
-
-std::string RPIServiceImpl::buildCallCommand(const char* functionName, const std::string& argumentString) {
-  auto sout = std::ostringstream();
-  sout << functionName << "(" << argumentString << ")";
-  return sout.str();
-}
-
-std::string RPIServiceImpl::quote(const std::string& s) {
-  auto sout = std::ostringstream();
-  sout << "'" << s << "'";
-  return sout.str();
-}
-
-std::string RPIServiceImpl::escapeBackslashes(std::string str) {
-  return replaceAll(std::move(str), '\\', "\\\\");
-}
-
-std::string RPIServiceImpl::escape(std::string str) {
-  return replaceAll(std::move(escapeBackslashes(std::move(str))), '\'', "\\'");
-}
-
-std::string RPIServiceImpl::replaceAll(string buffer, char from, const char *to) {
-  for (std::string::size_type n = buffer.find(from, 0); n != std::string::npos; n = buffer.find(from, n + 2)) {
-    buffer.replace(n, 1, to);
-  }
-  return buffer;
-}
-
 std::unique_ptr<RPIServiceImpl> rpiService;
 std::unique_ptr<RObjects> RI;
 static std::unique_ptr<Server> server;
@@ -394,7 +324,7 @@ public:
         }
         if (!rpcHappened) {
           R_interrupts_pending = 1;
-          rpiService->executeOnMainThreadAsync([]{ RI->q(); });
+          eventLoopExecute([]{ RI->q(); });
           time = std::chrono::steady_clock::now() + std::chrono::seconds(5);
           condVar.wait_until(lock, time, [&] { return termination || std::chrono::steady_clock::now() >= time; });
           if (!termination) {
@@ -423,11 +353,7 @@ private:
 TerminationTimer* terminationTimer;
 
 void initRPIService() {
-  RI = std::make_unique<RObjects>();
-  initDoSystem();
   rpiService = std::make_unique<RPIServiceImpl>();
-  rDebugger.init();
-  htmlViewerInit();
   if (commandLineOptions.withTimeout) {
     terminationTimer = new TerminationTimer();
     terminationTimer->init();
@@ -442,16 +368,9 @@ void initRPIService() {
   } else {
     std::cout << "PORT " << port << std::endl;
   }
-  RI->options(Rcpp::Named("warn", 1));
-  RI->options(Rcpp::Named("demo.ask", true));
-  RI->assign(".Last.sys", RI->evalCode("function() .Call(\".jetbrains_quitRPIService\")", RI->baseEnv),
-      Rcpp::Named("envir", R_BaseNamespace));
 }
 
 void quitRPIService() {
-  static bool done = false;
-  if (done) return;
-  done = true;
   rpiService->terminate = true;
   AsyncEvent event;
   event.mutable_termination();
@@ -462,7 +381,6 @@ void quitRPIService() {
   server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(1));
   server = nullptr;
   rpiService = nullptr;
-  RI = nullptr;
   if (commandLineOptions.withTimeout) {
     terminationTimer->quit();
   }

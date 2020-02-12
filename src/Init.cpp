@@ -14,12 +14,37 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef RWRAPPER_HTML_VIEWER_H
-#define RWRAPPER_HTML_VIEWER_H
+#include "RPIServiceImpl.h"
+#include <R_ext/Rdynload.h>
+#include "RcppExports.h"
+#include "Subprocess.h"
+#include "HTMLViewer.h"
+#include "EventLoop.h"
 
-#include <string>
+void registerFunctions();
+void init_Rcpp_routines(DllInfo *info);
 
-void htmlViewerInit();
-bool processBrowseURL(std::string const& url);
+void initRWrapper() {
+  DllInfo *dll = R_getEmbeddingDllInfo();
+  registerFunctions();
+  init_Rcpp_routines(dll);
+  RcppExports_Init(dll);
 
-#endif //RWRAPPER_HTML_VIEWER_H
+  RI = std::make_unique<RObjects>();
+  initDoSystem();
+  rDebugger.init();
+  htmlViewerInit();
+  initEventLoop();
+
+  initRPIService();
+}
+
+void quitRWrapper() {
+  static bool done = false;
+  if (done) return;
+  done = true;
+  quitRPIService();
+  quitEventLoop();
+  RI = nullptr;
+}
+

@@ -222,7 +222,7 @@ void MasterDevice::addNewDevice() {
 
 // Called by hooks "before.plot.new" for vanilla plots (`isTriggeredByGgPlot = false`)
 // and "before.grid.newpage" for ggplot2 (`isTriggeredByGgPlot = true`)
-// (see "interop.R")
+// (see "init.R")
 void MasterDevice::recordLast(bool isTriggeredByGgPlot) {
   // If current device is neither null nor blank then it should be recorded
   if (masterDeviceDescriptor) {

@@ -21,6 +21,7 @@
 #include "RPIServiceImpl.h"
 #include "util/RUtil.h"
 #include "HTMLViewer.h"
+#include "Init.h"
 #include <Rcpp.h>
 
 using namespace Rcpp;
@@ -158,9 +159,9 @@ RcppExport SEXP _jetbrains_exception_handler(SEXP e) {
 }
 
 // Quit
-RcppExport SEXP _jetbrains_quitRPIService() {
+RcppExport SEXP _jetbrains_quitRWrapper() {
   BEGIN_RCPP
-    quitRPIService();
+    quitRWrapper();
   END_RCPP
 }
 
@@ -192,7 +193,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_debugger_enable", (DL_FUNC) &_jetbrains_debugger_enable, 0},
     {".jetbrains_debugger_disable", (DL_FUNC) &_jetbrains_debugger_disable, 0},
     {".jetbrains_exception_handler", (DL_FUNC) &_jetbrains_exception_handler, 1},
-    {".jetbrains_quitRPIService", (DL_FUNC) &_jetbrains_quitRPIService, 0},
+    {".jetbrains_quitRWrapper", (DL_FUNC) &_jetbrains_quitRWrapper, 0},
     {".jetbrains_showFile", (DL_FUNC) &_jetbrains_showFile, 2},
     {".jetbrains_processBrowseURL", (DL_FUNC) &_jetbrains_processBrowseURL, 1},
     {NULL, NULL, 0}

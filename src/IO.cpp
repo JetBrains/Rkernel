@@ -22,9 +22,8 @@
 #include <Rcpp.h>
 #include "RcppExports.h"
 #include "util/RUtil.h"
-
-void registerFunctions();
-void init_Rcpp_routines(DllInfo *info);
+#include "EventLoop.h"
+#include "Init.h"
 
 using namespace grpc;
 
@@ -67,15 +66,8 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   static bool inited = false;
   if (!inited) {
     inited = true;
-    DllInfo *dll = R_getEmbeddingDllInfo();
-    registerFunctions();
-    init_Rcpp_routines(dll);
-    RcppExports_Init(dll);
-    initRPIService();
-    rpiService->mainLoop();
-    R_interrupts_pending = 0;
-    quitRPIService();
-    buf[0] = 0;
+    initRWrapper();
+    rpiService->mainLoop(); // Does not return
     return 0;
   }
 
@@ -109,7 +101,7 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
 
 static const int OUTPUT_MESSAGE_MAX_SIZE = 65536;
 
-#ifdef _WIN32_WINNT
+#ifdef Win32
 static const char UTF8in[4] = "\002\377\376", UTF8out[4] = "\003\377\376";
 #endif
 
@@ -123,7 +115,7 @@ static void sendText(const char* buf, int len, int type) {
 }
 
 inline void myWriteConsoleExImpl(const char* buf, int len, int type) {
-#ifdef _WIN32_WINNT
+#ifdef Win32
   static bool isUTF8[2] = {false, false};
   for (int i = 0; i < len; ) {
     int j = i;

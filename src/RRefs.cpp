@@ -21,6 +21,7 @@
 #include "RObjects.h"
 #include "util/RUtil.h"
 #include "debugger/SourceFileManager.h"
+#include "EventLoop.h"
 
 const int EVALUATE_AS_TEXT_MAX_LENGTH = 500000;
 
@@ -83,7 +84,7 @@ Status RPIServiceImpl::copyToPersistentRef(ServerContext* context, const RRef* r
 
 Status RPIServiceImpl::disposePersistentRefs(ServerContext*, const PersistentRefList* request, Empty*) {
   std::vector<int> refs(request->indices().begin(), request->indices().end());
-  executeOnMainThreadAsync([=] {
+  eventLoopExecute([=] {
     for (int ref : refs) {
       if (persistentRefStorage.has(ref)) {
         persistentRefStorage.remove(ref);

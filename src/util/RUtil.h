@@ -122,7 +122,7 @@ inline const char* nativeToUTF8(const char* s, int len) {
 
 inline SEXP parseCode(std::string const& s, bool keepSource = false) {
   Rcpp::RObject code = mkStringUTF8(s);
-#ifdef _WIN32_WINNT
+#ifdef Win32
   return RI->parse(Rcpp::Shield<SEXP>(RI->textConnection(code, Rcpp::Named("encoding", "UTF-8"))),
                    Rcpp::Named("encoding", "UTF-8"),
                    Rcpp::Named("keep.source", keepSource),

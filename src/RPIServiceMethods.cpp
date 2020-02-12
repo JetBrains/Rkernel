@@ -22,6 +22,8 @@
 #include "IO.h"
 #include "util/RUtil.h"
 #include "RLoader.h"
+#include "util/StringUtil.h"
+#include "EventLoop.h"
 
 Status RPIServiceImpl::getInfo(ServerContext*, const google::protobuf::Empty*, GetInfoResponse* response) {
   response->CopyFrom(infoResponse);
@@ -35,20 +37,20 @@ Status RPIServiceImpl::isBusy(ServerContext*, const Empty*, BoolValue* response)
 
 Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerWriter<CommandOutput>* response) {
     auto sourceInterop = std::ostringstream();
-    sourceInterop << "source(\"" << escapeBackslashes(request->rscriptspath()) << "/interop.R\")";
+    sourceInterop << "source(\"" << escapeStringCharacters(request->rscriptspath()) << "/init.R\")";
     const Status &status = executeCommand(context, sourceInterop.str(), response);
     if (!status.ok()) {
       return status;
     }
     auto executeInit = std::ostringstream();
-    executeInit << ".jetbrains$init(\"" << escapeBackslashes(request->rscriptspath()) << "/RSession\", \""
-                << escapeBackslashes(request->projectdir()) << "\")";
+    executeInit << ".jetbrains$init(\"" << escapeStringCharacters(request->rscriptspath()) << "/RSession\", \""
+                << escapeStringCharacters(request->projectdir()) << "\")";
     return executeCommand(context, executeInit.str(), response);
 }
 
 Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, google::protobuf::Empty*) {
   R_interrupts_pending = true;
-  executeOnMainThreadAsync([] {
+  eventLoopExecute([] {
     R_interrupts_pending = false;
     RI->q();
   });
@@ -116,7 +118,7 @@ void RPIServiceImpl::viewHandler(SEXP xSEXP, SEXP titleSEXP) {
   getValueInfo(x, event.mutable_viewrequest()->mutable_value());
   asyncEvents.push(event);
   ScopedAssign<bool> with(isInClientRequest, true);
-  eventLoop();
+  runEventLoop();
 }
 
 void RPIServiceImpl::showFileHandler(std::string const& filePath, std::string const& title) {
@@ -125,7 +127,7 @@ void RPIServiceImpl::showFileHandler(std::string const& filePath, std::string co
   event.mutable_showfilerequest()->set_title(title);
   asyncEvents.push(event);
   ScopedAssign<bool> with(isInClientRequest, true);
-  eventLoop();
+  runEventLoop();
 }
 
 void RPIServiceImpl::showHelpHandler(std::string const& content, std::string const& url) {

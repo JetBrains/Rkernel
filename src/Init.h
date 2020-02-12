@@ -14,12 +14,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef RWRAPPER_HTML_VIEWER_H
-#define RWRAPPER_HTML_VIEWER_H
+#ifndef RWRAPPER_INIT_H
+#define RWRAPPER_INIT_H
 
-#include <string>
+void initRWrapper();
+void quitRWrapper();
 
-void htmlViewerInit();
-bool processBrowseURL(std::string const& url);
-
-#endif //RWRAPPER_HTML_VIEWER_H
+#endif //RWRAPPER_INIT_H
