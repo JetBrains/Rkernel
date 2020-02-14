@@ -466,16 +466,13 @@ void MasterDevice::recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) 
     record(deviceInfo, number);
   }
   if (!deviceInfo.hasDumped) {
-    dumpNormalAndZoomed(deviceInfo);
+    dumpNormal(deviceInfo);
   }
 }
 
 void MasterDevice::rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters) {
   auto previousParameters = device->logicScreenParameters();
   if (!isClose(previousParameters, newParameters)) {
-    if (inMemory && previousParameters.resolution != newParameters.resolution) {
-      rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
-    }
     rescaleAndDump(device, SnapshotType::NORMAL, newParameters);
   }
 }
@@ -490,26 +487,18 @@ void MasterDevice::rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, Snaps
   device->dump();
 }
 
-void MasterDevice::dumpNormalAndZoomed(DeviceInfo &deviceInfo) {
+void MasterDevice::dumpNormal(DeviceInfo &deviceInfo) {
   auto device = deviceInfo.device;
   device->dump();
   deviceInfo.hasDumped = true;
-
-  // Note: there might be a temptation to dump "zoomed" version with a previous operator
-  // but, unfortunately, it doesn't produce any output for "partial" plots (i.e. produced by `points()` command)
-  if (inMemory) {
-    rescaleAndDump(device, SnapshotType::ZOOMED);  // Dump full-screen "zoomed"
-  }
   rescaleAndDump(device, SnapshotType::NORMAL);  // Dump full-screen "normal"
 }
 
 void MasterDevice::record(DeviceInfo& deviceInfo, int number) {
-  auto command = SnapshotUtil::makeRecordVariableCommand(deviceNumber, number, deviceInfo.hasGgPlot);
-  Evaluator::evaluate(command);
-  if (!inMemory) {
-    auto saveCommand = SnapshotUtil::makeSaveVariableCommand(currentSnapshotDirectory, deviceNumber, number);
-    Evaluator::evaluate(saveCommand);
-  }
+  auto recordCommand = SnapshotUtil::makeRecordVariableCommand(deviceNumber, number, deviceInfo.hasGgPlot);
+  Evaluator::evaluate(recordCommand);
+  auto saveCommand = SnapshotUtil::makeSaveVariableCommand(currentSnapshotDirectory, deviceNumber, number);
+  Evaluator::evaluate(saveCommand);
   deviceInfo.hasRecorded = true;
 }
 

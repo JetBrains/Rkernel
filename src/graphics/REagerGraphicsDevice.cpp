@@ -48,9 +48,6 @@ const char* REagerGraphicsDevice::makeSnapshotTypeSuffix() {
     case SnapshotType::NORMAL:
       return "_normal";
 
-    case SnapshotType::ZOOMED:
-      return "_zoomed";
-
     default:
       return "";
   }

@@ -36,7 +36,6 @@ namespace graphics {
 enum class SnapshotType {
   SKETCH,
   NORMAL,
-  ZOOMED,
 };
 
 struct MetricInfo {

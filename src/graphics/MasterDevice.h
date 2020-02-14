@@ -49,8 +49,8 @@ class MasterDevice {
   void record(DeviceInfo& deviceInfo, int number);
   static void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters);
   void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type);
-  void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters);
-  void dumpNormalAndZoomed(DeviceInfo &deviceInfo);
+  static void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters);
+  void dumpNormal(DeviceInfo &deviceInfo);
   void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number);
 
 public:
