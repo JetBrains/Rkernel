@@ -27,7 +27,7 @@ const int MAX_PREVIEW_STRING_LENGTH = 200;
 const int MAX_PREVIEW_PRINTED_COUNT = 20;
 
 static int asInt(SEXP x) {
-  if (TYPEOF(x) == INTSXP && Rf_length(x) >= 1) return INTEGER_ELT(x, 0);
+  if (TYPEOF(x) == INTSXP && Rf_length(x) >= 1) return *INTEGER(x);
   return 0;
 }
 
