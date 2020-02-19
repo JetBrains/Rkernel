@@ -26,6 +26,11 @@
 const int MAX_PREVIEW_STRING_LENGTH = 200;
 const int MAX_PREVIEW_PRINTED_COUNT = 20;
 
+static int asInt(SEXP x) {
+  if (TYPEOF(x) == INTSXP && Rf_length(x) >= 1) return INTEGER_ELT(x, 0);
+  return 0;
+}
+
 void getValueInfo(SEXP var, ValueInfo* result) {
   auto type = TYPEOF(var);
   if (type == PROMSXP) {
@@ -51,14 +56,14 @@ void getValueInfo(SEXP var, ValueInfo* result) {
       result->mutable_graph();
     } else if (contains(classes, "data.frame")) {
       ValueInfo::DataFrame* dataFrame = result->mutable_dataframe();
-      dataFrame->set_rows(Rcpp::as<int>(RI->nrow(var)));
-      dataFrame->set_cols(Rcpp::as<int>(RI->ncol(var)));
+      dataFrame->set_rows(asInt(RI->nrow(var)));
+      dataFrame->set_cols(asInt(RI->ncol(var)));
     } else if (type == VECSXP || type == LISTSXP) {
-      result->mutable_list()->set_length(Rcpp::as<int>(RI->length(var)));
+      result->mutable_list()->set_length(Rf_length(var));
     } else {
       ValueInfo::Value* value = result->mutable_value();
       if (type == LGLSXP || type == INTSXP || type == REALSXP || type == CPLXSXP || type == NILSXP) {
-        int length = Rcpp::as<int>(RI->length(var));
+        int length = Rf_length(var);
         value->set_isvector(length > 1);
         if (length <= MAX_PREVIEW_PRINTED_COUNT) {
           value->set_textvalue(getPrintedValue(RI->unclass(var)));
@@ -69,10 +74,11 @@ void getValueInfo(SEXP var, ValueInfo* result) {
           value->set_iscomplete(false);
         }
       } else if (type == STRSXP) {
-        int length = Rcpp::as<int>(RI->length(var));
+        int length = Rf_length(var);
         value->set_isvector(length > 1);
         bool isComplete = length <= MAX_PREVIEW_PRINTED_COUNT;
-        Rcpp::CharacterVector vector = isComplete ? var : RI->subscript(var, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
+        Rcpp::CharacterVector vector =
+            isComplete ? RI->unclass(var) : RI->subscript(RI->unclass(var), RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
         vector = RI->substring(vector, 1, MAX_PREVIEW_STRING_LENGTH);
         Rcpp::IntegerVector nchar = RI->nchar(vector);
         for (int i = 0; isComplete && i < (int)vector.size(); ++i) {
@@ -80,7 +86,7 @@ void getValueInfo(SEXP var, ValueInfo* result) {
             isComplete = false;
           }
         }
-        value->set_textvalue(getPrintedValue(RI->unclass(vector)));
+        value->set_textvalue(getPrintedValue(vector));
         value->set_iscomplete(isComplete);
       } else {
         value->set_isvector(false);
