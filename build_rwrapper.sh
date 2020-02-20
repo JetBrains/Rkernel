@@ -3,6 +3,8 @@ set -euo pipefail
 
 CMAKE="${CMAKE:-cmake}"
 
+./clone_dependency.sh
+
 if [ ! -d grpc ]; then
   ./build_grpc.sh
 fi
