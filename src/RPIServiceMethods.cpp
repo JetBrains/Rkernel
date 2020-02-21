@@ -90,10 +90,11 @@ Status RPIServiceImpl::loadLibrary(ServerContext* context, const StringValue* re
   return replExecuteCommand(context, detachCommandBuilder.str());
 }
 
-Status RPIServiceImpl::unloadLibrary(ServerContext* context, const StringValue* request, Empty*) {
-  auto detachCommandBuilder = std::ostringstream();
-  detachCommandBuilder << "detach('package:" << request->value() << "', unload = TRUE)\n";
-  return replExecuteCommand(context, detachCommandBuilder.str());
+Status RPIServiceImpl::unloadLibrary(ServerContext* context, const UnloadLibraryRequest* request, Empty*) {
+  auto builder = std::ostringstream();
+  builder << ".jetbrains$unloadLibrary('" << request->packagename() << "', "
+          << (request->withdynamiclibrary() ? "TRUE" : "FALSE") << ")";
+  return replExecuteCommand(context, builder.str());
 }
 
 Status RPIServiceImpl::setOutputWidth(ServerContext* context, const Int32Value* request, Empty*) {

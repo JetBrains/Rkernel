@@ -211,6 +211,32 @@ options(install.packages.compile.from.source = "always")
   }
 }
 
+.jetbrains$unloadLibrary <- function(package.name, with.dynamic.library) {
+  resource.name <- paste0("package:", package.name)
+  detach(resource.name, unload = TRUE, character.only = TRUE)
+  if (with.dynamic.library) {
+    .jetbrains$unloadDynamicLibrary(package.name)
+  }
+}
+
+.jetbrains$unloadDynamicLibrary <- function(package.name) {
+  if (.jetbrains$isDynamicLibraryLoaded(package.name)) {
+    pd.file <- attr(packageDescription(package.name), "file")
+    lib.path <- sub("/Meta.*", "", pd.file)
+    library.dynam.unload(package.name, libpath = lib.path)
+  }
+}
+
+.jetbrains$isDynamicLibraryLoaded <- function(package.name) {
+  for (lib in .dynLibs()) {
+    name <- lib[[1]]
+    if (name == package.name) {
+      return(TRUE)
+    }
+  }
+  FALSE
+}
+
 local({
   env <- as.environment("package:utils")
   unlockBinding("View", env)
