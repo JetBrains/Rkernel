@@ -67,3 +67,10 @@ SEXP BaseSEXP::operator [] (const char* name) const {
   }
   return R_NilValue;
 }
+
+SEXP BaseSEXP::assign(std::string const& name, SEXP value) const {
+  ShieldSEXP valueShield = value;
+  if (TYPEOF(x) != ENVSXP) return R_NilValue;
+  ::Rf_defineVar(Rf_install(name.c_str()), value, x);
+  return value;
+}

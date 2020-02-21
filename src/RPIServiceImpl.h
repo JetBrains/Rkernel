@@ -121,6 +121,7 @@ public:
   Status makeRdFromRoxygen(ServerContext* context, const MakeRdFromRoxygenRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status findPackagePathByTopic(ServerContext* context, const FindPackagePathByTopicRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status findPackagePathByPackageName(ServerContext* context, const FindPackagePathByPackageNameRequest* request,  ServerWriter<CommandOutput> *writer) override;
+  Status setSaveOnExit(ServerContext* context, const BoolValue* request, Empty*) override;
 
   void mainLoop();
   std::string readLineHandler(std::string const& prompt);
@@ -145,6 +146,8 @@ public:
   void setValueImpl(RRef const& ref, ShieldSEXP value);
   SEXP dereference(RRef const& ref);
 
+  OutputHandler replOutputHandler;
+
 private:
   BlockingQueue<AsyncEvent> asyncEvents{8};
 
@@ -157,9 +160,6 @@ private:
   volatile bool subprocessActive = false;
   bool subprocessInterrupt = false;
 
-  OutputHandler replOutputHandler;
-
-  GetInfoResponse infoResponse;
   bool isInClientRequest = false;
 
   std::unordered_set<int> dataFramesCache;

@@ -33,6 +33,9 @@ public:
   std::string getSourceFileName(std::string const& fileId);
   static const char* getSrcfileId(ShieldSEXP const& srcfile);
 
+  SEXP saveState();
+  void loadState(ShieldSEXP const& obj);
+
 private:
   struct SourceFile {
     SEXP extPtr; // Not protected!

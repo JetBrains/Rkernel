@@ -70,7 +70,8 @@ list(APPEND RWRAPPER_SOURCES
     src/Subprocess.cpp
     src/Init.cpp
     src/RStuff/MySEXP.cpp
-    src/RStuff/Conversion.cpp)
+    src/RStuff/Conversion.cpp
+    src/Session.cpp)
 
 if(WIN32)
     add_definitions(-DNOMINMAX)

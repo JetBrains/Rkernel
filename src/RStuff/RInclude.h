@@ -40,5 +40,8 @@
 #ifdef error
 # undef error
 #endif
+#ifdef setVar
+# undef setVar
+#endif
 
 #endif //RWRAPPER_R_STUFF_R_INCLUDE_H

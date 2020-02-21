@@ -22,9 +22,19 @@
 #include "RLoader.h"
 #include "util/StringUtil.h"
 #include "EventLoop.h"
+#include "Session.h"
 
-Status RPIServiceImpl::getInfo(ServerContext*, const google::protobuf::Empty*, GetInfoResponse* response) {
-  response->CopyFrom(infoResponse);
+static std::string getRVersion() {
+  return (std::string)asStringUTF8(RI->doubleSubscript(RI->version, "major")) + "." +
+         asStringUTF8(RI->doubleSubscript(RI->version, "minor"));
+}
+
+Status RPIServiceImpl::getInfo(ServerContext* context, const Empty*, GetInfoResponse* response) {
+  executeOnMainThread([&] {
+    response->set_rversion(getRVersion());
+    response->set_workspacefile(sessionManager.workspaceFile);
+    response->set_saveonexit(sessionManager.saveOnExit);
+  }, context);
   return Status::OK;
 }
 
@@ -50,7 +60,11 @@ Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, goog
   R_interrupts_pending = true;
   eventLoopExecute([] {
     R_interrupts_pending = false;
-    RI->q();
+    try {
+      RI->q("default", 0, true);
+    } catch (RExceptionBase const&) {
+      RI->q("default", 0, false);
+    }
   });
   return Status::OK;
 }

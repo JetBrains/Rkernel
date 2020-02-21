@@ -71,6 +71,8 @@ public:
     return var;
   }
 
+  SEXP assign(std::string const& name, SEXP value) const;
+
   SEXP parentEnv() const { return TYPEOF(x) == ENVSXP && x != R_EmptyEnv ? ENCLOS(x) : R_NilValue; }
 
   SEXP operator [] (int index) const {

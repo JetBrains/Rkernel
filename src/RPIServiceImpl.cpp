@@ -53,11 +53,6 @@ namespace {
 
 }
 
-static std::string getRVersion() {
-  return (std::string)asStringUTF8(RI->doubleSubscript(RI->version, "major")) + "." +
-         asStringUTF8(RI->doubleSubscript(RI->version, "minor"));
-}
-
 RPIServiceImpl::RPIServiceImpl() :
   replOutputHandler([&](const char* buf, int len, OutputType type) {
     AsyncEvent event;
@@ -66,7 +61,6 @@ RPIServiceImpl::RPIServiceImpl() :
     asyncEvents.push(event);
   }) {
   std::cerr << "rpi service impl constructor\n";
-  infoResponse.set_rversion(getRVersion());
 }
 
 RPIServiceImpl::~RPIServiceImpl() = default;
@@ -376,6 +370,7 @@ void quitRPIService() {
     std::this_thread::sleep_for(std::chrono::milliseconds(25));
   }
   server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(1));
+  R_interrupts_pending = false;
   server = nullptr;
   rpiService = nullptr;
   if (commandLineOptions.withTimeout) {

@@ -49,8 +49,13 @@ const char* SourceFileManager::getSrcfileId(ShieldSEXP const& srcfile) {
   return sourceFile == nullptr ? nullptr : sourceFile->fileId.c_str();
 }
 
+static bool isSrcrefProcessed(SEXP srcref) {
+  SEXP flag = Rf_getAttrib(srcref, RI->srcrefProcessedFlag);
+  return TYPEOF(flag) == EXTPTRSXP && EXTPTR_PTR(flag) != nullptr;
+}
+
 void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, ShieldSEXP const& srcref) {
-  if (Rf_getAttrib(srcref, RI->srcrefProcessedFlag) != R_NilValue) return;
+  if (isSrcrefProcessed(srcref)) return;
   if (steps.count(line)) {
     ShieldSEXP oldSrcref = steps[line];
     ShieldSEXP flag = Rf_getAttrib(oldSrcref, RI->srcrefProcessedFlag);
@@ -145,7 +150,7 @@ SEXP SourceFileManager::getFunctionSrcref(ShieldSEXP const& func, std::string co
       srcref = (Rf_length(srcref) > 0 ? VECTOR_ELT(srcref, 0) : R_NilValue);
     }
   }
-  if (Rf_getAttrib(srcref, RI->srcrefProcessedFlag) != R_NilValue) return srcref;
+  if (isSrcrefProcessed(srcref)) return srcref;
   PrSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
   SourceFile *sourceFile = getSourceFileInfo(srcfile);
 
@@ -217,4 +222,43 @@ std::string SourceFileManager::getSourceFileName(std::string const& fileId) {
   auto it = sourceFiles.find(fileId);
   if (it == sourceFiles.end()) return "";
   return it->second->name;
+}
+
+SEXP SourceFileManager::saveState() {
+  ShieldSEXP list = Rf_allocVector(VECSXP, sourceFiles.size());
+  int i = 0;
+  for (auto const& elem : sourceFiles) {
+    SourceFile const& file = *elem.second;
+    ShieldSEXP entry = RI->list(
+      named("fileId", file.fileId),
+      named("name", file.name),
+      named("lines", file.lines),
+      named("extPtr", file.extPtr)
+    );
+    SET_VECTOR_ELT(list, i++, entry);
+  }
+  return list;
+}
+
+void SourceFileManager::loadState(ShieldSEXP const& list) {
+  if (list.type() != VECSXP) return;
+  for (int i = 0; i < list.length(); ++i) {
+    ShieldSEXP entry = list[i];
+    if (entry.type() != VECSXP) continue;
+    std::unique_ptr<SourceFile> file = std::make_unique<SourceFile>();
+    file->fileId = asStringUTF8(entry["fileId"]);
+    file->name = asStringUTF8(entry["name"]);
+    file->lines = entry["lines"];
+    file->extPtr = entry["extPtr"];
+    ShieldSEXP extPtr = file->extPtr;
+    if (TYPEOF(extPtr) != EXTPTRSXP) continue;
+    R_SetExternalPtrAddr(extPtr, file.get());
+    R_RegisterCFinalizer(extPtr, [] (SEXP e) {
+      SourceFile *sourceFile = (SourceFile*)EXTPTR_PTR(e);
+      if (sourceFile == nullptr) return;
+      sourceFileManager.sourceFiles.erase(sourceFile->fileId);
+      R_ClearExternalPtr(e);
+    });
+    sourceFiles[file->fileId] = std::move(file);
+  }
 }

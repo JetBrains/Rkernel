@@ -22,7 +22,10 @@ void CommandLineOptions::parse(int argc, char* argv[]) {
   cxxopts::Options options("RWrapper", "Execution kernel for R interpreter");
   options.add_options()
       ("h,help", "Show help and exit")
-      ("with-timeout", "Terminate RWrapper if no RPCs were received for a minute");
+      ("with-timeout", "Terminate RWrapper if no RPCs were received for a minute")
+      ("workspace-file", "File for saving and loading R workspace", cxxopts::value<std::string>())
+      ("no-restore", "Don't restore workspace from 'workspace-file'")
+      ("no-save", "Don't automatically save workspace at the end");
   try {
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -30,8 +33,13 @@ void CommandLineOptions::parse(int argc, char* argv[]) {
       exit(0);
     }
     withTimeout = result["with-timeout"].as<bool>();
+    if (result.count("workspace-file")) {
+      workspaceFile = result["workspace-file"].as<std::string>();
+      save = !result["no-save"].as<bool>();
+      restore = !result["no-restore"].as<bool>();
+    }
   } catch (cxxopts::OptionParseException const& e) {
-    std::cout << e.what() << "\n";
+    std::cerr << e.what() << "\n";
     exit(1);
   }
 }

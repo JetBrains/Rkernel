@@ -14,19 +14,23 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef RWRAPPER_OPTIONS_H
-#define RWRAPPER_OPTIONS_H
 
-#include "cxxopts.hpp"
+#ifndef RWRAPPER_SESSION_H
+#define RWRAPPER_SESSION_H
 
-struct CommandLineOptions {
-  bool withTimeout = false;
+#include <string>
+
+class SessionManager {
+public:
+  void init();
+  void quit();
+
+  void saveWorkspace(std::string const& path = "");
+
   std::string workspaceFile;
-  bool save = false, restore = false;
-
-  void parse(int argc, char* argv[]);
+  volatile bool saveOnExit;
 };
 
-extern CommandLineOptions commandLineOptions;
+extern SessionManager sessionManager;
 
-#endif //RWRAPPER_OPTIONS_H
+#endif //RWRAPPER_SESSION_H

@@ -171,6 +171,7 @@ Status RPIServiceImpl::executeCommand(ServerContext* context, const std::string&
 Status RPIServiceImpl::replInterrupt(ServerContext*, const Empty*, Empty*) {
   if (replState == REPL_BUSY || isEventHandlerRunning()) {
     R_interrupts_pending = 1;
+    eventLoopExecute([] {});
   } else if (replState == READ_LINE) {
     eventLoopExecute([=] {
       if (replState == READ_LINE) {

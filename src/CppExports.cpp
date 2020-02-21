@@ -19,6 +19,7 @@
 #include "Init.h"
 #include "RStuff/Export.h"
 #include "RStuff/RInclude.h"
+#include <signal.h>
 
 #define CppExport extern "C" attribute_visible
 
@@ -145,6 +146,12 @@ CppExport SEXP _jetbrains_processBrowseURL(SEXP arg) {
   CPP_END
 }
 
+// Used in tests
+CppExport SEXP _jetbrains_raiseSigsegv() {
+  raise(SIGSEGV);
+  return R_NilValue;
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -162,6 +169,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_quitRWrapper", (DL_FUNC) &_jetbrains_quitRWrapper, 0},
     {".jetbrains_showFile", (DL_FUNC) &_jetbrains_showFile, 2},
     {".jetbrains_processBrowseURL", (DL_FUNC) &_jetbrains_processBrowseURL, 1},
+    {".jetbrains_raiseSigsegv", (DL_FUNC) &_jetbrains_raiseSigsegv, 0},
     {nullptr, nullptr, 0}
 };
 

@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
   Rs->RestoreAction = SA_NORESTORE;
   Rs->SaveAction = SA_NOSAVE;
   R_SetParams(Rs);
-  const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save"};
+  const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save", "--no-restore"};
   R_set_command_line_arguments(sizeof(rArgv) / sizeof(rArgv[0]), (char**)rArgv);
   FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
   GA_initapp(0, nullptr);

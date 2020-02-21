@@ -41,6 +41,9 @@ struct RObjects2 {
   PrSEXP colon = baseEnv.getVar(":");
   PrSEXP conditionMessage = baseEnv.getVar("conditionMessage");
   PrSEXP dataFrame = baseEnv.getVar("data.frame");
+  PrSEXP dirCreate = baseEnv.getVar("dir.create");
+  PrSEXP dirExists = baseEnv.getVar("dir.exists");
+  PrSEXP dirName = baseEnv.getVar("dirname");
   PrSEXP doubleSubscript = baseEnv.getVar("[[");
   PrSEXP doubleSubscriptAssign = baseEnv.getVar("[[<-");
   PrSEXP environmentName = baseEnv.getVar("environmentName");
@@ -49,6 +52,7 @@ struct RObjects2 {
   PrSEXP evalq = baseEnv.getVar("evalq");
   PrSEXP expression = baseEnv.getVar("expression");
   PrSEXP formals = baseEnv.getVar("formals");
+  PrSEXP fileExists = baseEnv.getVar("file.exists");
   PrSEXP getOption = baseEnv.getVar("getOption");
   PrSEXP geq = baseEnv.getVar(">=");
   PrSEXP getwd = baseEnv.getVar("getwd");
@@ -59,12 +63,14 @@ struct RObjects2 {
   PrSEXP isNa = baseEnv.getVar("is.na");
   PrSEXP leq = baseEnv.getVar("<=");
   PrSEXP less = baseEnv.getVar("<");
+  PrSEXP list = baseEnv.getVar("list");
   PrSEXP loadedNamespaces = baseEnv.getVar("loadedNamespaces");
   PrSEXP loadNamespace = baseEnv.getVar("loadNamespace");
   PrSEXP ls = baseEnv.getVar("ls");
   PrSEXP message = baseEnv.getVar("message");
   PrSEXP names = baseEnv.getVar("names");
   PrSEXP namesAssign = baseEnv.getVar("names<-");
+  PrSEXP newEnv = baseEnv.getVar("new.env");
   PrSEXP ncol = baseEnv.getVar("ncol");
   PrSEXP nchar = baseEnv.getVar("nchar");
   PrSEXP neq = baseEnv.getVar("!=");
@@ -76,12 +82,14 @@ struct RObjects2 {
   PrSEXP q = baseEnv.getVar("q");
   PrSEXP rep = baseEnv.getVar("rep");
   PrSEXP rm = baseEnv.getVar("rm");
+  PrSEXP saveImage = baseEnv.getVar("save.image");
   PrSEXP setenv = baseEnv.getVar("Sys.setenv");
   PrSEXP setwd = baseEnv.getVar("setwd");
   PrSEXP srcfilecopy = baseEnv.getVar("srcfilecopy");
   PrSEXP srcref = baseEnv.getVar("srcref");
   PrSEXP subscript = baseEnv.getVar("[");
   PrSEXP substring = baseEnv.getVar("substring");
+  PrSEXP sysLoadImage = baseEnv.getVar("sys.load.image");
   PrSEXP textConnection = baseEnv.getVar("textConnection");
   PrSEXP unclass = baseEnv.getVar("unclass");
   PrSEXP unique = baseEnv.getVar("unique");

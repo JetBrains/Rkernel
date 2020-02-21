@@ -21,12 +21,15 @@
 #include "HTMLViewer.h"
 #include "EventLoop.h"
 #include "RStuff/RObjects.h"
+#include "Session.h"
 
 #ifdef Win32
 # include <io.h>
 #else
 # include <unistd.h>
 #endif
+
+static void initDoQuit();
 
 void initRWrapper() {
   DllInfo *dll = R_getEmbeddingDllInfo();
@@ -52,18 +55,63 @@ void initRWrapper() {
 #endif
 
   initDoSystem();
+  initDoQuit();
   rDebugger.init();
   htmlViewerInit();
   initEventLoop();
-
   initRPIService();
+  sessionManager.init();
 }
 
 void quitRWrapper() {
   static bool done = false;
   if (done) return;
   done = true;
+  sessionManager.quit();
   quitRPIService();
   quitEventLoop();
   RI = nullptr;
+}
+
+extern "C" {
+typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);
+void SET_PRIMFUN(SEXP x, CCODE f);
+void R_CleanUp(SA_TYPE, int, int);
+}
+
+static void initDoQuit() {
+  SET_PRIMFUN(INTERNAL(Rf_install("quit")), [](SEXP call, SEXP op, SEXP args, SEXP rho) -> SEXP {
+    int argsCount = Rf_length(args);
+    if (argsCount != 3) {
+      Rf_error("%d arguments passed to .Internal(quit) which requires 3", argsCount);
+    }
+
+    if (!Rf_isString(CAR(args)))
+      Rf_error("one of \"yes\", \"no\", \"ask\" or \"default\" expected.");
+    const char* saveStr = CHAR(STRING_ELT(CAR(args), 0)); /* ASCII */
+    bool save;
+    if (!strcmp(saveStr, "no")) {
+      save = false;
+    } else if (!strcmp(saveStr, "yes")) {
+      save = true;
+    } else if (!strcmp(saveStr, "default") || !strcmp(saveStr, "ask")) {
+      save = sessionManager.saveOnExit;
+    } else {
+      Rf_error("unrecognized value of 'save'");
+    }
+    int status = Rf_asInteger(CADR(args));
+    if (status == NA_INTEGER) {
+      Rf_warning("invalid 'status', 0 assumed");
+      status = 0;
+    }
+    int runLast = Rf_asLogical(CADDR(args));
+    if (runLast == NA_LOGICAL) {
+      Rf_warning("invalid 'runLast', FALSE assumed");
+      runLast = 0;
+    }
+    sessionManager.saveOnExit = save;
+    if (!runLast) quitRWrapper();
+    R_CleanUp(SA_NOSAVE, status, runLast);
+    exit(0);
+  });
 }
