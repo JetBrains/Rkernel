@@ -166,7 +166,8 @@ inline SEXP invokeFunction(SEXP func, std::vector<Rcpp::RObject> const& args) {
 }
 
 inline Rcpp::Environment currentEnvironment() {
-  SEXP env = rDebugger.lastFrame();
+  auto const& stack = rDebugger.getStack();
+  SEXP env = stack.empty() ? R_NilValue : (SEXP)stack.back().environment;
   return TYPEOF(env) == ENVSXP ? Rcpp::as<Rcpp::Environment>(env) : RI->globalEnv;
 }
 

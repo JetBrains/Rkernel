@@ -164,6 +164,7 @@ private:
   bool isInClientRequest = false;
 
   std::unordered_set<int> dataFramesCache;
+  std::vector<RDebuggerStackFrame> lastErrorStack;
 
   IndexedStorage<Rcpp::RObject> persistentRefStorage;
 

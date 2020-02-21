@@ -21,6 +21,7 @@
 #include <string>
 #include <unordered_map>
 #include <map>
+#include <memory>
 #include "protos/service.grpc.pb.h"
 #include "DebugStepInfo.h"
 #include "../RInternals/RInternals.h"
@@ -43,6 +44,13 @@ struct BreakpointInfo {
   std::string condition;
 };
 
+struct RDebuggerStackFrame {
+  std::string fileId;
+  int line;
+  Rcpp::RObject environment;
+  std::string functionName;
+};
+
 class RDebugger {
 public:
   void init();
@@ -62,9 +70,9 @@ public:
   void doHandleException(SEXP e);
   void buildDebugPrompt(AsyncEvent::DebugPrompt* prompt);
 
-  SEXP getFrame(int index);
-  SEXP lastFrame();
-  SEXP getErrorStackFrame(int index);
+  std::vector<RDebuggerStackFrame> const& getStack();
+  std::vector<RDebuggerStackFrame> getLastErrorStack();
+  SEXP getLastError();
 
   void setCommand(DebuggerCommand c);
   void setRunToPositionCommand(std::string const& fileId, int line);
@@ -85,16 +93,19 @@ private:
   SEXP runToPositionTarget;
   void resetRunToPositionTarget();
 
-  struct StackFrame {
-    std::string fileId;
-    int line;
+  struct ContextDump {
+    Rcpp::RObject call;
+    Rcpp::RObject function;
+    Rcpp::RObject srcref;
     Rcpp::RObject environment;
-    std::string functionName;
   };
-  std::vector<StackFrame> stack;
-  std::vector<StackFrame> lastErrorStack;
-  static std::vector<StackFrame> buildStack(SEXP currentCall);
-  static void buildStackProto(std::vector<StackFrame> const& stack, StackFrameList *listProto);
+
+  std::vector<RDebuggerStackFrame> stack;
+  std::vector<ContextDump> lastErrorStackDump;
+  std::unique_ptr<Rcpp::RObject> lastError;
+
+  static std::vector<ContextDump> getContextDump(SEXP currentCall);
+  static std::vector<RDebuggerStackFrame> buildStack(std::vector<ContextDump> const& contexts);
 };
 
 extern RDebugger rDebugger;
@@ -119,5 +130,7 @@ public:
 private:
   bool previousValue;
 };
+
+void buildStackProto(std::vector<RDebuggerStackFrame> const& stack, StackFrameList *listProto);
 
 #endif //RWRAPPER_R_DEBUGGER_H

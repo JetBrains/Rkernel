@@ -37,14 +37,17 @@ Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
       return Rcpp::as<Rcpp::RObject>(currentEnvironment());
     case RRef::kSysFrameIndex: {
       int index = ref.sysframeindex();
-      return rDebugger.getFrame(index);
+      auto const& stack = rDebugger.getStack();
+      if (index < 0 || index >= stack.size()) return R_NilValue;
+      return stack[index].environment;
     }
     case RRef::kErrorStackSysFrameIndex: {
       int index = ref.errorstacksysframeindex();
-      return rDebugger.getErrorStackFrame(index);
+      if (index < 0 || index >= lastErrorStack.size()) return R_NilValue;
+      return lastErrorStack[index].environment;
     }
     case RRef::kMember:
-      return Rcpp::as<Rcpp::Environment>(dereference(ref.member().env())).get(mkStringUTF8(ref.member().name()));
+      return RI->get(mkStringUTF8(ref.member().name()), Rcpp::Named("envir", dereference(ref.member().env())));
     case RRef::kParentEnv: {
       Rcpp::Environment env = Rcpp::as<Rcpp::Environment>(dereference(ref.parentenv().env()));
       int count = ref.parentenv().index();
@@ -62,8 +65,17 @@ Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
       return RI->eval(parseCode(code), Rcpp::Named("envir", env));
     }
     case RRef::kListElement: {
-      Rcpp::List list = Rcpp::as<Rcpp::List>(dereference(ref.listelement().list()));
+      Rcpp::RObject listObj = dereference(ref.listelement().list());
       int index = ref.listelement().index();
+      if (TYPEOF(listObj) == DOTSXP) {
+        SEXP e = listObj;
+        for (int i = 0; i < index; ++i) {
+          e = CDR(e);
+          if (e == R_NilValue) return R_NilValue;
+        }
+        return CAR(e);
+      }
+      Rcpp::List list = Rcpp::as<Rcpp::List>(listObj);
       return list[index];
     }
     default:

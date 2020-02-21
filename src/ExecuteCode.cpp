@@ -69,7 +69,19 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         response.set_exception(e.what());
         writer->Write(response);
       }
-      if (!isRepl) {
+      if (isRepl) {
+        lastErrorStack = rDebugger.getLastErrorStack();
+        AsyncEvent event;
+        SEXP error = rDebugger.getLastError();
+        if (Rf_inherits(error, "condition")) {
+          SEXP conditionMessage = Rcpp::Rcpp_eval(Rf_lang2(RI->conditionMessage, error), R_BaseEnv);
+          event.mutable_exception()->set_text(translateToUTF8(conditionMessage));
+        } else {
+          event.mutable_exception()->set_text("Error");
+        }
+        buildStackProto(lastErrorStack, event.mutable_exception()->mutable_stack());
+        rpiService->sendAsyncEvent(event);
+      } else {
         std::string msg = std::string("\n") + e.what() + "\n";
         myWriteConsoleEx(msg.c_str(), msg.length(), STDERR);
       }

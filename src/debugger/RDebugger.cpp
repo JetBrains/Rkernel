@@ -218,7 +218,7 @@ void RDebugger::doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint,
 
   if (!suspend) return;
   setCommand(CONTINUE);
-  stack = buildStack(currentCall);
+  stack = buildStack(getContextDump(currentCall));
 
   BEGIN_RCPP
     rpiService->debugPromptHandler();
@@ -228,14 +228,6 @@ void RDebugger::doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint,
 void RDebugger::buildDebugPrompt(AsyncEvent::DebugPrompt* prompt) {
   prompt->set_changed(true);
   buildStackProto(stack, prompt->mutable_stack());
-}
-
-SEXP RDebugger::getFrame(int index) {
-  return 0 <= index && index < (int)stack.size() ? (SEXP)stack[index].environment : R_NilValue;
-}
-
-SEXP RDebugger::lastFrame() {
-  return stack.empty() ? R_NilValue : (SEXP)stack.back().environment;
 }
 
 static SEXP debugDoBegin(SEXP call, SEXP, SEXP args, SEXP rho) {
@@ -314,46 +306,46 @@ SEXP RDebugger::doBegin(SEXP call, SEXP args, SEXP rho) {
 }
 
 void RDebugger::doHandleException(SEXP e) {
-  lastErrorStack = buildStack(R_NilValue);
-  if (!lastErrorStack.empty()) {
-    lastErrorStack.pop_back();
-  }
-  AsyncEvent event;
-  if (Rf_inherits(e, "condition")) {
-    SEXP conditionMessage = Rf_eval(Rf_lang2(RI->conditionMessage, e), R_BaseEnv);
-    event.mutable_exception()->set_text(translateToUTF8(conditionMessage));
-  } else {
-    event.mutable_exception()->set_text("Error");
-  }
-  buildStackProto(lastErrorStack, event.mutable_exception()->mutable_stack());
-  rpiService->sendAsyncEvent(event);
+  lastErrorStackDump = getContextDump(R_NilValue);
+  lastError = std::make_unique<Rcpp::RObject>(e);
 }
 
-SEXP RDebugger::getErrorStackFrame(int index) {
-  return 0 <= index && index < (int)lastErrorStack.size() ? (SEXP)lastErrorStack[index].environment : R_NilValue;
-}
-
-std::vector<RDebugger::StackFrame> RDebugger::buildStack(SEXP currentCall) {
-  std::vector<StackFrame> stack;
-  WithDebuggerEnabled with(false);
-
-  std::vector<RContext*> contexts = {nullptr};
-  RContext* currentCtx = getGlobalContext();
-  while (currentCtx != nullptr) {
-    if (isCallContext(currentCtx)) {
-      contexts.push_back(currentCtx);
+std::vector<RDebugger::ContextDump> RDebugger::getContextDump(SEXP currentCall) {
+  std::vector<ContextDump> dump;
+  dump.push_back({
+    .call = currentCall,
+    .function = R_NilValue,
+    .srcref = R_Srcref ? R_Srcref : R_NilValue,
+    .environment = R_NilValue
+  });
+  RContext* ctx = getGlobalContext();
+  while (ctx != nullptr) {
+    if (isCallContext(ctx)) {
+      SEXP srcref = getSrcref(ctx);
+      dump.push_back({
+        .call = getCall(ctx),
+        .function = getFunction(ctx),
+        .srcref = srcref ? srcref : R_NilValue,
+        .environment = getEnvironment(ctx)
+      });
     }
-    currentCtx = getNextContext(currentCtx);
+    ctx = getNextContext(ctx);
   }
-  std::reverse(contexts.begin(), contexts.end());
+  std::reverse(dump.begin(), dump.end());
+  return dump;
+}
+
+std::vector<RDebuggerStackFrame> RDebugger::buildStack(std::vector<ContextDump> const& contexts) {
+  std::vector<RDebuggerStackFrame> stack;
+  WithDebuggerEnabled with(false);
 
   bool wasStackBottom = false;
   std::string functionName;
   SEXP frame = R_NilValue;
   SEXP functionSrcref = R_NilValue;
-  for (RContext* ctx : contexts) {
-    SEXP call = ctx ? getCall(ctx) : currentCall;
-    SEXP srcref = (ctx ? getSrcref(ctx) : R_Srcref);
+  for (auto const& ctx : contexts) {
+    SEXP call = ctx.call;
+    SEXP srcref = ctx.srcref;
     srcref = (srcref == nullptr) ? R_NilValue : srcref;
     if (srcref == R_NilValue) {
       srcref = Rf_getAttrib(call, RI->srcrefAttr);
@@ -362,7 +354,7 @@ std::vector<RDebugger::StackFrame> RDebugger::buildStack(SEXP currentCall) {
       }
     }
     SEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
-    if (Rf_getAttrib(frame, RI->stackBottomAttr) != R_NilValue && ctx != nullptr) {
+    if (Rf_getAttrib(frame, RI->stackBottomAttr) != R_NilValue && ctx.environment != R_NilValue) {
       stack.clear();
       wasStackBottom = true;
     } else {
@@ -378,15 +370,15 @@ std::vector<RDebugger::StackFrame> RDebugger::buildStack(SEXP currentCall) {
       }
     }
     functionName = getCallFunctionName(call);
-    if (ctx != nullptr) {
-      functionSrcref = sourceFileManager.getFunctionSrcref(getFunction(ctx), functionName);
-      frame = getEnvironment(ctx);
+    if (ctx.function != R_NilValue) {
+      functionSrcref = sourceFileManager.getFunctionSrcref(ctx.function, functionName);
     }
+    frame = ctx.environment;
   }
   return stack;
 }
 
-void RDebugger::buildStackProto(std::vector<RDebugger::StackFrame> const& stack, StackFrameList *listProto) {
+void buildStackProto(std::vector<RDebuggerStackFrame> const& stack, StackFrameList *listProto) {
   for (auto const& frame : stack) {
     auto proto = listProto->add_frames();
     proto->mutable_position()->set_fileid(frame.fileId);
@@ -394,4 +386,18 @@ void RDebugger::buildStackProto(std::vector<RDebugger::StackFrame> const& stack,
     proto->set_functionname(frame.functionName);
     proto->set_equalityobject((long long)(SEXP)frame.environment);
   }
+}
+
+std::vector<RDebuggerStackFrame> const& RDebugger::getStack() {
+  return stack;
+}
+
+std::vector<RDebuggerStackFrame> RDebugger::getLastErrorStack() {
+  std::vector<RDebuggerStackFrame> result = buildStack(lastErrorStackDump);
+  if (!result.empty()) result.pop_back();
+  return result;
+}
+
+SEXP RDebugger::getLastError() {
+  return lastError == nullptr ? R_NilValue : (SEXP)*lastError;
 }

@@ -46,6 +46,14 @@ void getValueInfo(SEXP var, ValueInfo* result) {
       return;
     }
     getValueInfo(PRVALUE(var), result);
+  } else if (type == LANGSXP || type == SYMSXP) {
+    result->mutable_value()->set_iscomplete(true);
+    result->mutable_value()->set_isvector(false);
+    TextBuilder builder;
+    builder.build(var);
+    result->mutable_value()->set_textvalue(builder.getText());
+  } else if (type == DOTSXP) {
+    result->mutable_list()->set_length(Rf_length(var));
   } else if (type == CLOSXP || type == SPECIALSXP || type == BUILTINSXP) {
     result->mutable_function()->set_header(getFunctionHeader(var));
   } else if (type == ENVSXP) {
@@ -115,7 +123,7 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
     int reqStart = request->start();
     int reqEnd = request->end();
     if (reqEnd == -1) reqEnd = INT_MAX;
-    if (Rcpp::as<bool>(RI->isEnvironment(obj))) {
+    if (TYPEOF(obj) == ENVSXP) {
       response->set_isenv(true);
       Rcpp::Environment environment = Rcpp::as<Rcpp::Environment>(obj);
       Rcpp::CharacterVector ls = Rcpp::as<Rcpp::CharacterVector>(environment.ls(true));
@@ -131,6 +139,19 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
         }
       }
     } else {
+      if (TYPEOF(obj) == DOTSXP) {
+        Rcpp::List newObj;
+        SEXP dots = obj;
+        while (dots != R_NilValue) {
+          if (TAG(dots) == R_NilValue) {
+            newObj.push_back(CAR(dots));
+          } else {
+            newObj.push_back(CAR(dots), CHAR(PRINTNAME(TAG(dots))));
+          }
+          dots = CDR(dots);
+        }
+        obj = newObj;
+      }
       response->set_isenv(false);
       int length = Rcpp::as<int>(RI->length(obj));
       response->set_totalcount(length);

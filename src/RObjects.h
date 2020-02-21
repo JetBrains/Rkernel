@@ -49,6 +49,7 @@ struct RObjects {
   Rcpp::Function filePath = baseEnv["file.path"];
   Rcpp::Function formals = baseEnv["formals"];
   Rcpp::Function geq = baseEnv[">="];
+  Rcpp::Function get = baseEnv["get"];
   Rcpp::Function getOption = baseEnv["getOption"];
   Rcpp::Function getwd = baseEnv["getwd"];
   Rcpp::Function greater = baseEnv[">"];
