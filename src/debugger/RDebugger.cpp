@@ -312,23 +312,13 @@ void RDebugger::doHandleException(SEXP e) {
 
 std::vector<RDebugger::ContextDump> RDebugger::getContextDump(SEXP currentCall) {
   std::vector<ContextDump> dump;
-  ContextDump initial {
-    .call = currentCall,
-    .function = R_NilValue,
-    .srcref = R_Srcref ? R_Srcref : R_NilValue,
-    .environment = R_NilValue
-  };
+  ContextDump initial { currentCall, R_NilValue, R_Srcref ? R_Srcref : R_NilValue, R_NilValue };
   dump.push_back(initial);
   RContext* ctx = getGlobalContext();
   while (ctx != nullptr) {
     if (isCallContext(ctx)) {
       SEXP srcref = getSrcref(ctx);
-      ContextDump currentContext {
-        .call = getCall(ctx),
-        .function = getFunction(ctx),
-        .srcref = srcref ? srcref : R_NilValue,
-        .environment = getEnvironment(ctx)
-      };
+      ContextDump currentContext { getCall(ctx), getFunction(ctx), srcref ? srcref : R_NilValue, getEnvironment(ctx) };
       dump.push_back(currentContext);
     }
     ctx = getNextContext(ctx);
