@@ -220,6 +220,14 @@ void MasterDevice::addNewDevice() {
   isNextGgPlot = false;
 }
 
+int MasterDevice::getSnapshotCount() {
+  if (hasCurrentDevice()) {
+    return currentSnapshotNumber + 1;
+  } else {
+    return currentSnapshotNumber;
+  }
+}
+
 // Called by hooks "before.plot.new" for vanilla plots (`isTriggeredByGgPlot = false`)
 // and "before.grid.newpage" for ggplot2 (`isTriggeredByGgPlot = true`)
 // (see "init.R")

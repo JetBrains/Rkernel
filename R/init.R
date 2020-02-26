@@ -72,17 +72,35 @@ options(install.packages.compile.from.source = "always")
   })
 }
 
+# Fallback values
+.jetbrains$externalImageDir <- "."
+.jetbrains$externalImageCounter <- 0
+
+.jetbrains$getNextExternalImagePath <- function(path) {
+  snapshot.count <- .Call(".jetbrains_ther_device_snapshot_count")
+  if (is.null(snapshot.count)) {
+    snapshot.count <- 0
+  }
+  .jetbrains$externalImageCounter <- .jetbrains$externalImageCounter + 1  # Also ensure it's > 0
+  base.name <- paste0("image_", snapshot.count - 1, "_", .jetbrains$externalImageCounter, ".", tools::file_ext(path))
+  file.path(.jetbrains$externalImageDir, base.name)
+}
+
 .jetbrains$runBeforeChunk <- function(report.text, chunk.text, cache.dir, width, height, resolution) {
   .rs.evaluateRmdParams(report.text)
   opts <- .rs.evaluateChunkOptions(chunk.text)
   data.dir <- file.path(cache.dir, "data")
   html.lib.dir <- file.path(cache.dir, "lib")
   image.dir <- file.path(cache.dir,  "images")
+  external.image.dir <- file.path(cache.dir, "external-images")
   dir.create(cache.dir, recursive = TRUE, showWarnings = FALSE)
   dir.create(image.dir, showWarnings = FALSE)
+  dir.create(external.image.dir, showWarnings = FALSE)
   dir.create(html.lib.dir, showWarnings = FALSE)
   dir.create(data.dir, showWarnings = FALSE)
 
+  .jetbrains$externalImageDir <- external.image.dir
+  .jetbrains$externalImageCounter <- 0
   .rs.initHtmlCapture(cache.dir, html.lib.dir, opts)
   .rs.initDataCapture(data.dir, opts)
   if (!.rs.hasVar("jbHookedPackages")) {

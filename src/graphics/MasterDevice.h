@@ -60,6 +60,7 @@ public:
   Ptr<REagerGraphicsDevice> getCurrentDevice();
   void addNewDevice();
 
+  int getSnapshotCount();
   void recordLast(bool isTriggeredByGgPlot);
   bool isOnlineRescalingEnabled();
   bool rescaleAllLast(ScreenParameters newParameters);

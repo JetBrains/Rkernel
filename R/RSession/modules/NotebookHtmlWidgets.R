@@ -86,11 +86,11 @@
 
 .rs.addFunction("rnbHooks.print.knit_image_paths", function(x, ...) 
 {
-   .Call("rs_recordExternalPlot", vapply(x, function(path) {
-      dest <- tempfile(fileext = paste(".", tools::file_ext(path), sep = ""))
+   lapply(x, function(path) {
+      dest <- .jetbrains$getNextExternalImagePath(path)
       if (identical(substr(path, 1, 7), "http://") ||
           identical(substr(path, 1, 8), "https://")) {
-         # if the path appears to be a URL, download it locally 
+         # if the path appears to be a URL, download it locally
          tryCatch({
             suppressMessages(download.file(path, dest, quiet = TRUE))
          },
@@ -99,8 +99,7 @@
          # not a URL, presume it to be an ordinary path on disk
          file.copy(path, dest, copy.mode = FALSE)
       }
-      dest
-   }, ""))
+   })
 })
 
 .rs.addFunction("rnbHooks.print.htmlwidget", function(x, ...) {

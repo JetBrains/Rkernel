@@ -44,6 +44,17 @@ SEXP jetbrains_ther_device_shutdown() {
   return R_NilValue;
 }
 
+SEXP jetbrains_ther_device_snapshot_count() {
+  auto active = DeviceManager::getInstance()->getActive();
+  if (active) {
+    auto count = active->getSnapshotCount();
+    return Rcpp::wrap(count);
+  } else {
+    std::cerr << "jetbrains_ther_device_snapshot_count(): Device is not active. Ignored\n";
+    return R_NilValue;
+  }
+}
+
 SEXP jetbrains_ther_device_record(bool isTriggeredByGgPlot) {
   auto active = DeviceManager::getInstance()->getActive();
   if (active) {
