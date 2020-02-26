@@ -134,7 +134,7 @@ options(connectionObserver = list(
       assign(cacheKey, value = connection, envir = .rs.activeConnections)
 
       # serialize and generate client events
-      invisible(.Call("rs_connectionOpened", connection))
+      #invisible(.Call("rs_connectionOpened", connection))
    },
    connectionClosed = function(type, host, ...) {
       .rs.validateCharacterParams(list(type = type, host = host))
@@ -144,11 +144,11 @@ options(connectionObserver = list(
       if (!is.null(name))
          rm(list = name, envir = .rs.activeConnections)
 
-      invisible(.Call("rs_connectionClosed", type, host))
+      #invisible(.Call("rs_connectionClosed", type, host))
    },
    connectionUpdated = function(type, host, hint, ...) {
       .rs.validateCharacterParams(list(type = type, host = host, hint = hint))
-      invisible(.Call("rs_connectionUpdated", type, host, hint))
+      #invisible(.Call("rs_connectionUpdated", type, host, hint))
    }
 ))
 
