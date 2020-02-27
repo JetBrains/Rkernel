@@ -25,14 +25,6 @@ else
   IS_MACOS=true
 fi
 
-# patch Rcpp
-(
-  cd Rcpp
-  if ! patch -R -p1 -s -f --dry-run <../Rcpp-patches/*.patch; then
-    patch -p1 <../Rcpp-patches/*.patch
-  fi
-)
-
 mkdir -p build
 cd build
 if [ -e "crashpad/crashpad" ]; then

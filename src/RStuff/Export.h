@@ -14,22 +14,28 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#ifndef RWRAPPER_R_STUFF_EXPORT_H
+#define RWRAPPER_R_STUFF_EXPORT_H
 
-#ifndef RWRAPPER_SUBPROCESS_H
-#define RWRAPPER_SUBPROCESS_H
+#include "Exceptions.h"
 
-#include <string>
-#include "RStuff/RInclude.h"
+extern "C" {
+LibExtern int R_interrupts_pending;
+}
 
-void initDoSystem();
-SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP rho);
+#define CPP_BEGIN try {
 
-struct DoSystemResult {
-  std::string stdoutBuf;
-  int exitCode = 0;
-  bool timedOut = false;
-};
-DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout,
-                    bool replInput = true, bool ignoreStdout = false, bool ignoreStderr = false);
+#define CPP_END_VOID                       \
+  } catch (RInterruptedException const&) { \
+    R_interrupts_pending = 1;              \
+  } catch (std::exception const& e) {      \
+    Rf_error(e.what());                    \
+  } catch (...) {                          \
+    Rf_error("c++ exception");             \
+  }                                        \
+  R_CheckUserInterrupt();
 
-#endif //RWRAPPER_SUBPROCESS_H
+#define CPP_END CPP_END_VOID \
+  return R_NilValue;
+
+#endif //RWRAPPER_R_STUFF_EXPORT_H

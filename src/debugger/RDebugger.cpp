@@ -17,9 +17,8 @@
 
 #include "../RPIServiceImpl.h"
 #include "RDebugger.h"
-#include "../RObjects.h"
 #include "SourceFileManager.h"
-#include "../util/RUtil.h"
+#include "../RStuff/RUtil.h"
 #include "../RInternals/RInternals.h"
 
 RDebugger rDebugger;
@@ -33,7 +32,7 @@ void RDebugger::init() {
 void RDebugger::enable() {
   if (_isEnabled) return;
   _isEnabled = true;
-  prevJIT = Rcpp::as<int>(RI->compilerEnableJIT(0));
+  prevJIT = asInt(RI->compilerEnableJIT(0));
   int beginOffset = getPrimOffset(RI->begin);
   prevDoBegin = getFunTabFunction(beginOffset);
   setFunTabFunction(beginOffset, debugDoBegin);
@@ -135,11 +134,11 @@ void RDebugger::setCommand(DebuggerCommand c) {
           break;
         }
         case STEP_OVER: {
-          Rf_setAttrib(env, RI->stopHereFlagAttr, Rf_ScalarLogical(true));
+          Rf_setAttrib(env, RI->stopHereFlagAttr, toSEXP(true));
           break;
         }
         case STEP_OUT: {
-          Rf_setAttrib(env, RI->stopHereFlagAttr, isFirst ? R_NilValue : Rf_ScalarInteger(true));
+          Rf_setAttrib(env, RI->stopHereFlagAttr, isFirst ? R_NilValue : toSEXP(true));
           break;
         }
         default:;
@@ -153,7 +152,7 @@ void RDebugger::setCommand(DebuggerCommand c) {
 void RDebugger::setRunToPositionCommand(std::string const& fileId, int line) {
   currentCommand = CONTINUE;
   resetRunToPositionTarget();
-  SEXP srcref = sourceFileManager.getStepSrcref(fileId, line);
+  ShieldSEXP srcref = sourceFileManager.getStepSrcref(fileId, line);
   if (srcref != R_NilValue) {
     runToPositionTarget = srcref;
     SET_RDEBUG(srcref, true);
@@ -169,29 +168,29 @@ void RDebugger::resetRunToPositionTarget() {
   }
 }
 
-static bool checkCondition(std::string const& condition, SEXP env) {
+static bool checkCondition(std::string const& condition, ShieldSEXP const& env) {
   if (condition.empty()) {
     return true;
   }
   try {
     WithDebuggerEnabled with(false);
-    Rcpp::RObject expr = parseCode(condition);
-    Rcpp::RObject obj = RI->asLogical(Rcpp::Rcpp_eval(expr, env));
-    return Rcpp::is<bool>(obj) && Rcpp::as<bool>(obj);
-  } catch (Rcpp::eval_error const&) {
+    ShieldSEXP expr = parseCode(condition);
+    ShieldSEXP result = RI->asLogical(RI->evalq(expr, env));
+    return asBool(result);
+  } catch (RError const&) {
     return false;
   }
 }
 
-static void evaluateAndLog(std::string const& expression, SEXP env) {
+static void evaluateAndLog(std::string const& expression, ShieldSEXP const& env) {
   if (expression.empty()) {
     return;
   }
   try {
     WithDebuggerEnabled with(false);
-    Rcpp::RObject expr = parseCode(expression);
-    RI->message(getPrintedValue(Rcpp::Rcpp_eval(expr, env)), Rcpp::Named("appendLF", false));
-  } catch (Rcpp::eval_error const& e) {
+    ShieldSEXP expr = parseCode(expression);
+    RI->message(getPrintedValue(RI->evalq(expr, env)), named("appendLF", false));
+  } catch (RError const& e) {
     RI->message(e.what());
   }
 }
@@ -206,23 +205,23 @@ void RDebugger::doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint,
     return;
   }
 
-  bool suspend = isStepStop || (R_Srcref != R_NilValue && R_Srcref == runToPositionTarget);
-  if (!breakpointsMuted && breakpoint != nullptr) {
-    if (checkCondition(breakpoint->condition, env)) {
-      evaluateAndLog(breakpoint->evaluateAndLog, env);
-      if (breakpoint->suspend) {
-        suspend = true;
+  CPP_BEGIN
+    bool suspend = isStepStop || (R_Srcref != R_NilValue && R_Srcref == runToPositionTarget);
+    if (!breakpointsMuted && breakpoint != nullptr) {
+      if (checkCondition(breakpoint->condition, env)) {
+        evaluateAndLog(breakpoint->evaluateAndLog, env);
+        if (breakpoint->suspend) {
+          suspend = true;
+        }
       }
     }
-  }
 
-  if (!suspend) return;
-  setCommand(CONTINUE);
-  stack = buildStack(getContextDump(currentCall));
+    if (!suspend) return;
+    setCommand(CONTINUE);
+    stack = buildStack(getContextDump(currentCall));
 
-  BEGIN_RCPP
     rpiService->debugPromptHandler();
-  VOID_END_RCPP
+  CPP_END_VOID
 }
 
 void RDebugger::buildDebugPrompt(AsyncEvent::DebugPrompt* prompt) {
@@ -305,12 +304,12 @@ SEXP RDebugger::doBegin(SEXP call, SEXP args, SEXP rho) {
   return s;
 }
 
-void RDebugger::doHandleException(SEXP e) {
+void RDebugger::doHandleException(ShieldSEXP const& e) {
   lastErrorStackDump = getContextDump(R_NilValue);
-  lastError = std::make_unique<Rcpp::RObject>(e);
+  lastError = std::make_unique<PrSEXP>(e);
 }
 
-std::vector<RDebugger::ContextDump> RDebugger::getContextDump(SEXP currentCall) {
+std::vector<RDebugger::ContextDump> RDebugger::getContextDump(ShieldSEXP const& currentCall) {
   std::vector<ContextDump> dump;
   ContextDump initial { currentCall, R_NilValue, R_Srcref ? R_Srcref : R_NilValue, R_NilValue };
   dump.push_back(initial);
@@ -363,7 +362,7 @@ std::vector<RDebuggerStackFrame> RDebugger::buildStack(std::vector<ContextDump> 
     }
     functionName = getCallFunctionName(call);
     if (ctx.function != R_NilValue) {
-      functionSrcref = sourceFileManager.getFunctionSrcref(ctx.function, functionName);
+      functionSrcref = sourceFileManager.getFunctionSrcref((SEXP)ctx.function, functionName);
     }
     frame = ctx.environment;
   }

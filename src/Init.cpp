@@ -15,12 +15,12 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "RPIServiceImpl.h"
-#include <R_ext/Rdynload.h>
-#include <Rdefines.h>
-#include "RcppExports.h"
+#include "RStuff/RInclude.h"
+#include "CppExports.h"
 #include "Subprocess.h"
 #include "HTMLViewer.h"
 #include "EventLoop.h"
+#include "RStuff/RObjects.h"
 
 #ifdef Win32
 # include <io.h>
@@ -28,16 +28,12 @@
 # include <unistd.h>
 #endif
 
-void registerFunctions();
-void init_Rcpp_routines(DllInfo *info);
-
 void initRWrapper() {
   DllInfo *dll = R_getEmbeddingDllInfo();
-  registerFunctions();
-  init_Rcpp_routines(dll);
-  RcppExports_Init(dll);
+  initCppExports(dll);
 
-  RI = std::make_unique<RObjects>();
+  RI = std::make_unique<RObjects2>();
+  initRInternals();
 
   // Init colored output
   setFunTabFunction(getFunTabOffset("isatty"), [](SEXP call, SEXP op, SEXP args, SEXP env) {
@@ -50,9 +46,9 @@ void initRWrapper() {
     return Rf_ScalarLogical(con == 1 || con == 2 || isatty(con));
   });
 #ifdef Win32
-  RI->setenv(Rcpp::Named("ConEmuANSI", "ON"));
+  RI->setenv(named("ConEmuANSI", "ON"));
 #else
-  RI->setenv(Rcpp::Named("COLORTERM", "1"));
+  RI->setenv(named("COLORTERM", "1"));
 #endif
 
   initDoSystem();
@@ -71,4 +67,3 @@ void quitRWrapper() {
   quitEventLoop();
   RI = nullptr;
 }
-

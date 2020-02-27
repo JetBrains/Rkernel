@@ -18,19 +18,16 @@
 #include "RPIServiceImpl.h"
 #include <condition_variable>
 #include <memory>
-#include <Rcpp.h>
 #include <grpcpp/server_builder.h>
-#include "RObjects.h"
 #include "IO.h"
 #include <sstream>
 #include <cstdlib>
 #include <thread>
-#include <Rinternals.h>
 #include "util/ScopedAssign.h"
 #include "HTMLViewer.h"
-#include "Subprocess.h"
 #include "util/StringUtil.h"
 #include "EventLoop.h"
+#include "RStuff/RObjects.h"
 
 using namespace grpc;
 
@@ -56,8 +53,8 @@ namespace {
 }
 
 static std::string getRVersion() {
-  return Rcpp::as<std::string>(RI->doubleSubscript(RI->version, "major")) + "." +
-         Rcpp::as<std::string>(RI->doubleSubscript(RI->version, "minor"));
+  return (std::string)asStringUTF8(RI->doubleSubscript(RI->version, "major")) + "." +
+         asStringUTF8(RI->doubleSubscript(RI->version, "minor"));
 }
 
 RPIServiceImpl::RPIServiceImpl() :
@@ -293,7 +290,6 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
 }
 
 std::unique_ptr<RPIServiceImpl> rpiService;
-std::unique_ptr<RObjects> RI;
 static std::unique_ptr<Server> server;
 
 class TerminationTimer : public Server::GlobalCallbacks {

@@ -22,34 +22,39 @@
 #include <string>
 #include "../debugger/RDebugger.h"
 #include "../IO.h"
-#include "../RObjects.h"
 #include "../debugger/TextBuilder.h"
-#include "ScopedAssign.h"
+#include "../util/ScopedAssign.h"
 #include "../debugger/SourceFileManager.h"
-#include <Rcpp.h>
+#include "Conversion.h"
+#include "MySEXP.h"
+#include "RObjects.h"
 
 const int DEFAULT_WIDTH = 80;
 const int R_MIN_WIDTH_OPT = 10;
 const int R_MAX_WIDTH_OPT = 10000;
 
+extern "C" {
+LibExtern int R_interrupts_pending;
+}
+
 class WithOption {
 public:
   template <typename T>
   WithOption(std::string const& option, T const& value) : name(option), oldValue(RI->getOption(option)) {
-    RI->options(Rcpp::Named(option, value));
+    RI->options(named(option.c_str(), value));
   }
   ~WithOption() {
     try {
-      RI->options(Rcpp::Named(name, oldValue));
-    } catch (Rcpp::eval_error const&) {
+      RI->options(named(name.c_str(), oldValue));
+    } catch (RExceptionBase const&) {
     }
   }
 private:
   std::string name;
-  Rcpp::RObject oldValue;
+  PrSEXP oldValue;
 };
 
-inline std::string getPrintedValue(Rcpp::RObject const& a) {
+inline std::string getPrintedValue(ShieldSEXP const& a) {
   std::string result;
   WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
     if (type == STDOUT) {
@@ -61,7 +66,7 @@ inline std::string getPrintedValue(Rcpp::RObject const& a) {
   return result;
 }
 
-inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLength) {
+inline std::string getPrintedValueWithLimit(ShieldSEXP const& a, int maxLength) {
   std::string result;
   try {
     WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
@@ -76,30 +81,10 @@ inline std::string getPrintedValueWithLimit(Rcpp::RObject const& a, int maxLengt
     });
     WithOption option("width", DEFAULT_WIDTH);
     RI->print(a);
-  } catch (Rcpp::internal::InterruptedException const&) {
+  } catch (RInterruptedException const&) {
   }
   R_interrupts_pending = 0;
   return result;
-}
-
-inline SEXP mkCharUTF8(const char* s) {
-  return Rf_mkCharCE(s, CE_UTF8);
-}
-
-inline SEXP mkCharUTF8(std::string const& s) {
-  return Rf_mkCharCE(s.c_str(), CE_UTF8);
-}
-
-inline SEXP mkStringUTF8(const char* s) {
-  SEXP t;
-  PROTECT(t = Rf_allocVector(STRSXP, 1));
-  SET_STRING_ELT(t, 0, mkCharUTF8(s));
-  UNPROTECT(1);
-  return t;
-}
-
-inline SEXP mkStringUTF8(std::string const& s) {
-  return mkStringUTF8(s.c_str());
 }
 
 inline const char* translateToNative(const char* s) {
@@ -110,27 +95,17 @@ inline const char* translateToNative(std::string const& s) {
   return translateToNative(s.c_str());
 }
 
-inline const char* translateToUTF8(SEXP e) {
-  if (TYPEOF(e) == CHARSXP) return Rf_translateCharUTF8(e);
-  if (TYPEOF(e) == STRSXP && Rf_length(e) == 1) return Rf_translateCharUTF8(STRING_ELT(e, 0));
-  return "";
-}
-
-inline const char* nativeToUTF8(const char* s, int len) {
-  return translateToUTF8(Rf_mkCharLen(s, len));
-}
-
-inline SEXP parseCode(std::string const& s, bool keepSource = false) {
-  Rcpp::RObject code = mkStringUTF8(s);
+inline SEXP parseCode(std::string const& code, bool keepSource = false) {
 #ifdef Win32
-  return RI->parse(Rcpp::Shield<SEXP>(RI->textConnection(code, Rcpp::Named("encoding", "UTF-8"))),
-                   Rcpp::Named("encoding", "UTF-8"),
-                   Rcpp::Named("keep.source", keepSource),
-                   Rcpp::Named("srcfile", Rcpp::Shield<SEXP>(keepSource ? RI->srcfilecopy("<text>", code) : R_NilValue)));
+  ShieldSEXP connection = RI->textConnection(code, named("encoding", "UTF-8"));
+  return RI->parse(connection,
+                    named("encoding", "UTF-8"),
+                    named("keep.source", keepSource),
+                    named("srcfile", keepSource ? RI->srcfilecopy("<text>", code) : R_NilValue));
 #else
-  return RI->parse(Rcpp::Named("text", code),
-                   Rcpp::Named("encoding", "UTF-8"),
-                   Rcpp::Named("keep.source", keepSource));
+  return RI->parse(named("text", code),
+                   named("encoding", "UTF-8"),
+                   named("keep.source", keepSource));
 #endif
 }
 
@@ -146,29 +121,29 @@ inline SEXP getSrcref(SEXP srcrefs, int i) {
 }
 
 inline SEXP getBlockSrcrefs(SEXP expr) {
-  SEXP srcrefs = Rf_getAttrib(expr, RI->srcrefAttr);
-  if (TYPEOF(srcrefs) == VECSXP) return srcrefs;
+  ShieldSEXP srcrefs = Rf_getAttrib(expr, RI->srcrefAttr);
+  if (srcrefs.type() == VECSXP) return srcrefs;
   return R_NilValue;
 }
 
-inline std::string getFunctionHeader(SEXP func) {
+inline std::string getFunctionHeader(ShieldSEXP const& func) {
   TextBuilder builder;
   builder.buildFunction(func, false);
   return builder.getText();
 }
 
-inline SEXP invokeFunction(SEXP func, std::vector<Rcpp::RObject> const& args) {
-  SEXP list = R_NilValue;
+inline SEXP invokeFunction(ShieldSEXP const& func, std::vector<PrSEXP> const& args) {
+  PrSEXP list = R_NilValue;
   for (int i = (int)args.size() - 1; i >= 0; --i) {
-    list = Rcpp::grow(args[i], list);
+    list = Rf_lcons(args[i], list);
   }
-  return Rcpp::Rcpp_fast_eval(Rcpp::Rcpp_lcons(func, list), R_GlobalEnv);
+  return safeEval(Rf_lcons(func, list), R_GlobalEnv);
 }
 
-inline Rcpp::Environment currentEnvironment() {
+inline SEXP currentEnvironment() {
   auto const& stack = rDebugger.getStack();
-  SEXP env = stack.empty() ? R_NilValue : (SEXP)stack.back().environment;
-  return TYPEOF(env) == ENVSXP ? Rcpp::as<Rcpp::Environment>(env) : RI->globalEnv;
+  ShieldSEXP env = stack.empty() ? R_NilValue : (SEXP)stack.back().environment;
+  return env.type() == ENVSXP ? (SEXP)env : R_GlobalEnv;
 }
 
 inline const char* getCallFunctionName(SEXP call) {
@@ -176,17 +151,17 @@ inline const char* getCallFunctionName(SEXP call) {
     return "";
   }
   SEXP func = CAR(call);
-  return TYPEOF(func) == SYMSXP ? translateToUTF8(PRINTNAME(func)) : "";
+  return TYPEOF(func) == SYMSXP ? asStringUTF8(PRINTNAME(func)) : "";
 }
 
-inline std::pair<const char*, int> srcrefToPosition(SEXP srcref) {
-  if (TYPEOF(srcref) == INTSXP && Rf_length(srcref) >= 1) {
-    SEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
+inline std::pair<const char*, int> srcrefToPosition(ShieldSEXP const& srcref) {
+  if (srcref.type() == INTSXP && Rf_length(srcref) >= 1) {
+    ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
     const char* fileId = SourceFileManager::getSrcfileId(srcfile);
     if (fileId != nullptr) {
-      SEXP lineOffsetAttr = Rf_getAttrib(srcfile, RI->srcfileLineOffset);
+      ShieldSEXP lineOffsetAttr = Rf_getAttrib(srcfile, RI->srcfileLineOffset);
       int lineOffset = 0;
-      if (TYPEOF(lineOffsetAttr) == INTSXP && Rf_length(lineOffsetAttr) == 1) {
+      if (lineOffsetAttr.type() == INTSXP && Rf_length(lineOffsetAttr) == 1) {
         lineOffset = INTEGER(lineOffsetAttr)[0];
       }
       return {fileId, INTEGER(srcref)[0] - 1 + lineOffset};
@@ -195,11 +170,9 @@ inline std::pair<const char*, int> srcrefToPosition(SEXP srcref) {
   return {"", 0};
 }
 
-void executeCodeImpl(SEXP exprs, SEXP env, bool withEcho = true, bool isDebug = false, bool withExceptionHandler = false);
-
 template<class Func>
 inline SEXP createFinalizer(Func fin) {
-  SEXP e = R_MakeExternalPtr(new Func(std::move(fin)), R_NilValue, R_NilValue);
+  ShieldSEXP e = R_MakeExternalPtr(new Func(std::move(fin)), R_NilValue, R_NilValue);
   R_RegisterCFinalizer(e, [](SEXP e) {
     auto ptr = (Func*)EXTPTR_PTR(e);
     if (ptr == nullptr) return;

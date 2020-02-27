@@ -19,10 +19,8 @@
 #include <iostream>
 #include <grpcpp/grpcpp.h>
 #include "RPIServiceImpl.h"
-#include <Rcpp.h>
-#include "RcppExports.h"
-#include "util/RUtil.h"
-#include "EventLoop.h"
+#include "CppExports.h"
+#include "RStuff/RUtil.h"
 #include "Init.h"
 
 using namespace grpc;

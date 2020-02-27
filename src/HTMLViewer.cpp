@@ -16,9 +16,8 @@
 
 #include "RPIServiceImpl.h"
 #include "HTMLViewer.h"
-#include "RObjects.h"
 #include "util/StringUtil.h"
-#include "util/RUtil.h"
+#include "RStuff/RUtil.h"
 #include "util/FileUtil.h"
 
 void htmlViewerInit() {
@@ -40,7 +39,7 @@ void htmlViewerInit() {
     "    if (delete.file) unlink(f)\n"
     "  }\n"
     "})",
-    RI->globalEnv
+    R_GlobalEnv
   );
 }
 
@@ -71,7 +70,7 @@ static GetContentResult getURLContent(std::string request, int maxRedirects = 5)
     while (pos < request.size() && request[pos] != '/') ++pos;
     request.erase(request.begin(), request.begin() + pos);
   }
-  Rcpp::CharacterVector args;
+  std::vector<std::string> args, argNames;
   for (int qPos = 0; qPos < request.size(); ++qPos) {
     if (request[qPos] == '?') {
       int start = qPos + 1;
@@ -91,47 +90,46 @@ static GetContentResult getURLContent(std::string request, int maxRedirects = 5)
           name = request.substr(start, eqPos - start);
           value = request.substr(eqPos + 1, end - (eqPos + 1));
         }
-        args.push_back(value, name);
+        args.push_back(value);
+        argNames.push_back(name);
         start = end + 1;
       }
       request.erase(request.begin() + qPos, request.end());
       break;
     }
   }
-  Rcpp::RObject response = RI->httpd(request, args);
-  if (!Rcpp::is<Rcpp::List>(response)) return result;
-  Rcpp::List responseList = Rcpp::as<Rcpp::List>(response);
-  if (responseList.containsElementNamed("status code") && responseList.containsElementNamed("status code")) {
-    if (Rcpp::as<int>(responseList["status code"]) == 302) {
-      if (maxRedirects > 0) {
-        std::string header = Rcpp::as<std::string>(responseList["header"]);
-        if (startsWith(header, "Location: ")) {
-          return getURLContent(joinUrls(request, header.substr(strlen("Location: "))), maxRedirects - 1);
-        }
+  ShieldSEXP response = RI->httpd(request, makeCharacterVector(args, argNames));
+  if (response.type() != VECSXP) return result;
+  if (asInt(response["status code"]) == 302) {
+    if (maxRedirects > 0) {
+      std::string header = asStringUTF8(response["header"]);
+      if (startsWith(header, "Location: ")) {
+        return getURLContent(joinUrls(request, header.substr(strlen("Location: "))), maxRedirects - 1);
       }
-      return result;
     }
-  }
-  if (responseList.containsElementNamed("payload")) {
-    Rcpp::RObject payload = responseList["payload"];
-    if (Rcpp::is<Rcpp::List>(payload)) {
-      Rcpp::List payloadList = Rcpp::as<Rcpp::List>(payload);
-      if (!payloadList.containsElementNamed("payload")) return result;
-      payload = payloadList["payload"];
-    }
-    if (!Rcpp::is<Rcpp::CharacterVector>(payload)) return result;
-    result.content = translateToUTF8(RI->paste(payload, Rcpp::Named("collapse", "\n")));
-  } else if (responseList.containsElementNamed("file")) {
-    result.content = readWholeFile(Rcpp::as<std::string>(responseList["file"]));
-  } else {
     return result;
   }
-  result.success = true;
+
+  PrSEXP payload = response["payload"];
+  if (payload.type() == VECSXP) {
+    payload = payload["payload"];
+  }
+  if (payload.type() == STRSXP) {
+    result.content = asStringUTF8(RI->paste(payload, named("collapse", "\n")));
+    result.success = true;
+    return result;
+  }
+
+  ShieldSEXP file = response["file"];
+  if (isScalarString(file)) {
+    result.content = readWholeFile(asStringUTF8(file));
+    result.success = true;
+  }
   return result;
 }
 
 bool processBrowseURL(std::string const& url) {
-  int port = Rcpp::as<int>(RI->httpdPort());
+  int port = asInt(RI->httpdPort());
   std::string prefix = "http://127.0.0.1:" + std::to_string(port) + "/";
   if (!startsWith(url, prefix)) return false;
   GetContentResult response = getURLContent(url);

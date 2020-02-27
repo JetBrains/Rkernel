@@ -25,9 +25,8 @@
 #include "util/IndexedStorage.h"
 #include "IO.h"
 #include "Options.h"
-#include "RObjects.h"
 #include "debugger/RDebugger.h"
-#include <Rcpp.h>
+#include "RStuff/MySEXP.h"
 
 using grpc::Status;
 using grpc::ServerContext;
@@ -143,8 +142,8 @@ public:
 
   OutputHandler getOutputHandlerForChildProcess();
 
-  void setValueImpl(RRef const& ref, Rcpp::RObject const& value);
-  Rcpp::RObject dereference(RRef const& ref);
+  void setValueImpl(RRef const& ref, ShieldSEXP value);
+  SEXP dereference(RRef const& ref);
 
 private:
   BlockingQueue<AsyncEvent> asyncEvents{8};
@@ -166,7 +165,7 @@ private:
   std::unordered_set<int> dataFramesCache;
   std::vector<RDebuggerStackFrame> lastErrorStack;
 
-  IndexedStorage<Rcpp::RObject> persistentRefStorage;
+  IndexedStorage<PrSEXP> persistentRefStorage;
 
   Status executeCommand(ServerContext* context, const std::string& command, ServerWriter<CommandOutput>* writer);
 

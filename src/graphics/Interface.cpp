@@ -18,19 +18,14 @@
 #include <iostream>
 #include <string>
 
-#include <Rcpp.h>
-
 #include "DeviceManager.h"
+#include "../RStuff/Conversion.h"
 
-using namespace Rcpp;
 using namespace graphics;
 
-// [[Rcpp::plugins(cpp11)]]
-// [[Rcpp::export]]
-SEXP jetbrains_ther_device_init(CharacterVector snapshotDir, double width, double height, int resolution, bool inMemory) {
-  auto path = as<std::string>(snapshotDir[0]);
+SEXP jetbrains_ther_device_init(std::string const& snapshotDir, double width, double height, int resolution, bool inMemory) {
   auto screenParameters = ScreenParameters{width, height, resolution};
-  DeviceManager::getInstance()->initNew(path, screenParameters, inMemory);
+  DeviceManager::getInstance()->initNew(snapshotDir, screenParameters, inMemory);
   return R_NilValue;
 }
 
@@ -48,7 +43,7 @@ SEXP jetbrains_ther_device_snapshot_count() {
   auto active = DeviceManager::getInstance()->getActive();
   if (active) {
     auto count = active->getSnapshotCount();
-    return Rcpp::wrap(count);
+    return toSEXP(count);
   } else {
     std::cerr << "jetbrains_ther_device_snapshot_count(): Device is not active. Ignored\n";
     return R_NilValue;
@@ -82,7 +77,7 @@ SEXP jetbrains_ther_device_rescale(int snapshotNumber, double width, double heig
   } else {
     std::cerr << "jetbrains_ther_device_rescale(): nothing to rescale. Ignored\n";
   }
-  return Rcpp::wrap(isRescaled);
+  return toSEXP(isRescaled);
 }
 
 SEXP jetbrains_ther_device_rescale_stored(const std::string& parentDirectory, int snapshotNumber, int snapshotVersion,
@@ -90,9 +85,9 @@ SEXP jetbrains_ther_device_rescale_stored(const std::string& parentDirectory, in
   auto active = DeviceManager::getInstance()->getActive();
   if (active) {
     auto newParameters = ScreenParameters{width, height, resolution};
-    return Rcpp::wrap(active->rescaleByPath(parentDirectory, snapshotNumber, snapshotVersion, newParameters));
+    return toSEXP(active->rescaleByPath(parentDirectory, snapshotNumber, snapshotVersion, newParameters));
   } else {
     std::cerr << "jetbrains_ther_device_rescale_stored(): device is not active. Ignored\n";
-    return Rcpp::wrap(false);
+    return toSEXP(false);
   }
 }

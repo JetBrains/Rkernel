@@ -17,8 +17,6 @@
 
 #include "RPIServiceImpl.h"
 #include "IO.h"
-#include <Rinterface.h>
-#include <Rembedded.h>
 
 void setupForkHandler();
 

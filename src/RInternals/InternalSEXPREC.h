@@ -18,7 +18,7 @@
 #ifndef RWRAPPER_INTERNALSEXPREC_H
 #define RWRAPPER_INTERNALSEXPREC_H
 
-#include <Rdefines.h>
+#include "../RStuff/RInclude.h"
 
 #define NAMED_BITS 16
 

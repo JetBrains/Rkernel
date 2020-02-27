@@ -18,40 +18,39 @@
 #ifndef RWRAPPER_SOURCE_FILE_MANAGER_H
 #define RWRAPPER_SOURCE_FILE_MANAGER_H
 
-#include <Rcpp.h>
 #include <string>
 #include <unordered_map>
 #include <memory>
-#include "DebugStepInfo.h"
+#include "../RStuff/MySEXP.h"
 
 class SourceFileManager {
 public:
-  Rcpp::ExpressionVector parseSourceFile(std::string const& code, std::string fileId, int lineOffset = 0);
+  SEXP parseSourceFile(std::string const& code, std::string fileId, int lineOffset = 0);
   SEXP getStepSrcref(std::string const& file, int line);
 
-  SEXP getFunctionSrcref(SEXP func, std::string const& suggestedFileName = "");
+  SEXP getFunctionSrcref(ShieldSEXP const& func, std::string const& suggestedFileName = "");
   std::string getSourceFileText(std::string const& fileId);
   std::string getSourceFileName(std::string const& fileId);
-  static const char* getSrcfileId(SEXP srcfile);
+  static const char* getSrcfileId(ShieldSEXP const& srcfile);
 
 private:
   struct SourceFile {
-    SEXP extPtr;
+    SEXP extPtr; // Not protected!
     std::string fileId;
     std::string name;
-    Rcpp::RObject lines;
-    std::unordered_map<int, SEXP> steps;
+    PrSEXP lines;
+    std::unordered_map<int, SEXP> steps; // Also not protected!
   };
 
   std::unordered_map<std::string, std::unique_ptr<SourceFile>> sourceFiles;
   int tmpFileId = 0;
 
-  static void putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, SEXP srcref);
-  static void setSteps(SEXP expr, std::string const& fileId, SEXP srcfile,
+  static void putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, ShieldSEXP const& srcref);
+  static void setSteps(ShieldSEXP const& expr, std::string const& fileId, ShieldSEXP const& srcfile,
                        std::unordered_map<int, SEXP>& steps, int lineOffset);
   std::string getNewFileId();
   SourceFile *getSourceFileInfo(std::string const& fileId);
-  static SourceFile *getSourceFileInfo(SEXP srcfile);
+  static SourceFile *getSourceFileInfo(ShieldSEXP const& srcfile);
 };
 
 extern SourceFileManager sourceFileManager;

@@ -18,7 +18,7 @@
 #ifndef RWRAPPER_INTERNALFUNTAB_H
 #define RWRAPPER_INTERNALFUNTAB_H
 
-#include <Rdefines.h>
+#include "../RStuff/RInclude.h"
 
 extern "C" {
 typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);

@@ -18,16 +18,12 @@
 #include "util/ScopedAssign.h"
 #include "Subprocess.h"
 #include "EventLoop.h"
-#include <Rcpp.h>
-#include <Rdefines.h>
-#include <iostream>
 #include <process.hpp>
 #include <thread>
 
 extern "C" {
 typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);
 void SET_PRIMFUN(SEXP x, CCODE f);
-extern Rboolean R_Visible;
 }
 
 class Timer {
@@ -69,14 +65,14 @@ DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout, 
           stdoutBuf.insert(stdoutBuf.end(), s, s + len);
         } else if (!ignoreStdout) {
           rpiService->executeOnMainThread([&] {
-            Rcpp::Rcout << std::string(s, s + len);
+            Rprintf("%s", std::string(s, s + len).c_str());
           });
         }
       },
       [&] (const char* s, size_t len) {
         if (!ignoreStderr) {
           rpiService->executeOnMainThread([&] {
-            Rcpp::Rcerr << std::string(s, s + len);
+            REprintf("%s", std::string(s, s + len).c_str());
           });
         }
       },

@@ -19,7 +19,6 @@
 #include "IO.h"
 #include "debugger/RDebugger.h"
 #include <windows.h>
-#include <R.h>
 
 static HWND dummyWindow;
 static BlockingQueue<std::function<void()>> queue;

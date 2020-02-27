@@ -18,9 +18,8 @@
 #ifndef RWRAPPER_RINTERNALS_CONTEXT_H
 #define RWRAPPER_RINTERNALS_CONTEXT_H
 
-#include <Rdefines.h>
 #include <setjmp.h>
-#include <Rversion.h>
+#include "../RStuff/RInclude.h"
 
 #ifdef Win32
 typedef std::aligned_storage_t<256 + 16, 8> JMP_BUF;
@@ -57,9 +56,9 @@ struct R_bcstack_t {
   } u;
 };
 
-#if R_VERSION <= R_Version(3, 3, 3)
-struct RCNTXT {
-  struct RCNTXT *nextcontext;
+// R 3.3 and before
+struct RCNTXT_old {
+  struct RCNTXT_old *nextcontext;
   int callflag;
   JMP_BUF cjmpbuf;
   int cstacktop;
@@ -85,12 +84,13 @@ struct RCNTXT {
   SEXP srcref;
   int browserfinish;
   SEXP returnValue;
-  struct RCNTXT *jumptarget;
+  struct RCNTXT_old *jumptarget;
   int jumpmask;
 };
-#else
-struct RCNTXT {
-  struct RCNTXT* nextcontext;
+
+// R 3.4 and after
+struct RCNTXT_new {
+  struct RCNTXT_new* nextcontext;
   int callflag;
   JMP_BUF cjmpbuf;
   int cstacktop;
@@ -118,12 +118,15 @@ struct RCNTXT {
   SEXP srcref;
   int browserfinish;
   SEXP returnValue;
-  struct RCNTXT* jumptarget;
+  struct RCNTXT_new* jumptarget;
   int jumpmask;
 };
-#endif
-
-LibExtern RCNTXT* R_GlobalContext;
 }
+
+#ifdef Win32
+extern "C" {
+  LibExtern void* R_GlobalContext;
+};
+#endif
 
 #endif //RWRAPPER_RINTERNALS_CONTEXT_H

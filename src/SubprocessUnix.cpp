@@ -15,13 +15,9 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "RPIServiceImpl.h"
-#include "util/ScopedAssign.h"
 #include "Subprocess.h"
-#include <Rcpp.h>
-#include <Rdefines.h>
+#include "RStuff/RInclude.h"
 #include <iostream>
-#include <process.hpp>
-#include <thread>
 
 extern "C" {
   extern Rboolean R_Visible;
@@ -74,26 +70,27 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
       } else
         last_is_amp = 0;
     }
-    if (last_is_amp)
+    if (last_is_amp) {
       Rf_error("Timeout with background running processes is not supported.");
+    }
     vmaxset(vmax);
   }
 
-  BEGIN_RCPP
+  CPP_BEGIN
     DoSystemResult res = myDoSystemImpl(cmd, intern, timeout);
-    if (res.timedOut) Rcpp::warning("command '%s' timed out after %ds", cmd, timeout);
+    if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
     if (intern) {
-      Rcpp::CharacterVector lines;
+      std::vector<std::string> lines;
       std::istringstream stream(res.stdoutBuf);
       std::string line;
       while (std::getline(stream, line)) {
         lines.push_back(line);
       }
       R_Visible = TRUE;
-      return lines;
+      return makeCharacterVector(lines);
     } else {
       R_Visible = FALSE;
-      return Rf_ScalarInteger(res.exitCode);
+      return toSEXP(res.exitCode);
     }
-  END_RCPP
+  CPP_END
 }

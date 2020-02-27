@@ -19,10 +19,11 @@
 // Created by Vladimir Koshelev on 9/26/19.
 //
 
-#ifndef RWRAPPER_RCPPEXPORTS_H
-#define RWRAPPER_RCPPEXPORTS_H
-#include <Rcpp.h>
+#ifndef RWRAPPER_CPPEXPORTS_H
+#define RWRAPPER_CPPEXPORTS_H
 
-RcppExport void RcppExports_Init(DllInfo *dll);
+#include "RStuff/RInclude.h"
 
-#endif //RWRAPPER_RCPPEXPORTS_H
+void initCppExports(DllInfo *dll);
+
+#endif //RWRAPPER_CPPEXPORTS_H

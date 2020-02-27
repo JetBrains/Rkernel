@@ -17,11 +17,9 @@
 
 #include "SourceFileManager.h"
 #include "RDebugger.h"
-#include "../RObjects.h"
-#include "../util/RUtil.h"
+#include "../RStuff/RUtil.h"
 #include "TextBuilder.h"
 #include "../util/StringUtil.h"
-#include <Rdefines.h>
 
 SourceFileManager sourceFileManager;
 
@@ -31,32 +29,31 @@ SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(std::string 
   }
   SourceFile *sourceFile = (sourceFiles[fileId] = std::make_unique<SourceFile>()).get();
   sourceFile->fileId = fileId;
-  PROTECT(sourceFile->extPtr = R_MakeExternalPtr(sourceFile, R_NilValue, R_NilValue));
-  R_RegisterCFinalizer(sourceFile->extPtr, [] (SEXP e) {
-    SourceFile *sourceFile = (SourceFile*)EXTPTR_PTR(e);
+  ShieldSEXP extPtr = sourceFile->extPtr = R_MakeExternalPtr(sourceFile, R_NilValue, R_NilValue);
+  R_RegisterCFinalizer(extPtr, [] (SEXP e) {
+    auto *sourceFile = (SourceFile*)EXTPTR_PTR(e);
     if (sourceFile == nullptr) return;
     sourceFileManager.sourceFiles.erase(sourceFile->fileId);
     R_ClearExternalPtr(e);
   });
-  UNPROTECT(1);
   return sourceFile;
 }
 
-SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(SEXP srcfile) {
-  SEXP ptr = Rf_getAttrib(srcfile, RI->srcfilePtrAttr);
+SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(ShieldSEXP const& srcfile) {
+  ShieldSEXP ptr = Rf_getAttrib(srcfile, RI->srcfilePtrAttr);
   return TYPEOF(ptr) == EXTPTRSXP ? (SourceFile*)EXTPTR_PTR(ptr) : nullptr;
 }
 
-const char* SourceFileManager::getSrcfileId(SEXP srcfile) {
+const char* SourceFileManager::getSrcfileId(ShieldSEXP const& srcfile) {
   SourceFile *sourceFile = getSourceFileInfo(srcfile);
   return sourceFile == nullptr ? nullptr : sourceFile->fileId.c_str();
 }
 
-void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, SEXP srcref) {
+void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, ShieldSEXP const& srcref) {
   if (Rf_getAttrib(srcref, RI->srcrefProcessedFlag) != R_NilValue) return;
   if (steps.count(line)) {
-    SEXP oldSrcref = steps[line];
-    SEXP flag = Rf_getAttrib(oldSrcref, RI->srcrefProcessedFlag);
+    ShieldSEXP oldSrcref = steps[line];
+    ShieldSEXP flag = Rf_getAttrib(oldSrcref, RI->srcrefProcessedFlag);
     if (TYPEOF(flag) == EXTPTRSXP) R_ClearExternalPtr(flag);
   }
   steps[line] = srcref;
@@ -69,16 +66,15 @@ void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<in
   rDebugger.refreshBreakpoint(fileId, line);
 }
 
-void SourceFileManager::setSteps(SEXP expr, std::string const& fileId, SEXP srcfile,
+void SourceFileManager::setSteps(ShieldSEXP const& expr, std::string const& fileId, ShieldSEXP const& srcfile,
                                  std::unordered_map<int, SEXP>& steps, int lineOffset) {
   switch (TYPEOF(expr)) {
     case EXPRSXP: {
-      SEXP srcrefs = getBlockSrcrefs(expr);
+      ShieldSEXP srcrefs = getBlockSrcrefs(expr);
       int n = LENGTH(expr);
       for(int i = 0; i < n; i++) {
-        SEXP element = VECTOR_ELT(expr, i);
-        setSteps(element, fileId, srcfile, steps, lineOffset);
-        SEXP srcref = getSrcref(srcrefs, i);
+        setSteps(expr[i], fileId, srcfile, steps, lineOffset);
+        ShieldSEXP srcref = getSrcref(srcrefs, i);
         if (srcref != R_NilValue) {
           int line = INTEGER(srcref)[0] - 1 + lineOffset;
           putStep(fileId, steps, line, srcref);
@@ -87,16 +83,17 @@ void SourceFileManager::setSteps(SEXP expr, std::string const& fileId, SEXP srcf
       break;
     }
     case LANGSXP: {
-      SEXP srcrefs = getBlockSrcrefs(expr);
+      ShieldSEXP srcrefs = getBlockSrcrefs(expr);
       int i = 0;
-      while (expr != R_NilValue) {
-        setSteps(CAR(expr), fileId, srcfile, steps, lineOffset);
-        SEXP srcref = getSrcref(srcrefs, i);
+      SEXP cur = expr;
+      while (cur != R_NilValue) {
+        setSteps(CAR(cur), fileId, srcfile, steps, lineOffset);
+        ShieldSEXP srcref = getSrcref(srcrefs, i);
         if (srcref != R_NilValue) {
           int line = INTEGER(srcref)[0] - 1 + lineOffset;
           putStep(fileId, steps, line, srcref);
         }
-        expr = CDR(expr);
+        cur = CDR(cur);
         ++i;
       }
       break;
@@ -104,14 +101,14 @@ void SourceFileManager::setSteps(SEXP expr, std::string const& fileId, SEXP srcf
   }
 }
 
-Rcpp::ExpressionVector SourceFileManager::parseSourceFile(std::string const& code, std::string fileId, int lineOffset) {
+SEXP SourceFileManager::parseSourceFile(std::string const& code, std::string fileId, int lineOffset) {
   std::string name = fileId;
   if (fileId.empty()) {
     fileId = getNewFileId();
     name = "tmp";
   }
-  Rcpp::ExpressionVector expressions = parseCode(code, true);
-  SEXP srcfile = Rf_getAttrib(expressions, RI->srcfileAttr);
+  ShieldSEXP expressions = parseCode(code, true);
+  ShieldSEXP srcfile = Rf_getAttrib(expressions, RI->srcfileAttr);
   if (lineOffset != 0) {
     Rf_setAttrib(srcfile, RI->srcfileLineOffset, Rf_ScalarInteger(lineOffset));
   }
@@ -140,16 +137,16 @@ std::string SourceFileManager::getNewFileId() {
   }
 }
 
-SEXP SourceFileManager::getFunctionSrcref(SEXP func, std::string const& suggestedFileName) {
-  SEXP srcref = Rf_getAttrib(func, RI->srcrefAttr);
+SEXP SourceFileManager::getFunctionSrcref(ShieldSEXP const& func, std::string const& suggestedFileName) {
+  PrSEXP srcref = Rf_getAttrib(func, RI->srcrefAttr);
   if (srcref == R_NilValue && TYPEOF(func) == CLOSXP) {
     srcref = Rf_getAttrib(BODY(func), RI->srcrefAttr);
-    if (TYPEOF(srcref) == VECSXP) {
+    if (srcref.type() == VECSXP) {
       srcref = (Rf_length(srcref) > 0 ? VECTOR_ELT(srcref, 0) : R_NilValue);
     }
   }
   if (Rf_getAttrib(srcref, RI->srcrefProcessedFlag) != R_NilValue) return srcref;
-  SEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
+  PrSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
   SourceFile *sourceFile = getSourceFileInfo(srcfile);
 
   std::string fileId;
@@ -158,13 +155,12 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP func, std::string const& suggeste
     fileId = sourceFile->fileId;
   } else {
     WithDebuggerEnabled with(false);
-    if (TYPEOF(srcfile) == ENVSXP) {
-      SEXP isFile = Rf_findVarInFrame(srcfile, Rf_install("isFile"));
-      if (TYPEOF(isFile) == LGLSXP && Rf_length(isFile) == 1 && LOGICAL(isFile)[0]) {
-        SEXP wd = Rf_findVarInFrame(srcfile, Rf_install("wd"));
-        SEXP filename = Rf_findVarInFrame(srcfile, Rf_install("filename"));
-        SEXP path = Rf_eval(Rf_lang3(RI->myFilePath, wd, filename), R_GlobalEnv);
-        if (TYPEOF(path) == STRSXP && Rf_length(path) == 1) {
+    if (srcfile.type() == ENVSXP) {
+      if (asBool(srcfile.getVar("isFile"))) {
+        ShieldSEXP wd = srcfile.getVar("wd");
+        ShieldSEXP filename = srcfile.getVar("filename");
+        ShieldSEXP path = safeEval(Rf_lang3(RI->myFilePath, wd, filename), R_GlobalEnv);
+        if (isScalarString(path)) {
           isFileValue = true;
           fileId = CHAR(STRING_ELT(path, 0));
           Rf_setAttrib(srcfile, RI->isPhysicalFileFlag, Rf_ScalarLogical(true));
@@ -175,9 +171,10 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP func, std::string const& suggeste
       fileId = getNewFileId();
     }
     sourceFile = getSourceFileInfo(fileId);
+    ShieldSEXP extPtr = sourceFile->extPtr;
     if (isFileValue) {
       sourceFile->name = fileId;
-    } else if (suggestedFileName == "") {
+    } else if (suggestedFileName.empty()) {
       sourceFile->name = "tmp";
     } else {
       sourceFile->name = suggestedFileName;
@@ -188,21 +185,15 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP func, std::string const& suggeste
       TextBuilder builder;
       builder.build(func);
       std::vector<std::string> lines = splitByLines(builder.getText());
-      SEXP linesExpr = Rf_allocVector(STRSXP, (int) lines.size());
-      PROTECT(linesExpr);
-      for (int i = 0; i < (int) lines.size(); ++i) {
-        SET_STRING_ELT(linesExpr, i, Rf_mkChar(lines[i].c_str()));
-      }
-      srcfile = Rf_eval(Rf_lang3(RI->srcfilecopy, Rf_mkString(fileId.c_str()), linesExpr), R_BaseEnv);
-      PROTECT(srcfile);
+      ShieldSEXP linesExpr = makeCharacterVector(lines);
+      srcfile = safeEval(Rf_lang3(RI->srcfilecopy, Rf_mkString(fileId.c_str()), linesExpr), R_BaseEnv);
       Rf_setAttrib(srcfile, RI->srcfilePtrAttr, sourceFile->extPtr);
-      UNPROTECT(2);
       builder.setSrcrefs(srcfile);
       Rf_setAttrib(func, RI->srcrefAttr, builder.getWholeSrcref(srcfile));
     }
     sourceFile->lines = Rf_findVarInFrame(srcfile, RI->linesSymbol);
   }
-  if (TYPEOF(func) == CLOSXP) {
+  if (func.type() == CLOSXP) {
     setSteps(FORMALS(func), fileId, srcfile, sourceFile->steps, 0);
     setSteps(BODY_EXPR(func), fileId, srcfile, sourceFile->steps, 0);
   }
@@ -212,11 +203,11 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP func, std::string const& suggeste
 std::string SourceFileManager::getSourceFileText(std::string const& fileId) {
   auto it = sourceFiles.find(fileId);
   if (it == sourceFiles.end()) return "";
-  SEXP lines = it->second->lines;
-  if (TYPEOF(lines) != STRSXP) return "";
+  ShieldSEXP lines = it->second->lines;
+  if (lines.type() != STRSXP) return "";
   std::string result;
   for (int i = 0; i < Rf_length(lines); ++i) {
-    result += translateToUTF8(STRING_ELT(lines, i));
+    result += stringEltUTF8(lines, i);
     result += '\n';
   }
   return result;

@@ -22,16 +22,15 @@
 #include <sstream>
 #include <vector>
 #include <unordered_map>
-#include <Rdefines.h>
-#include "DebugStepInfo.h"
+#include "../RStuff/MySEXP.h"
 
 class TextBuilder {
 public:
-  void build(SEXP expr);
-  void buildFunction(SEXP func, bool withBody = true);
+  void build(ShieldSEXP const& expr);
+  void buildFunction(ShieldSEXP const& func, bool withBody = true);
   std::string getText();
-  void setSrcrefs(SEXP srcfile);
-  SEXP getWholeSrcref(SEXP srcfile);
+  void setSrcrefs(ShieldSEXP const& srcfile);
+  SEXP getWholeSrcref(ShieldSEXP const& srcfile);
 
 private:
   std::ostringstream text;
@@ -41,12 +40,12 @@ private:
   void newline();
   int currentPosition();
 
-  void buildFunctionHeader(SEXP args);
+  void buildFunctionHeader(ShieldSEXP const& args);
 
   struct Srcref {
     int startLine, startPosition, endLine, endPosition;
   };
-  std::vector<std::pair<SEXP, std::vector<Srcref>>> newSrcrefs;
+  std::vector<std::pair<PrSEXP, std::vector<Srcref>>> newSrcrefs;
 };
 
 

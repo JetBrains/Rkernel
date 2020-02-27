@@ -20,47 +20,72 @@
 #include "InternalFunTab.h"
 #include "RInternals.h"
 #include "InternalSEXPREC.h"
-#include <Rdefines.h>
+#include "../RStuff/MySEXP.h"
 
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
+
+static bool isOldR = false; // R 3.3 and before
+
+void initRInternals() {
+  ShieldSEXP v = Rf_eval(Rf_install("version"), R_BaseEnv);
+  if (v.type() != VECSXP) return;
+  ShieldSEXP major = v["major"];
+  ShieldSEXP minor = v["minor"];
+  std::string version = (std::string)asStringUTF8(major) + "." + asStringUTF8(minor);
+  isOldR = version <= "3.3.3";
+}
 
 RContext* getGlobalContext() {
   return (RContext*)R_GlobalContext;
 }
 
 bool isCallContext(RContext* ctx) {
-  return ((RCNTXT*)ctx)->callflag & CTXT_FUNCTION;
+  if (isOldR) {
+    return ((RCNTXT_old*) ctx)->callflag & CTXT_FUNCTION;
+  } else {
+    return ((RCNTXT_new*) ctx)->callflag & CTXT_FUNCTION;
+  }
 }
 
 RContext* getNextContext(RContext* ctx) {
-  return (RContext*)((RCNTXT*)ctx)->nextcontext;
+  if (isOldR) {
+    return (RContext*) ((RCNTXT_old*) ctx)->nextcontext;
+  } else {
+    return (RContext*) ((RCNTXT_new*) ctx)->nextcontext;
+  }
 }
 
 SEXP getFunction(RContext* ctx) {
-  return ((RCNTXT*)ctx)->callfun;
+  if (isOldR) {
+    return ((RCNTXT_old*) ctx)->callfun;
+  } else {
+    return ((RCNTXT_new*) ctx)->callfun;
+  }
 }
 
 SEXP getCall(RContext* ctx) {
-  return ((RCNTXT*)ctx)->call;
+  if (isOldR) {
+    return ((RCNTXT_old*) ctx)->call;
+  } else {
+    return ((RCNTXT_new*) ctx)->call;
+  }
 }
 
 SEXP getSrcref(RContext* ctx) {
-  return ((RCNTXT*)ctx)->srcref;
+  if (isOldR) {
+    return ((RCNTXT_old*) ctx)->srcref;
+  } else {
+    return ((RCNTXT_new*) ctx)->srcref;
+  }
 }
 
 SEXP getEnvironment(RContext* ctx) {
-  return ((RCNTXT*)ctx)->cloenv;
-}
-
-void dumpContexts() {
-  RCNTXT *ctx = R_GlobalContext;
-  std::cerr << "=====================================================\n";
-  while (ctx != nullptr) {
-    std::cerr << "flag=" << ctx->callflag << "  " << "evaldepth=" << ctx->evaldepth << "\n";
-    ctx = ctx->nextcontext;
+  if (isOldR) {
+    return ((RCNTXT_old*) ctx)->cloenv;
+  } else {
+    return ((RCNTXT_new*) ctx)->cloenv;
   }
-  std::cerr << "=====================================================\n";
 }
 
 int getPrimOffset(SEXP expr) {

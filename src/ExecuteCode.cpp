@@ -16,14 +16,15 @@
 
 
 #include "RPIServiceImpl.h"
-#include <Rcpp.h>
 #include <grpcpp/server_builder.h>
-#include "RObjects.h"
 #include "IO.h"
 #include "util/ScopedAssign.h"
 #include "debugger/SourceFileManager.h"
-#include "util/RUtil.h"
+#include "RStuff/RUtil.h"
 #include "EventLoop.h"
+
+static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool withEcho = true, bool isDebug = false,
+                            bool withExceptionHandler = false);
 
 Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) {
   executeOnMainThread([&] {
@@ -53,17 +54,17 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         event.mutable_busy();
         asyncEvents.push(event);
       }
-      Rcpp::ExpressionVector expressions;
+      PrSEXP expressions;
       try {
         expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
-      } catch (Rcpp::eval_error const& e) {
+      } catch (RError const& e) {
         std::string message = '\n' + std::string(e.what()) + '\n';
         myWriteConsoleEx(message.c_str(), message.size(), STDERR);
         throw;
       }
       if (isDebug) rDebugger.setCommand(CONTINUE);
       executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl);
-    } catch (Rcpp::eval_error const& e) {
+    } catch (RError const& e) {
       if (writer != nullptr) {
         ExecuteCodeResponse response;
         response.set_exception(e.what());
@@ -72,10 +73,10 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
       if (isRepl) {
         lastErrorStack = rDebugger.getLastErrorStack();
         AsyncEvent event;
-        SEXP error = rDebugger.getLastError();
+        ShieldSEXP error = rDebugger.getLastError();
         if (Rf_inherits(error, "condition")) {
-          SEXP conditionMessage = Rcpp::Rcpp_eval(Rf_lang2(RI->conditionMessage, error), R_BaseEnv);
-          event.mutable_exception()->set_text(translateToUTF8(conditionMessage));
+          ShieldSEXP conditionMessage = RI->conditionMessage(error);
+          event.mutable_exception()->set_text(asStringUTF8(conditionMessage));
         } else {
           event.mutable_exception()->set_text("Error");
         }
@@ -83,9 +84,9 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         rpiService->sendAsyncEvent(event);
       } else {
         std::string msg = std::string("\n") + e.what() + "\n";
-        myWriteConsoleEx(msg.c_str(), msg.length(), STDERR);
+        myWriteConsoleEx(msg.c_str(), msg.size(), STDERR);
       }
-    } catch (Rcpp::internal::InterruptedException const& e) {
+    } catch (RInterruptedException const& e) {
       ExecuteCodeResponse response;
       response.set_exception("Interrupted");
       writer->Write(response);
@@ -138,11 +139,11 @@ Status RPIServiceImpl::executeCommand(ServerContext* context, const std::string&
       writer->Write(response);
     });
     try {
-      Rcpp::ExpressionVector expressions = parseCode(command);
+      ShieldSEXP expressions = parseCode(command);
       executeCodeImpl(expressions, currentEnvironment(), true, false, false);
-    } catch (Rcpp::eval_error const& e) {
+    } catch (RError const& e) {
       std::string s = std::string("\n") + e.what() + '\n';
-      myWriteConsoleEx(s.c_str(), s.length(), STDERR);
+      myWriteConsoleEx(s.c_str(), s.size(), STDERR);
     }
   }, context);
   return Status::OK;
@@ -198,5 +199,49 @@ OutputHandler RPIServiceImpl::getOutputHandlerForChildProcess() {
     return [=](const char* buf, int len, OutputType type) {
       return myWriteConsoleExToSpecificHandler(buf, len, type, id);
     };
+  }
+}
+
+static SEXP cloneSrcref(SEXP srcref) {
+  SEXP newSrcref = Rf_allocVector(INTSXP, Rf_length(srcref));
+  memcpy(INTEGER(newSrcref), INTEGER(srcref), sizeof(int) * Rf_length(srcref));
+  Rf_setAttrib(newSrcref, RI->srcfileAttr, Rf_getAttrib(srcref, RI->srcfileAttr));
+  Rf_setAttrib(newSrcref, R_ClassSymbol, Rf_mkString("srcref"));
+  return newSrcref;
+}
+
+static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool withEcho, bool isDebug,
+    bool withExceptionHandler) {
+  if (exprs.type() != EXPRSXP || env.type() != ENVSXP) {
+    return;
+  }
+  int length = exprs.length();
+  ShieldSEXP srcrefs = getBlockSrcrefs(exprs);
+  for (int i = 0; i < length; ++i) {
+    PrSEXP forEval = exprs[i];
+    ShieldSEXP srcref = getSrcref(srcrefs, i);
+    if (srcref != R_NilValue) {
+      forEval = Rf_lang2(Rf_install("{"), forEval);
+      ShieldSEXP newSrcrefs = Rf_allocVector(VECSXP, 2);
+      SET_VECTOR_ELT(newSrcrefs, 0, cloneSrcref(srcref));
+      SET_VECTOR_ELT(newSrcrefs, 1, srcref);
+      Rf_setAttrib(forEval, RI->srcrefAttr, newSrcrefs);
+    }
+    forEval = RI->expression(forEval);
+    forEval = Rf_lang4(RI->wrapEval, forEval, env, toSEXP(isDebug));
+    if (withExceptionHandler) {
+      forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
+    }
+    if (withEcho) {
+      forEval = Rf_lang2(RI->withVisible, forEval);
+    }
+    PrSEXP result = safeEval(forEval, R_GlobalEnv);
+    if (withEcho && asBool(result["visible"])) {
+      if (withExceptionHandler) {
+        safeEval(Rf_lang2(RI->withReplExceptionHandler, Rf_lang2(RI->printWrapper, result["value"])), R_GlobalEnv);
+      } else {
+        RI->printWrapper(result["value"]);
+      }
+    }
   }
 }

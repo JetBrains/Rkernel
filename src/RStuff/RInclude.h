@@ -14,18 +14,31 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#ifndef RWRAPPER_R_STUFF_R_INCLUDE_H
+#define RWRAPPER_R_STUFF_R_INCLUDE_H
 
-#ifndef RWRAPPER_DEBUG_STEP_INFO_H
-#define RWRAPPER_DEBUG_STEP_INFO_H
-
-#include <Rcpp.h>
+#include <Rinternals.h>
 #include <Rdefines.h>
-#undef Free
+#include <R_ext/Rdynload.h>
+#include <Rversion.h>
+#include <Rembedded.h>
+#include <R_ext/RStartup.h>
+#include <R.h>
+#include <R_ext/Visibility.h>
 
-struct DebugStepInfo {
-  Rcpp::RObject parent;
-  int index; // non-negative for VECTOR_ELT(parent, index); -1 for CAR(parent)
-  SEXP srcref, srcfile;
-};
+#ifndef Win32
+# include <Rinterface.h>
+# include <R_ext/eventloop.h>
+#endif
 
-#endif //RWRAPPER_DEBUG_STEP_INFO_H
+#ifdef Free
+# undef Free
+#endif
+#ifdef length
+# undef length
+#endif
+#ifdef error
+# undef error
+#endif
+
+#endif //RWRAPPER_R_STUFF_R_INCLUDE_H

@@ -16,102 +16,94 @@
 
 
 #include "RPIServiceImpl.h"
-#include <Rcpp.h>
 #include <grpcpp/server_builder.h>
-#include "RObjects.h"
-#include "IO.h"
-#include "util/RUtil.h"
+#include "RStuff/RUtil.h"
 #include "util/ContainerUtil.h"
 
 const int MAX_PREVIEW_STRING_LENGTH = 200;
 const int MAX_PREVIEW_PRINTED_COUNT = 20;
 
-static int asInt(SEXP x) {
-  if (TYPEOF(x) == INTSXP && Rf_length(x) >= 1) return *INTEGER(x);
-  return 0;
-}
-
-void getValueInfo(SEXP var, ValueInfo* result) {
-  auto type = TYPEOF(var);
-  if (type == PROMSXP) {
-    if (PRVALUE(var) == R_UnboundValue) {
-      std::string code = translateToUTF8(
-        RI->paste(RI->deparse(RI->expression(PRCODE(var))), Rcpp::Named("collapse", " ")));
-      const char* exprStr = "expression(";
-      int exprLen = strlen(exprStr);
-      if (!strncmp(exprStr, code.c_str(), exprLen) && code.back() == ')') {
-        code = code.substr(exprLen, code.size() - 1 - exprLen);
+void getValueInfo(ShieldSEXP var, ValueInfo* result) {
+  try {
+    auto type = var.type();
+    if (type == PROMSXP) {
+      if (PRVALUE(var) == R_UnboundValue) {
+        TextBuilder builder;
+        builder.build(PRCODE(var));
+        result->mutable_unevaluated()->set_code(builder.getText());
+        return;
       }
-      result->mutable_unevaluated()->set_code(code);
-      return;
-    }
-    getValueInfo(PRVALUE(var), result);
-  } else if (type == LANGSXP || type == SYMSXP) {
-    result->mutable_value()->set_iscomplete(true);
-    result->mutable_value()->set_isvector(false);
-    TextBuilder builder;
-    builder.build(var);
-    result->mutable_value()->set_textvalue(builder.getText());
-  } else if (type == DOTSXP) {
-    result->mutable_list()->set_length(Rf_length(var));
-  } else if (type == CLOSXP || type == SPECIALSXP || type == BUILTINSXP) {
-    result->mutable_function()->set_header(getFunctionHeader(var));
-  } else if (type == ENVSXP) {
-    result->mutable_environment()->set_name(translateToUTF8(RI->environmentName(var)));
-  } else {
-    Rcpp::CharacterVector classes = RI->classes(var);
-    if (contains(classes, "ggplot")) {
-      result->mutable_graph();
-    } else if (contains(classes, "data.frame")) {
-      ValueInfo::DataFrame* dataFrame = result->mutable_dataframe();
-      dataFrame->set_rows(asInt(RI->nrow(var)));
-      dataFrame->set_cols(asInt(RI->ncol(var)));
-    } else if (type == VECSXP || type == LISTSXP) {
+      getValueInfo(PRVALUE(var), result);
+    } else if (type == LANGSXP || type == SYMSXP) {
+      result->mutable_value()->set_iscomplete(true);
+      result->mutable_value()->set_isvector(false);
+      TextBuilder builder;
+      builder.build(var);
+      result->mutable_value()->set_textvalue(builder.getText());
+    } else if (type == DOTSXP) {
       result->mutable_list()->set_length(Rf_length(var));
+    } else if (type == CLOSXP || type == SPECIALSXP || type == BUILTINSXP) {
+      result->mutable_function()->set_header(getFunctionHeader(var));
+    } else if (type == ENVSXP) {
+      result->mutable_environment()->set_name(asStringUTF8(RI->environmentName(var)));
     } else {
-      ValueInfo::Value* value = result->mutable_value();
-      if (type == LGLSXP || type == INTSXP || type == REALSXP || type == CPLXSXP || type == NILSXP) {
-        int length = Rf_length(var);
-        value->set_isvector(length > 1);
-        if (length <= MAX_PREVIEW_PRINTED_COUNT) {
-          value->set_textvalue(getPrintedValue(RI->unclass(var)));
-          value->set_iscomplete(true);
-        } else {
-          value->set_textvalue(getPrintedValue(RI->unclass(
-              RI->subscript(var, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT)))));
-          value->set_iscomplete(false);
-        }
-      } else if (type == STRSXP) {
-        int length = Rf_length(var);
-        value->set_isvector(length > 1);
-        bool isComplete = length <= MAX_PREVIEW_PRINTED_COUNT;
-        Rcpp::CharacterVector vector =
-            isComplete ? RI->unclass(var) : RI->subscript(RI->unclass(var), RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
-        vector = RI->substring(vector, 1, MAX_PREVIEW_STRING_LENGTH);
-        Rcpp::IntegerVector nchar = RI->nchar(vector);
-        for (int i = 0; isComplete && i < (int)vector.size(); ++i) {
-          if (!Rcpp::CharacterVector::is_na(vector[i]) && nchar[i] == MAX_PREVIEW_STRING_LENGTH) {
-            isComplete = false;
-          }
-        }
-        value->set_textvalue(getPrintedValue(vector));
-        value->set_iscomplete(isComplete);
+      if (Rf_inherits(var, "ggplot")) {
+        result->mutable_graph();
+      } else if (Rf_inherits(var, "data.frame")) {
+        ValueInfo::DataFrame* dataFrame = result->mutable_dataframe();
+        dataFrame->set_rows(asInt(RI->nrow(var)));
+        dataFrame->set_cols(asInt(RI->ncol(var)));
+      } else if (type == VECSXP || type == LISTSXP || type == EXPRSXP) {
+        result->mutable_list()->set_length(var.length());
       } else {
-        value->set_isvector(false);
-        value->set_textvalue("");
-        value->set_iscomplete(true);
+        ValueInfo::Value* value = result->mutable_value();
+        if (type == LGLSXP || type == INTSXP || type == REALSXP || type == CPLXSXP || type == NILSXP) {
+          int length = var.length();
+          value->set_isvector(length > 1);
+          if (length <= MAX_PREVIEW_PRINTED_COUNT) {
+            value->set_textvalue(getPrintedValue(RI->unclass(var)));
+            value->set_iscomplete(true);
+          } else {
+            value->set_textvalue(getPrintedValue(RI->unclass(
+                RI->subscript(var, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT)))));
+            value->set_iscomplete(false);
+          }
+        } else if (type == STRSXP) {
+          int length = var.length();
+          value->set_isvector(length > 1);
+          bool isComplete = length <= MAX_PREVIEW_PRINTED_COUNT;
+          ShieldSEXP vector =
+              isComplete ? RI->unclass(var) : RI->subscript(RI->unclass(var), RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
+          ShieldSEXP vectorPrefix = RI->substring(vector, 1, MAX_PREVIEW_STRING_LENGTH);
+          ShieldSEXP nchar = RI->nchar(vectorPrefix);
+          for (int i = 0; isComplete && i < vectorPrefix.length(); ++i) {
+            if (!vectorPrefix.isNA(i) && asInt(nchar[i]) == MAX_PREVIEW_STRING_LENGTH) {
+              isComplete = false;
+            }
+          }
+          value->set_textvalue(getPrintedValue(vectorPrefix));
+          value->set_iscomplete(isComplete);
+        } else {
+          value->set_isvector(false);
+          value->set_textvalue("");
+          value->set_iscomplete(true);
+        }
       }
     }
+  } catch (RExceptionBase const& e) {
+    result->mutable_error()->set_text(e.what());
+  } catch (...) {
+    result->mutable_error()->set_text("Error");
   }
 }
 
 Status RPIServiceImpl::loaderGetParentEnvs(ServerContext* context, const RRef* request, ParentEnvsResponse* response) {
   executeOnMainThread([&] {
-    Rcpp::Environment environment = Rcpp::as<Rcpp::Environment>(dereference(*request));
-    while (environment != Rcpp::Environment::empty_env()) {
-      environment = environment.parent();
+    PrSEXP environment = dereference(*request);
+    while (environment != R_EmptyEnv) {
+      environment = environment.parentEnv();
       ParentEnvsResponse::EnvInfo* envInfo = response->add_envs();
-      envInfo->set_name(translateToUTF8(RI->environmentName(environment)));
+      envInfo->set_name(asStringUTF8(RI->environmentName(environment)));
     }
   }, context);
   return Status::OK;
@@ -119,53 +111,51 @@ Status RPIServiceImpl::loaderGetParentEnvs(ServerContext* context, const RRef* r
 
 Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVariablesRequest* request, VariablesResponse* response) {
   executeOnMainThread([&] {
-    Rcpp::RObject obj = dereference(request->obj());
+    ShieldSEXP obj = dereference(request->obj());
     int reqStart = request->start();
     int reqEnd = request->end();
     if (reqEnd == -1) reqEnd = INT_MAX;
-    if (TYPEOF(obj) == ENVSXP) {
+    if (obj.type() == ENVSXP) {
       response->set_isenv(true);
-      Rcpp::Environment environment = Rcpp::as<Rcpp::Environment>(obj);
-      Rcpp::CharacterVector ls = Rcpp::as<Rcpp::CharacterVector>(environment.ls(true));
-      response->set_totalcount(ls.size());
-      for (int i = std::max(0, reqStart); i < std::min<int>(ls.size(), reqEnd); ++i) {
-        const char* name = ls[i];
+      ShieldSEXP ls = RI->ls(named("envir", obj), named("all.names", true));
+      if (ls.type() != STRSXP) return;
+      response->set_totalcount(ls.length());
+      for (int i = std::max(0, reqStart); i < std::min<int>(ls.length(), reqEnd); ++i) {
         VariablesResponse::Variable* var = response->add_vars();
-        var->set_name(translateToUTF8(ls[i]));
-        try {
-          getValueInfo(Rf_findVar(Rf_install(name), environment), var->mutable_value());
-        } catch (Rcpp::eval_error const& e) {
-          var->mutable_value()->mutable_error()->set_text(e.what());
-        }
+        var->set_name(stringEltUTF8(ls, i));
+        getValueInfo(obj.getVar(stringEltNative(ls, i), false), var->mutable_value());
       }
-    } else {
-      if (TYPEOF(obj) == DOTSXP) {
-        Rcpp::List newObj;
-        SEXP dots = obj;
-        while (dots != R_NilValue) {
-          if (TAG(dots) == R_NilValue) {
-            newObj.push_back(CAR(dots));
-          } else {
-            newObj.push_back(CAR(dots), CHAR(PRINTNAME(TAG(dots))));
+      return;
+    }
+    response->set_isenv(false);
+    if (obj.type() == LISTSXP || obj.type() == DOTSXP) {
+      SEXP x = obj;
+      response->set_totalcount(obj.length());
+      int i = 0;
+      while (x != R_NilValue && i < reqEnd) {
+        if (i >= reqStart) {
+          VariablesResponse::Variable* var = response->add_vars();
+          if (TAG(x) != R_NilValue) {
+            var->set_name(asStringUTF8(PRINTNAME(TAG(x))));
           }
-          dots = CDR(dots);
+          getValueInfo(CAR(x), var->mutable_value());
         }
-        obj = newObj;
+        x = CDR(x);
+        ++i;
       }
-      response->set_isenv(false);
-      int length = Rcpp::as<int>(RI->length(obj));
-      response->set_totalcount(length);
-      Rcpp::RObject namesObj = RI->names(obj);
-      Rcpp::CharacterVector names = namesObj == R_NilValue ? Rcpp::CharacterVector() : Rcpp::as<Rcpp::CharacterVector>(namesObj);
-      for (int i = std::max(0, reqStart); i < std::min(length, reqEnd); ++i) {
-        VariablesResponse::Variable* var = response->add_vars();
-        var->set_name(i < names.size() && !Rcpp::CharacterVector::is_na(names[i]) ? translateToUTF8(names[i]) : "");
-        try {
-          getValueInfo(RI->doubleSubscript(obj, i + 1), var->mutable_value());
-        } catch (Rcpp::eval_error const& e) {
-          var->mutable_value()->mutable_error()->set_text(e.what());
-        }
-      }
+      return;
+    }
+    if (obj.type() != VECSXP && obj.type() != INTSXP && obj.type() != REALSXP && obj.type() != STRSXP &&
+        obj.type() != RAWSXP && obj.type() != CPLXSXP && obj.type() != LGLSXP && obj.type() != EXPRSXP) {
+      return;
+    }
+    int length = obj.length();
+    response->set_totalcount(length);
+    ShieldSEXP names = Rf_getAttrib(obj, R_NamesSymbol);
+    for (int i = std::max(0, reqStart); i < std::min(length, reqEnd); ++i) {
+      VariablesResponse::Variable* var = response->add_vars();
+      var->set_name(stringEltUTF8(names, i));
+      getValueInfo(obj[i], var->mutable_value());
     }
   }, context);
   return Status::OK;
@@ -173,9 +163,10 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
 
 Status RPIServiceImpl::loaderGetLoadedNamespaces(ServerContext* context, const Empty*, StringList* response) {
   executeOnMainThread([&] {
-    Rcpp::CharacterVector namespaces = RI->loadedNamespaces();
-    for (const char* s : namespaces) {
-      response->add_list(s);
+    ShieldSEXP namespaces = RI->loadedNamespaces();
+    if (TYPEOF(namespaces) != STRSXP) return;
+    for (int i = 0; i < namespaces.length(); ++i) {
+      response->add_list(stringEltUTF8(namespaces, i));
     }
   }, context);
   return Status::OK;
@@ -184,10 +175,11 @@ Status RPIServiceImpl::loaderGetLoadedNamespaces(ServerContext* context, const E
 Status RPIServiceImpl::loaderGetValueInfo(ServerContext* context, const RRef* request, ValueInfo* response) {
   executeOnMainThread([&] {
     try {
-      Rcpp::RObject value = dereference(*request);
-      getValueInfo(value, response);
-    } catch (Rcpp::eval_error const& e) {
+      getValueInfo(dereference(*request), response);
+    } catch (RExceptionBase const& e) {
       response->mutable_error()->set_text(e.what());
+    } catch (...) {
+      response->mutable_error()->set_text("Error");
     }
   }, context);
   return Status::OK;

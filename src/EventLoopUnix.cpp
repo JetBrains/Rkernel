@@ -19,7 +19,7 @@
 #include "IO.h"
 #include "debugger/RDebugger.h"
 #include <unistd.h>
-#include <R_ext/eventloop.h>
+#include "RStuff/RInclude.h"
 
 static const int ACTIVITY = 27;
 static int eventLoopPipe[2];

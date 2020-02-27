@@ -43,7 +43,7 @@ message("R_INCLUDE is set to ${R_INCLUDE}")
 list(APPEND RWRAPPER_SOURCES
     src/IO.cpp
     src/RPIServiceImpl.cpp
-    src/RcppExports.cpp
+    src/CppExports.cpp
     src/graphics/Evaluator.cpp
     src/graphics/Interface.cpp
     src/graphics/InitHelper.cpp
@@ -66,10 +66,11 @@ list(APPEND RWRAPPER_SOURCES
     src/debugger/DebuggerMethods.cpp
     src/debugger/TextBuilder.cpp
     src/RInternals/RInternals.cpp
-    src/util/RUtil.cpp
     src/HTMLViewer.cpp
     src/Subprocess.cpp
-    src/Init.cpp)
+    src/Init.cpp
+    src/RStuff/MySEXP.cpp
+    src/RStuff/Conversion.cpp)
 
 if(WIN32)
     add_definitions(-DNOMINMAX)
@@ -142,7 +143,6 @@ add_custom_command(
         DEPENDS "${service_proto}")
 include_directories("${CMAKE_HOME_DIRECTORY}/gens")
 include_directories("${R_INCLUDE}")
-include_directories("${CMAKE_HOME_DIRECTORY}/Rcpp/inst/include")
 include_directories("${GRPC_DIST}/include")
 
 if(UNIX)
@@ -200,18 +200,12 @@ if (DEFINED CRASHPAD_DIR)
     target_link_libraries(rwrapper ${CRASHPAD_LIBRARIES})
 endif()
 
-add_library(rcpp_static ${CMAKE_HOME_DIRECTORY}/Rcpp/src/api.cpp
-                        ${CMAKE_HOME_DIRECTORY}/Rcpp/src/attributes.cpp
-                        ${CMAKE_HOME_DIRECTORY}/Rcpp/src/barrier.cpp
-                        ${CMAKE_HOME_DIRECTORY}/Rcpp/src/date.cpp
-                        ${CMAKE_HOME_DIRECTORY}/Rcpp/src/module.cpp
-                        ${CMAKE_HOME_DIRECTORY}/Rcpp/src/rcpp_init.cpp)
-
 if (UNIX)
   target_link_libraries(rwrapper grpc++_unsecure grpc_unsecure protobuf libz libssl libcares libaddress_sorting  gpr)
   if (NOT APPLE)
       target_link_libraries(rwrapper pthread dl)
   endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-deprecated-declarations")
 endif()
 if (WIN32)
   target_link_libraries(rwrapper grpc++_unsecure grpc_unsecure libprotobuf zlib ssleay32 cares address_sorting  gpr)
@@ -219,6 +213,5 @@ if (WIN32)
   target_link_libraries(rwrapper Rgraphapp)
 endif()
 
-target_link_libraries(rwrapper rcpp_static)
 target_link_libraries(rwrapper R)
 target_link_libraries(rwrapper tiny-process-library)

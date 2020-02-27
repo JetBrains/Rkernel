@@ -16,50 +16,47 @@
 
 
 #include "RPIServiceImpl.h"
-#include <Rcpp.h>
 #include <grpcpp/server_builder.h>
-#include "RObjects.h"
 #include "IO.h"
-#include "util/RUtil.h"
+#include "RStuff/RUtil.h"
 
-const std::string ROW_NAMES_COL = "rwr_rownames_column";
+const char* ROW_NAMES_COL = "rwr_rownames_column";
 
 Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* request, Int32Value* response) {
   response->set_value(-1);
   executeOnMainThread([&] {
     if (!RI->initDplyr()) return;
-    Rcpp::RObject obj = dereference(*request);
-    if (!Rcpp::is<Rcpp::DataFrame>(obj)) return;
-    Rcpp::DataFrame dataFrame = Rcpp::clone(Rcpp::as<Rcpp::DataFrame>(obj));
-    for (int i = 0; i < dataFrame.ncol(); ++i) {
+    PrSEXP dataFrame = dereference(*request);
+    if (!isDataFrame(dataFrame)) return;
+    dataFrame = Rf_duplicate(dataFrame);
+    int ncol = asInt(RI->ncol(dataFrame));
+    for (int i = 0; i < ncol; ++i) {
       if (Rf_inherits(dataFrame[i], "POSIXlt")) {
-        dataFrame[i] = RI->asPOSIXct(dataFrame[i]);
+        SET_VECTOR_ELT(dataFrame, i, RI->asPOSIXct(dataFrame[i]));
       }
     }
-    Rcpp::RObject namesObj = dataFrame.names();
-    Rcpp::CharacterVector namesList = Rcpp::is<Rcpp::CharacterVector>(namesObj) ?
-        Rcpp::as<Rcpp::CharacterVector>(namesObj) : Rcpp::CharacterVector();
-    int ncol = dataFrame.ncol();
-    Rcpp::CharacterVector names(ncol);
+    ShieldSEXP namesList = RI->names(dataFrame);
+    std::vector<std::string> names(ncol);
     for (int i = 0; i < ncol; ++i) {
-      names[i] = i < namesList.size() && !namesList.is_na(namesList[i]) ? namesList[i] : "";
+      names[i] = i < namesList.length() && !namesList.isNA(i) ? stringEltUTF8(namesList, i) : "";
       if (names[i].empty()) names[i] = "Column " + std::to_string(i + 1);
     }
-    dataFrame.names() = names;
+    dataFrame = RI->namesAssign(dataFrame, names);
     if (RI->dplyr->isTbl(dataFrame)) {
       dataFrame = RI->dplyr->ungroup(dataFrame);
     } else {
       if (!RI->isDataFrame(dataFrame)) {
-        dataFrame = RI->dataFrame(dataFrame, Rcpp::Named("stringsAsFactors", false));
+        dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
       }
       dataFrame = RI->dplyr->asTbl(dataFrame);
     }
     dataFrame = RI->dplyr->addRowNames(dataFrame, ROW_NAMES_COL);
-    if (!Rcpp::as<bool>(RI->any(RI->isNa(RI->asInteger(dataFrame[ROW_NAMES_COL]))))) {
-      dataFrame[ROW_NAMES_COL] = RI->asInteger(dataFrame[ROW_NAMES_COL]);
+    ShieldSEXP rowNamesAsInt = RI->asInteger(RI->doubleSubscript(dataFrame, ROW_NAMES_COL));
+    if (!asBool(RI->any(RI->isNa(rowNamesAsInt)))) {
+      dataFrame = RI->doubleSubscriptAssign(dataFrame, ROW_NAMES_COL, named("value", rowNamesAsInt));
     }
     for (int index : dataFramesCache) {
-      if (Rcpp::as<bool>(RI->identical(dataFrame, persistentRefStorage[index]))) {
+      if (asBool(RI->identical(dataFrame, persistentRefStorage[index]))) {
         response->set_value(index);
         return;
       }
@@ -70,24 +67,26 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
   return Status::OK;
 }
 
-static std::string getClasses(Rcpp::RObject const& obj) {
-  return Rcpp::as<std::string>(RI->paste(RI->classes(obj), Rcpp::Named("collapse", ",")));
+static std::string getClasses(ShieldSEXP const& obj) {
+  return asStringUTF8(RI->paste(RI->classes(obj), named("collapse", ",")));
 }
 
 Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* request, DataFrameInfoResponse* response) {
   executeOnMainThread([&] {
     if (!RI->initDplyr()) return;
-    Rcpp::DataFrame dataFrame = dereference(*request);
-    response->set_nrows(dataFrame.nrow());
-    Rcpp::CharacterVector names = RI->names(dataFrame);
-    for (int i = 0; i < (int)dataFrame.ncol(); ++i) {
+    ShieldSEXP dataFrame = dereference(*request);
+    response->set_nrows(asInt(RI->nrow(dataFrame)));
+    ShieldSEXP names = RI->names(dataFrame);
+    int ncol = asInt(RI->ncol(dataFrame));
+    for (int i = 0; i < ncol; ++i) {
       DataFrameInfoResponse::Column *columnInfo = response->add_columns();
-      Rcpp::RObject column = RI->doubleSubscript(dataFrame, i + 1);
+      ShieldSEXP column = RI->doubleSubscript(dataFrame, i + 1);
       std::string cls = getClasses(column);
-      if (names[i] == ROW_NAMES_COL) {
+      const char* name = stringEltUTF8(names, i);
+      if (!strcmp(name, ROW_NAMES_COL)) {
         columnInfo->set_isrownames(true);
       } else {
-        columnInfo->set_name(names[i]);
+        columnInfo->set_name(name);
       }
       if (cls == "integer") {
         columnInfo->set_type(DataFrameInfoResponse::INTEGER);
@@ -111,47 +110,47 @@ Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* requ
 Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameGetDataRequest* request, DataFrameGetDataResponse* response) {
   executeOnMainThread([&] {
     if (!RI->initDplyr()) return;
-    Rcpp::DataFrame dataFrame = dereference(request->ref());
+    ShieldSEXP dataFrame = dereference(request->ref());
     int start = request->start();
     int end = request->end();
-    for (int i = 0; i < (int)dataFrame.ncol(); ++i) {
+    int ncol = asInt(RI->ncol(dataFrame));
+    for (int i = 0; i < ncol; ++i) {
       DataFrameGetDataResponse::Column* columnProto = response->add_columns();
-      Rcpp::RObject columnObj = RI->subscript(Rcpp::Shield<SEXP>(RI->doubleSubscript(dataFrame, i + 1)),
-                                              Rcpp::Shield<SEXP>(RI->colon(start + 1, end)));
-      std::string cls = getClasses(columnObj);
-      Rcpp::GenericVector column = Rcpp::as<Rcpp::GenericVector>(columnObj);
-      Rcpp::LogicalVector isNa = RI->isNa(columnObj);
+      ShieldSEXP column = RI->subscript(
+          ShieldSEXP(RI->doubleSubscript(dataFrame, i + 1)),
+          ShieldSEXP(RI->colon(start + 1, end)));
+      std::string cls = getClasses(column);
       if (cls == "integer") {
-        for (int j = 0; j < (int)column.size(); ++j) {
-          if (isNa[j]) {
+        for (int j = 0; j < column.length(); ++j) {
+          if (column.isNA(j)) {
             columnProto->add_values()->mutable_na();
           } else {
-            columnProto->add_values()->set_intvalue(column[j]);
+            columnProto->add_values()->set_intvalue(asInt(column[j]));
           }
         }
       } else if (cls == "numeric") {
-        for (int j = 0; j < (int)column.size(); ++j) {
-          if (isNa[j]) {
+        for (int j = 0; j < column.length(); ++j) {
+          if (column.isNA(j)) {
             columnProto->add_values()->mutable_na();
           } else {
-            columnProto->add_values()->set_doublevalue(column[j]);
+            columnProto->add_values()->set_doublevalue(asDouble(column[j]));
           }
         }
       } else if (cls == "logical") {
-        for (int j = 0; j < (int)column.size(); ++j) {
-          if (isNa[j]) {
+        for (int j = 0; j < column.length(); ++j) {
+          if (column.isNA(j)) {
             columnProto->add_values()->mutable_na();
           } else {
-            columnProto->add_values()->set_booleanvalue(column[j]);
+            columnProto->add_values()->set_booleanvalue(asBool(column[j]));
           }
         }
       } else {
-        for (int j = 0; j < (int)column.size(); ++j) {
-          if (isNa[j]) {
+        for (int j = 0; j < column.length(); ++j) {
+          if (column.isNA(j)) {
             columnProto->add_values()->mutable_na();
           } else {
             columnProto->add_values()->set_stringvalue(
-              translateToUTF8(RI->paste(column[j], Rcpp::Named("collapse", "; "))));
+              asStringUTF8(RI->paste(column[j], named("collapse", "; "))));
           }
         }
       }
@@ -164,13 +163,13 @@ Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSort
   response->set_value(-1);
   executeOnMainThread([&] {
     if (!RI->initDplyr()) return;
-    Rcpp::RObject dataFrame = dereference(request->ref());
-    std::vector<Rcpp::RObject> arrangeArgs = {dataFrame};
+    ShieldSEXP dataFrame = dereference(request->ref());
+    std::vector<PrSEXP> arrangeArgs = {dataFrame};
     for (auto const& key : request->keys()) {
       if (key.descending()) {
-        arrangeArgs.push_back(RI->dplyr->desc(RI->doubleSubscript(dataFrame, key.columnindex() + 1)));
+        arrangeArgs.emplace_back(RI->dplyr->desc(RI->doubleSubscript(dataFrame, key.columnindex() + 1)));
       } else {
-        arrangeArgs.push_back(RI->doubleSubscript(dataFrame, key.columnindex() + 1));
+        arrangeArgs.emplace_back(RI->doubleSubscript(dataFrame, key.columnindex() + 1));
       }
     }
     response->set_value(persistentRefStorage.add(invokeFunction(RI->dplyr->arrange, arrangeArgs)));
@@ -178,42 +177,43 @@ Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSort
   return Status::OK;
 }
 
-static Rcpp::LogicalVector applyFilter(Rcpp::DataFrame const& df, DataFrameFilterRequest::Filter const& filter) {
+static SEXP applyFilter(ShieldSEXP const& df, DataFrameFilterRequest::Filter const& filter) {
+  int nrow = asInt(RI->nrow(df));
   if (filter.has_true_()) {
-    return Rcpp::LogicalVector(df.nrows(), true);
+    return RI->rep(true, nrow);
   }
   if (filter.has_composed()) {
     switch (filter.composed().type()) {
       case DataFrameFilterRequest_Filter_ComposedFilter_Type_AND: {
-        Rcpp::LogicalVector result(df.nrows(), true);
+        PrSEXP result = RI->rep(true, nrow);
         for (auto const& f : filter.composed().filters()) {
-          result = result & applyFilter(df, f);
+          result = RI->vectorAnd(result, applyFilter(df, f));
         }
         return result;
       }
       case DataFrameFilterRequest_Filter_ComposedFilter_Type_OR: {
-        Rcpp::LogicalVector result(df.nrows(), false);
+        PrSEXP result = RI->rep(false, nrow);
         for (auto const& f : filter.composed().filters()) {
-          result = result | applyFilter(df, f);
+          result = RI->vectorOr(result, applyFilter(df, f));
         }
         return result;
       }
       case DataFrameFilterRequest_Filter_ComposedFilter_Type_NOT: {
-        Rcpp::LogicalVector result(df.nrows(), true);
+        PrSEXP result = RI->rep(true, nrow);
         for (auto const& f : filter.composed().filters()) {
-          result = result & applyFilter(df, f);
+          result = RI->vectorAnd(result, applyFilter(df, f));
         }
-        return !result;
+        return RI->vectorNot(result);
       }
       default:
-        return Rcpp::LogicalVector(df.nrows(), true);
+        return RI->rep(true, nrow);
     }
   }
   if (filter.has_operator_()) {
-    Rcpp::RObject column = RI->doubleSubscript(df, filter.operator_().column() + 1);
+    ShieldSEXP column = RI->doubleSubscript(df, filter.operator_().column() + 1);
     std::string cls = getClasses(column);
     std::string const& strValue = filter.operator_().value();
-    Rcpp::RObject value;
+    PrSEXP value;
     if (cls == "integer") {
       value = RI->asInteger(strValue);
     } else if (cls == "numeric") {
@@ -221,7 +221,7 @@ static Rcpp::LogicalVector applyFilter(Rcpp::DataFrame const& df, DataFrameFilte
     } else if (cls == "logical") {
       value = RI->asLogical(strValue);
     } else {
-      value = strValue;
+      value = toSEXP(strValue);
     }
     switch (filter.operator_().type()) {
       case DataFrameFilterRequest_Filter_Operator_Type_EQ:
@@ -239,28 +239,28 @@ static Rcpp::LogicalVector applyFilter(Rcpp::DataFrame const& df, DataFrameFilte
       case DataFrameFilterRequest_Filter_Operator_Type_REGEX:
         try {
           return RI->grepl(strValue, column);
-        } catch (Rcpp::eval_error const&) {
+        } catch (RError const&) {
         }
       default:
-        return Rcpp::LogicalVector(df.nrows(), true);
+        return RI->rep(true, nrow);
     }
   }
   if (filter.has_nafilter()) {
-    Rcpp::RObject column = RI->doubleSubscript(df, filter.nafilter().column() + 1);
+    ShieldSEXP column = RI->doubleSubscript(df, filter.nafilter().column() + 1);
     if (filter.nafilter().isna()) {
       return RI->isNa(column);
     } else {
-      return !Rcpp::as<Rcpp::LogicalVector>(RI->isNa(column));
+      return RI->vectorNot(RI->isNa(column));
     }
   }
-  return Rcpp::LogicalVector(df.nrows(), true);
+  return RI->rep(true, nrow);
 }
 
 Status RPIServiceImpl::dataFrameFilter(ServerContext* context, const DataFrameFilterRequest* request, Int32Value* response) {
   response->set_value(-1);
   executeOnMainThread([&] {
     if (!RI->initDplyr()) return;
-    Rcpp::DataFrame dataFrame = dereference(request->ref());
+    ShieldSEXP dataFrame = dereference(request->ref());
     int index = persistentRefStorage.add(RI->dplyr->filter(dataFrame, applyFilter(dataFrame, request->filter())));
     response->set_value(index);
   }, context);

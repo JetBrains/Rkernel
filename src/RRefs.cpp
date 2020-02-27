@@ -16,25 +16,24 @@
 
 
 #include "RPIServiceImpl.h"
-#include <Rcpp.h>
 #include <grpcpp/server_builder.h>
-#include "RObjects.h"
-#include "util/RUtil.h"
+#include "RStuff/RUtil.h"
 #include "debugger/SourceFileManager.h"
 #include "EventLoop.h"
+#include "RStuff/RObjects.h"
 
 const int EVALUATE_AS_TEXT_MAX_LENGTH = 500000;
 
-Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
+SEXP RPIServiceImpl::dereference(RRef const& ref) {
   switch (ref.ref_case()) {
     case RRef::kPersistentIndex: {
       int i = ref.persistentindex();
-      return persistentRefStorage.has(i) ? persistentRefStorage[i] : RI->nil;
+      return persistentRefStorage.has(i) ? (SEXP)persistentRefStorage[i] : R_NilValue;
     }
     case RRef::kGlobalEnv:
-      return Rcpp::as<Rcpp::RObject>(RI->globalEnv);
+      return R_GlobalEnv;
     case RRef::kCurrentEnv:
-      return Rcpp::as<Rcpp::RObject>(currentEnvironment());
+      return currentEnvironment();
     case RRef::kSysFrameIndex: {
       int index = ref.sysframeindex();
       auto const& stack = rDebugger.getStack();
@@ -46,40 +45,33 @@ Rcpp::RObject RPIServiceImpl::dereference(RRef const& ref) {
       if (index < 0 || index >= lastErrorStack.size()) return R_NilValue;
       return lastErrorStack[index].environment;
     }
-    case RRef::kMember:
-      return RI->get(mkStringUTF8(ref.member().name()), Rcpp::Named("envir", dereference(ref.member().env())));
+    case RRef::kMember: {
+      ShieldSEXP env = dereference(ref.member().env());
+      return env.getVar(ref.member().name());
+    }
     case RRef::kParentEnv: {
-      Rcpp::Environment env = Rcpp::as<Rcpp::Environment>(dereference(ref.parentenv().env()));
+      PrSEXP env = dereference(ref.parentenv().env());
       int count = ref.parentenv().index();
       for (int i = 0; i < count; ++i) {
-        if (env == Rcpp::Environment::empty_env()) {
-          return RI->nil;
+        if (env.type() != ENVSXP || env == R_EmptyEnv) {
+          return R_NilValue;
         }
-        env = env.parent();
+        env = env.parentEnv();
       }
-      return Rcpp::as<Rcpp::RObject>(env);
+      return env;
     }
     case RRef::kExpression: {
-      Rcpp::Environment env = Rcpp::as<Rcpp::Environment>(dereference(ref.expression().env()));
+      ShieldSEXP env = dereference(ref.expression().env());
       std::string code = ref.expression().code();
-      return RI->eval(parseCode(code), Rcpp::Named("envir", env));
+      return RI->eval(parseCode(code), named("envir", env));
     }
     case RRef::kListElement: {
-      Rcpp::RObject listObj = dereference(ref.listelement().list());
+      ShieldSEXP list = dereference(ref.listelement().list());
       int index = ref.listelement().index();
-      if (TYPEOF(listObj) == DOTSXP) {
-        SEXP e = listObj;
-        for (int i = 0; i < index; ++i) {
-          e = CDR(e);
-          if (e == R_NilValue) return R_NilValue;
-        }
-        return CAR(e);
-      }
-      Rcpp::List list = Rcpp::as<Rcpp::List>(listObj);
       return list[index];
     }
     default:
-      return RI->nil;
+      return R_NilValue;
   }
 }
 
@@ -87,7 +79,7 @@ Status RPIServiceImpl::copyToPersistentRef(ServerContext* context, const RRef* r
   executeOnMainThread([&] {
     try {
       response->set_persistentindex(persistentRefStorage.add(dereference(*request)));
-    } catch (Rcpp::eval_error const& e) {
+    } catch (RExceptionBase const& e) {
       response->set_error(e.what());
     }
   }, context);
@@ -109,12 +101,12 @@ Status RPIServiceImpl::disposePersistentRefs(ServerContext*, const PersistentRef
 Status RPIServiceImpl::evaluateAsText(ServerContext* context, const RRef* request, StringValue* response) {
   executeOnMainThread([&] {
     try {
-      Rcpp::RObject value = dereference(*request);
-      if (Rcpp::as<std::string>(RI->type(value)) == "character") {
+      PrSEXP value = dereference(*request);
+      if (value.type() == STRSXP) {
         value = RI->substring(value, 1, EVALUATE_AS_TEXT_MAX_LENGTH);
       }
       response->set_value(getPrintedValueWithLimit(value, EVALUATE_AS_TEXT_MAX_LENGTH));
-    } catch (Rcpp::eval_error const& e) {
+    } catch (RExceptionBase const& e) {
       response->set_value(e.what());
     }
   }, context);
@@ -124,8 +116,8 @@ Status RPIServiceImpl::evaluateAsText(ServerContext* context, const RRef* reques
 Status RPIServiceImpl::evaluateAsBoolean(ServerContext* context, const RRef* request, BoolValue* response) {
   executeOnMainThread([&] {
     try {
-      response->set_value(Rcpp::as<bool>(dereference(*request)));
-    } catch (Rcpp::eval_error const&) {
+      response->set_value(asBool(dereference(*request)));
+    } catch (RExceptionBase const&) {
       response->set_value(false);
     }
   }, context);
@@ -135,16 +127,16 @@ Status RPIServiceImpl::evaluateAsBoolean(ServerContext* context, const RRef* req
 
 Status RPIServiceImpl::getDistinctStrings(ServerContext* context, const RRef* request, StringList* response) {
   executeOnMainThread([&] {
-    Rcpp::RObject object = dereference(*request);
-    if (!Rcpp::is<Rcpp::CharacterVector>(object) && !Rf_inherits(object, "factor")) {
+    ShieldSEXP object = dereference(*request);
+    if (object.type() != STRSXP && !Rf_inherits(object, "factor")) {
       return;
     }
-    Rcpp::CharacterVector vector = RI->unique(object);
+    ShieldSEXP vector = RI->asCharacter(RI->unique(object));
     int sumLength = 0;
     for (int i = 0; i < vector.length(); ++i) {
-      if (!vector.is_na(vector[i])) {
-        std::string s = translateToUTF8(vector[i]);
-        sumLength += s.length();
+      if (!vector.isNA(i)) {
+        std::string s = stringEltUTF8(vector, i);
+        sumLength += s.size();
         if (sumLength > EVALUATE_AS_TEXT_MAX_LENGTH) break;
         response->add_list(s);
       }
@@ -155,9 +147,10 @@ Status RPIServiceImpl::getDistinctStrings(ServerContext* context, const RRef* re
 
 Status RPIServiceImpl::loadObjectNames(ServerContext* context, const RRef* request, StringList* response) {
   executeOnMainThread([&] {
-    Rcpp::CharacterVector names = RI->ls(dereference(*request), Rcpp::Named("all.names", true));
-    for (const char* x : names) {
-      response->add_list(x);
+    ShieldSEXP names = RI->ls(dereference(*request), named("all.names", true));
+    if (names.type() != STRSXP) return;
+    for (int i = 0; i < names.length(); ++i) {
+      response->add_list(stringEltUTF8(names, i));
     }
   }, context);
   return Status::OK;
@@ -165,14 +158,12 @@ Status RPIServiceImpl::loadObjectNames(ServerContext* context, const RRef* reque
 
 Status RPIServiceImpl::findAllNamedArguments(ServerContext* context, const RRef* request, StringList* response) {
   executeOnMainThread([&] {
-    Rcpp::Environment jetbrainsEnv = RI->globalEnv[".jetbrains"];
-    Rcpp::Function func = jetbrainsEnv["findAllNamedArguments"];
-    Rcpp::RObject result = func(dereference(*request));
-    if (!Rcpp::is<Rcpp::CharacterVector>(result)) {
-      return;
-    }
-    for (const char* x : Rcpp::as<Rcpp::CharacterVector>(result)) {
-      response->add_list(x);
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
+    ShieldSEXP func = jetbrainsEnv.getVar("findAllNamedArguments");
+    ShieldSEXP result = func(dereference(*request));
+    if (TYPEOF(result) != STRSXP) return;
+    for (int i = 0; i < result.length(); ++i) {
+      response->add_list(stringEltUTF8(result, i));
     }
   }, context);
   return Status::OK;
@@ -180,20 +171,21 @@ Status RPIServiceImpl::findAllNamedArguments(ServerContext* context, const RRef*
 
 Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableColumnsInfoRequest* request, TableColumnsInfo* response) {
   executeOnMainThread([&] {
-    Rcpp::RObject tableObj = dereference(request->ref());
-    if (!Rcpp::is<Rcpp::DataFrame>(tableObj)) return;
+    ShieldSEXP table = dereference(request->ref());
+    if (!isDataFrame(table)) return;
+    response->set_tabletype(
+        Rf_inherits(table, "tbl_df") ? TableColumnsInfo_TableType_DPLYR :
+        Rf_inherits(table, "data.table") ? TableColumnsInfo_TableType_DATA_TABLE :
+        Rf_inherits(table, "data.frame") ? TableColumnsInfo_TableType_DATA_FRAME :
+        TableColumnsInfo_TableType_UNKNOWN);
 
-    response->set_tabletype(Rcpp::as<bool>(RI->inherits(tableObj, "tbl_df")) ? TableColumnsInfo_TableType_DPLYR :
-     (Rcpp::as<bool>(RI->inherits(tableObj, "data.table")) ? TableColumnsInfo_TableType_DATA_TABLE :
-     (Rcpp::as<bool>(RI->inherits(tableObj, "data.frame")) ? TableColumnsInfo_TableType_DATA_FRAME
-                                                           : TableColumnsInfo_TableType_UNKNOWN)));
-
-    Rcpp::DataFrame table = tableObj;
-    Rcpp::CharacterVector names = table.names();
-    for (int i = 0; i < (int)table.ncol(); ++i) {
+    ShieldSEXP names = RI->names(table);
+    if (TYPEOF(names) != STRSXP) return;
+    int ncol = asInt(RI->ncol(table));
+    for (int i = 0; i < ncol; ++i) {
       TableColumnsInfo::Column *column = response->add_columns();
-      column->set_name(translateToUTF8(names[i]));
-      column->set_type(translateToUTF8(RI->paste(RI->classes(table[i]), Rcpp::Named("collapse", ","))));
+      column->set_name(stringEltUTF8(names, i));
+      column->set_type(asStringUTF8(RI->paste(RI->classes(table[i]), named("collapse", ","))));
     }
   }, context);
   return Status::OK;
@@ -201,29 +193,29 @@ Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableCo
 
 Status RPIServiceImpl::getFormalArguments(ServerContext* context, const RRef* request, StringList* response) {
   executeOnMainThread([&] {
-    Rcpp::RObject names = RI->names(RI->formals(dereference(*request)));
-    if (Rcpp::is<Rcpp::CharacterVector>(names)) {
-      for (const char* s : Rcpp::as<Rcpp::CharacterVector>(names)) {
-        response->add_list(s);
-      }
+    ShieldSEXP names = RI->names(RI->formals(dereference(*request)));
+    if (TYPEOF(names) != STRSXP) return;
+    for (int i = 0; i < names.length(); ++i) {
+      response->add_list(stringEltUTF8(names, i));
     }
   }, context);
   return Status::OK;
 }
 
 Status RPIServiceImpl::getRMarkdownChunkOptions(ServerContext* context, const Empty*, StringList* response) {
-    executeOnMainThread([&] {
-        Rcpp::CharacterVector options = RI->evalCode("names(knitr::opts_chunk$get())", RI->baseEnv);
-        for (const char* s : options) {
-            response->add_list(s);
-        }
-    }, context);
-    return Status::OK;
+  executeOnMainThread([&] {
+    ShieldSEXP options = RI->evalCode("names(knitr::opts_chunk$get())", R_BaseEnv);
+    if (TYPEOF(options) != STRSXP) return;
+    for (int i = 0; i < options.length(); ++i) {
+      response->add_list(stringEltUTF8(options, i));
+    }
+  }, context);
+  return Status::OK;
 }
 
 Status RPIServiceImpl::getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) {
   executeOnMainThread([&] {
-    Rcpp::RObject function = dereference(*request);
+    ShieldSEXP function = dereference(*request);
     std::string suggestedFileName;
     switch (request->ref_case()) {
       case RRef::kMember:
@@ -245,23 +237,23 @@ Status RPIServiceImpl::getEqualityObject(ServerContext* context, const RRef* req
   executeOnMainThread([&] {
     try {
       response->set_value((long long)(SEXP)dereference(*request));
-    } catch (Rcpp::eval_error const&) {
+    } catch (RExceptionBase const&) {
       response->set_value(0);
     }
   }, context);
   return Status::OK;
 }
 
-void RPIServiceImpl::setValueImpl(RRef const& ref, Rcpp::RObject const& value) {
+void RPIServiceImpl::setValueImpl(RRef const& ref, ShieldSEXP value) {
   switch (ref.ref_case()) {
     case RRef::kMember: {
-      Rcpp::RObject env = dereference(ref.member().env());
-      RI->assign(mkStringUTF8(ref.member().name()), value, Rcpp::Named("envir", env));
+      ShieldSEXP env = dereference(ref.member().env());
+      RI->assign(ref.member().name(), value, named("envir", env));
       break;
     }
     case RRef::kListElement: {
-      Rcpp::RObject list = Rcpp::as<Rcpp::RObject>(dereference(ref.listelement().list()));
-      Rcpp::RObject newList = RI->doubleSubscriptAssign(list, ref.listelement().index() + 1, value);
+      ShieldSEXP list = dereference(ref.listelement().list());
+      ShieldSEXP newList = RI->doubleSubscriptAssign(list, ref.listelement().index() + 1, value);
       setValueImpl(ref.listelement().list(), newList);
       break;
     }
@@ -276,7 +268,7 @@ Status RPIServiceImpl::setValue(ServerContext* context, const SetValueRequest* r
     try {
       setValueImpl(request->ref(), dereference(request->value()));
       response->mutable_ok();
-    } catch (Rcpp::eval_error const& e) {
+    } catch (RExceptionBase const& e) {
       response->set_error(e.what());
     } catch (...) {
       response->set_error("Error");

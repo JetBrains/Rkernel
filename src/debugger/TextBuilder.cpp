@@ -17,7 +17,7 @@
 
 #include <unordered_set>
 #include "../util/StringUtil.h"
-#include "../util/RUtil.h"
+#include "../RStuff/RUtil.h"
 #include "TextBuilder.h"
 
 const std::unordered_set<std::string> RESERVED_WORDS = {
@@ -59,7 +59,7 @@ static bool isBinaryOperator(std::string const& s) {
   if (BINARY_OPERATORS.count(s)) {
     return true;
   }
-  if (s.length() >= 2 && s[0] == '%' && s.back() == '%') {
+  if (s.size() >= 2 && s[0] == '%' && s.back() == '%') {
     for (char c : s) {
       if (c == '\n') {
         return false;
@@ -70,14 +70,15 @@ static bool isBinaryOperator(std::string const& s) {
   return false;
 }
 
-void TextBuilder::build(SEXP expr) {
+void TextBuilder::build(ShieldSEXP const& _expr) {
+  SEXP expr = _expr;
   switch (TYPEOF(expr)) {
     case NILSXP: {
       text << "NULL";
       break;
     }
     case SYMSXP: {
-      text << quoteIfNeeded(translateToUTF8(PRINTNAME(expr)));
+      text << quoteIfNeeded(asStringUTF8(PRINTNAME(expr)));
       break;
     }
     case LISTSXP: {
@@ -86,7 +87,7 @@ void TextBuilder::build(SEXP expr) {
       int i = 0;
       while (expr != R_NilValue) {
         if (i > 0) text << ", ";
-        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : "";
+        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
         if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
         build(CAR(expr));
         expr = CDR(expr);
@@ -112,7 +113,7 @@ void TextBuilder::build(SEXP expr) {
     case LANGSXP: {
       SEXP function = CAR(expr);
       SEXP args = CDR(expr);
-      std::string functionName = TYPEOF(function) == SYMSXP ? translateToUTF8(PRINTNAME(function)) : "";
+      std::string functionName = TYPEOF(function) == SYMSXP ? asStringUTF8(PRINTNAME(function)) : "";
       if (functionName == "{") {
         std::vector<Srcref> srcrefs;
         srcrefs.push_back({currentLine, currentPosition(), currentLine, currentPosition() + 1});
@@ -169,7 +170,7 @@ void TextBuilder::build(SEXP expr) {
         while (args != R_NilValue) {
           if (i > 1) text << ", ";
           ++i;
-          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : "";
+          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
           if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
           build(CAR(args));
           args = CDR(args);
@@ -200,7 +201,7 @@ void TextBuilder::build(SEXP expr) {
         while (args != R_NilValue) {
           if (i > 0) text << ", ";
           ++i;
-          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : "";
+          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
           if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
           build(CAR(args));
           args = CDR(args);
@@ -213,7 +214,7 @@ void TextBuilder::build(SEXP expr) {
       if (expr == R_NaString) {
         text << "NA_character_";
       } else {
-        text << '"' << escapeStringCharacters(translateToUTF8(expr)) << '"';
+        text << '"' << escapeStringCharacters(asStringUTF8(expr)) << '"';
       }
       break;
     }
@@ -337,7 +338,7 @@ void TextBuilder::build(SEXP expr) {
       int length = Rf_length(expr);
       for (int i = 0; i < length; ++i) {
         if (i > 0) text << ", ";
-        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : "";
+        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
         if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
         build(VECTOR_ELT(expr, i));
       }
@@ -379,13 +380,14 @@ void TextBuilder::build(SEXP expr) {
   }
 }
 
-void TextBuilder::buildFunctionHeader(SEXP args) {
+void TextBuilder::buildFunctionHeader(ShieldSEXP const& _args) {
+  SEXP args = _args;
   text << "function(";
   SEXP names = Rf_getAttrib(args, R_NamesSymbol);
   int i = 0;
   while (TYPEOF(args) == LISTSXP) {
     if (i > 0) text << ", ";
-    const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? translateToUTF8(STRING_ELT(names, i)) : ".";
+    const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : ".";
     text << quoteIfNeeded(name);
     if (TYPEOF(CAR(args)) != SYMSXP || strlen(CHAR(PRINTNAME(CAR(args)))) > 0) {
       text << " = ";
@@ -397,7 +399,7 @@ void TextBuilder::buildFunctionHeader(SEXP args) {
   text << ")";
 }
 
-void TextBuilder::buildFunction(SEXP func, bool withBody) {
+void TextBuilder::buildFunction(ShieldSEXP const& func, bool withBody) {
   switch (TYPEOF(func)) {
     case CLOSXP: {
       buildFunctionHeader(FORMALS(func));
@@ -450,42 +452,33 @@ int TextBuilder::currentPosition() {
   return (int)text.tellp() - currentLineStart;
 }
 
-void TextBuilder::setSrcrefs(SEXP srcfile) {
-  SEXP wholeSrcref = getWholeSrcref(srcfile);
-  PROTECT(wholeSrcref);
+void TextBuilder::setSrcrefs(ShieldSEXP const& srcfile) {
+  ShieldSEXP wholeSrcref = getWholeSrcref(srcfile);
   for (auto const& elem : newSrcrefs) {
     SEXP expr = elem.first;
     auto const& srcrefs = elem.second;
-    SEXP srcrefsExpr = Rf_allocVector(VECSXP, (int)srcrefs.size());
-    PROTECT(srcrefsExpr);
+    ShieldSEXP srcrefsExpr = Rf_allocVector(VECSXP, (int)srcrefs.size());
     SEXP currentExpr = expr;
     for (int i = 0; i < (int)srcrefs.size(); ++i) {
-      SEXP lloc = Rf_allocVector(INTSXP, 4);
-      PROTECT(lloc);
+      ShieldSEXP lloc = Rf_allocVector(INTSXP, 4);
       INTEGER(lloc)[0] = srcrefs[i].startLine + 1;
       INTEGER(lloc)[1] = srcrefs[i].startPosition + 1;
       INTEGER(lloc)[2] = srcrefs[i].endLine + 1;
       INTEGER(lloc)[3] = srcrefs[i].endPosition;
-      SET_VECTOR_ELT(srcrefsExpr, i, Rf_eval(Rf_lang3(RI->srcref, srcfile, lloc), R_BaseEnv));
-      UNPROTECT(1);
+      SET_VECTOR_ELT(srcrefsExpr, i, safeEval(Rf_lang3(RI->srcref, srcfile, lloc), R_BaseEnv));
       currentExpr = CDR(currentExpr);
     }
     Rf_setAttrib(expr, RI->srcrefAttr, srcrefsExpr);
     Rf_setAttrib(expr, RI->srcfileAttr, srcfile);
     Rf_setAttrib(expr, RI->wholeSrcrefAttr, wholeSrcref);
-    UNPROTECT(1);
   }
-  UNPROTECT(1);
 }
 
-SEXP TextBuilder::getWholeSrcref(SEXP srcfile) {
-  SEXP lloc = Rf_allocVector(INTSXP, 4);
-  PROTECT(lloc);
+SEXP TextBuilder::getWholeSrcref(ShieldSEXP const& srcfile) {
+  ShieldSEXP lloc = Rf_allocVector(INTSXP, 4);
   INTEGER(lloc)[0] = 1;
   INTEGER(lloc)[1] = 1;
   INTEGER(lloc)[2] = currentLine + 1;
   INTEGER(lloc)[3] = currentPosition();
-  SEXP srcref = Rf_eval(Rf_lang3(RI->srcref, srcfile, lloc), R_BaseEnv);
-  UNPROTECT(1);
-  return srcref;
+  return safeEval(Rf_lang3(RI->srcref, srcfile, lloc), R_BaseEnv);
 }

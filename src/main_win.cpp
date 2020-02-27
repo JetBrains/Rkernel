@@ -18,9 +18,6 @@
 #define Win32
 #include <windows.h>
 #include <cstdio>
-#include <Rversion.h>
-#include <Rembedded.h>
-#include <R_ext/RStartup.h>
 #include <iostream>
 #include <cstdlib>
 #include "IO.h"

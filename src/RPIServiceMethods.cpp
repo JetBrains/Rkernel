@@ -16,11 +16,9 @@
 
 
 #include "RPIServiceImpl.h"
-#include <Rcpp.h>
 #include <grpcpp/server_builder.h>
-#include "RObjects.h"
 #include "IO.h"
-#include "util/RUtil.h"
+#include "RStuff/RUtil.h"
 #include "RLoader.h"
 #include "util/StringUtil.h"
 #include "EventLoop.h"
@@ -64,7 +62,7 @@ Status RPIServiceImpl::quitProceed(ServerContext*, const Empty*, Empty*) {
 
 Status RPIServiceImpl::getWorkingDir(ServerContext* context, const Empty*, StringValue* response) {
   executeOnMainThread([&] {
-    response->set_value(translateToUTF8(RI->getwd()));
+    response->set_value(asStringUTF8(RI->getwd()));
   }, context);
   return Status::OK;
 }
@@ -78,8 +76,10 @@ Status RPIServiceImpl::setWorkingDir(ServerContext* context, const StringValue* 
 
 Status RPIServiceImpl::clearEnvironment(ServerContext* context, const RRef* request, Empty*) {
   executeOnMainThread([&] {
-    Rcpp::Environment env = Rcpp::as<Rcpp::Environment>(dereference(*request));
-    RI->rm(Rcpp::Named("list", env.ls(false)), Rcpp::Named("envir", env));
+    ShieldSEXP env = dereference(*request);
+    if (env.type() != ENVSXP) return;
+    ShieldSEXP ls = RI->ls(named("envir", env));
+    RI->rm(named("list", ls), named("envir", env));
   }, context);
   return Status::OK;
 }
@@ -102,17 +102,17 @@ Status RPIServiceImpl::setOutputWidth(ServerContext* context, const Int32Value* 
     int width = request->value();
     width = std::min(width, R_MAX_WIDTH_OPT);
     width = std::max(width, R_MIN_WIDTH_OPT);
-    RI->options(Rcpp::Named("width", width));
+    RI->options(named("width", width));
   }, context);
   return Status::OK;
 }
 
 void RPIServiceImpl::viewHandler(SEXP xSEXP, SEXP titleSEXP) {
-  Rcpp::RObject x = xSEXP;
-  if (!Rcpp::is<std::string>(titleSEXP)) {
+  ShieldSEXP x = xSEXP;
+  if (!isScalarString(titleSEXP)) {
     throw std::runtime_error("Title should be a string");
   }
-  std::string title = translateToUTF8(titleSEXP);
+  std::string title = asStringUTF8(titleSEXP);
   AsyncEvent event;
   event.mutable_viewrequest()->set_persistentrefindex(persistentRefStorage.add(x));
   event.mutable_viewrequest()->set_title(title);

@@ -17,8 +17,7 @@
 #include "RPIServiceImpl.h"
 #include "util/ScopedAssign.h"
 #include "Subprocess.h"
-#include <Rcpp.h>
-#include <Rdefines.h>
+#include "RStuff/RInclude.h"
 #include <iostream>
 #include <process.hpp>
 #include <thread>
@@ -73,25 +72,25 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   if (TYPEOF(Stderr) == STRSXP) ferr = CHAR(STRING_ELT(Stderr, 0));
   else if (Rf_asLogical(Stderr) == 0) ferr = nullptr;
 
-  BEGIN_RCPP
+  CPP_BEGIN
     std::string command = cmd;
     if (fin[0] != '\0') command = "(" + command + ") < \"" + escapeStringCharacters(fin) + "\"";
     if (fout != nullptr && fout[0] != '\0') command = "(" + command + ") > \"" + escapeStringCharacters(fout) + "\"";
     if (ferr != nullptr && ferr[0] != '\0') command = "(" + command + ") 2> \"" + escapeStringCharacters(ferr) + "\"";
     bool intern = flag == 3;
     DoSystemResult res = myDoSystemImpl(command.c_str(), intern, timeout, fin[0] == '\0', fout == nullptr, ferr == nullptr);
-    if (res.timedOut) Rcpp::warning("command '%s' timed out after %ds", cmd, timeout);
+    if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
     if (intern) {
-      Rcpp::CharacterVector lines;
+      std::vector<std::string> lines;
       std::istringstream stream(res.stdoutBuf);
       std::string line;
       while (std::getline(stream, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
         lines.push_back(line);
       }
-      return lines;
+      return makeCharacterVector(lines);
     } else {
-      return Rf_ScalarInteger(res.exitCode);
+      return toSEXP(res.exitCode);
     }
-  END_RCPP
+  CPP_END
 }

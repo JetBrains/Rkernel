@@ -18,9 +18,11 @@
 #ifndef RWRAPPER_RINTERNALS_H
 #define RWRAPPER_RINTERNALS_H
 
-#include <Rdefines.h>
+#include "../RStuff/RInclude.h"
 
 struct RContext {};
+
+void initRInternals();
 
 RContext* getGlobalContext();
 RContext* getNextContext(RContext* ctx);
@@ -29,7 +31,6 @@ SEXP getFunction(RContext* ctx);
 SEXP getCall(RContext* ctx);
 SEXP getSrcref(RContext* ctx);
 SEXP getEnvironment(RContext* ctx);
-void dumpContexts();
 
 typedef SEXP (*FunTabFunction)(SEXP, SEXP, SEXP, SEXP);
 
