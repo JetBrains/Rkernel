@@ -81,6 +81,7 @@ struct RObjects {
   Rcpp::Function q = baseEnv["q"];
   Rcpp::Function rm = baseEnv["rm"];
   Rcpp::Function setwd = baseEnv["setwd"];
+  Rcpp::Function setenv = baseEnv["Sys.setenv"];
   Rcpp::Function source = baseEnv["source"];
   Rcpp::Function srcfilecopy = baseEnv["srcfilecopy"];
   Rcpp::Function srcref = baseEnv["srcref"];

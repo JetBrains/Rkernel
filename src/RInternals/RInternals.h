@@ -34,6 +34,7 @@ void dumpContexts();
 typedef SEXP (*FunTabFunction)(SEXP, SEXP, SEXP, SEXP);
 
 int getPrimOffset(SEXP expr);
+int getFunTabOffset(const char* s);
 const char* getFunTabName(int offset);
 int getFunTabArity(int offset);
 FunTabFunction getFunTabFunction(int offset);

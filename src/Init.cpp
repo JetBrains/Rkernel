@@ -16,10 +16,17 @@
 
 #include "RPIServiceImpl.h"
 #include <R_ext/Rdynload.h>
+#include <Rdefines.h>
 #include "RcppExports.h"
 #include "Subprocess.h"
 #include "HTMLViewer.h"
 #include "EventLoop.h"
+
+#ifdef Win32
+# include <io.h>
+#else
+# include <unistd.h>
+#endif
 
 void registerFunctions();
 void init_Rcpp_routines(DllInfo *info);
@@ -31,6 +38,23 @@ void initRWrapper() {
   RcppExports_Init(dll);
 
   RI = std::make_unique<RObjects>();
+
+  // Init colored output
+  setFunTabFunction(getFunTabOffset("isatty"), [](SEXP call, SEXP op, SEXP args, SEXP env) {
+    int con;
+    if (Rf_length(args) != 1) {
+      Rf_error("%d arguments passed to .Internal(isatty) which requires 1", Rf_length(args));
+    }
+    con = Rf_asInteger(CAR(args));
+    if (con == NA_LOGICAL) return Rf_ScalarLogical(FALSE);
+    return Rf_ScalarLogical(con == 1 || con == 2 || isatty(con));
+  });
+#ifdef Win32
+  RI->setenv(Rcpp::Named("ConEmuANSI", "ON"));
+#else
+  RI->setenv(Rcpp::Named("COLORTERM", "1"));
+#endif
+
   initDoSystem();
   rDebugger.init();
   htmlViewerInit();
