@@ -31,6 +31,11 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
     Rcpp::RObject obj = dereference(*request);
     if (!Rcpp::is<Rcpp::DataFrame>(obj)) return;
     Rcpp::DataFrame dataFrame = Rcpp::clone(Rcpp::as<Rcpp::DataFrame>(obj));
+    for (int i = 0; i < dataFrame.ncol(); ++i) {
+      if (Rf_inherits(dataFrame[i], "POSIXlt")) {
+        dataFrame[i] = RI->asPOSIXct(dataFrame[i]);
+      }
+    }
     Rcpp::RObject namesObj = dataFrame.names();
     Rcpp::CharacterVector namesList = Rcpp::is<Rcpp::CharacterVector>(namesObj) ?
         Rcpp::as<Rcpp::CharacterVector>(namesObj) : Rcpp::CharacterVector();
@@ -95,7 +100,8 @@ Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* requ
         columnInfo->set_sortable(true);
       } else {
         columnInfo->set_type(DataFrameInfoResponse::STRING);
-        columnInfo->set_sortable(cls == "character" || Rf_inherits(column, "factor"));
+        columnInfo->set_sortable(cls == "character" || Rf_inherits(column, "factor") ||
+                                 Rf_inherits(column, "POSIXt"));
       }
     }
   }, context);
