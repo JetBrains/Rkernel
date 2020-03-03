@@ -3,8 +3,8 @@
 args = commandArgs(TRUE)
 
 if (length(args) != 0) {
-  warning("Usage: test_package.R")
+  warning("Usage: setup_tests.R")
   quit(save = "no", status = 1, runLast = FALSE)
 }
 
-devtools::test()
+usethis::use_testthat()
