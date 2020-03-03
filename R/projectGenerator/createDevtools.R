@@ -16,7 +16,7 @@
 
 
 createDevtools <- function(packageDir) {
-  devtools::create(packageDir, open = FALSE)
+  devtools::create(packageDir)
 }
 
 args <- commandArgs(TRUE)
