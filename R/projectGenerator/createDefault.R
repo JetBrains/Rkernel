@@ -22,6 +22,42 @@ createDefault <- function(packageDirName, packageParentDirPath) {
   dirPath <- file.path(packageParentDirPath, packageDirName)
   unlink(file.path(dirPath, 'R'  , 'JB.fake.fun.R'))
   unlink(file.path(dirPath, 'man', 'JB.fake.fun.Rd'))
+  instrumentPackageManual(packageDirName, packageParentDirPath)
+}
+
+instrumentPackageManual <- function(packageDirName, packageParentDirPath) {
+  manualPath <- getManualPath(packageDirName, packageParentDirPath)
+  lines <- readLines(manualPath)
+  replacedRange <- findReplacedRange(lines)
+  if (!is.null(replacedRange)) {
+    replacingValue <- "# simple examples of the most important functions"
+    replacedLines <- replace(lines, replacedRange, replacingValue)
+    writeLines(replacedLines, manualPath)
+  }
+}
+
+getManualPath <- function(packageDirName, packageParentDirPath) {
+  manualName <- paste0(packageDirName, "-package.Rd")
+  file.path(packageParentDirPath, packageDirName, "man", manualName)
+}
+
+findReplacedRange <- function(lines) {
+  firstIndex <- NULL
+  lastIndex <- NULL
+  for (i in 1:length(lines)) {
+    line <- lines[i]
+    if (identical(substr(line, 1, 10), "\\examples{")) {
+      firstIndex <- i
+    } else if (!is.null(firstIndex) && identical(substr(line, 1, 1), "}")) {
+      secondIndex <- i
+      break
+    }
+  }
+  if (!is.null(firstIndex) && !is.null(secondIndex) && secondIndex - firstIndex > 1) {
+    replacedRange <- (firstIndex + 1):(secondIndex - 1)
+  } else {
+    NULL
+  }
 }
 
 args <- commandArgs(TRUE)
