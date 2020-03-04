@@ -46,7 +46,7 @@ SEXP safeEval(SEXP expr, SEXP env) {
     if (Rf_getAttrib(value, returnErrorAttr) != R_NilValue) {
       Rf_setAttrib(value, returnErrorAttr, R_NilValue);
       if (Rf_inherits(value, "error")) {
-        throw RError(asStringUTF8(Rf_eval(Rf_lang2(Rf_install("conditionMessage"), value), env)));
+        throw RError(value);
       }
       if (Rf_inherits(value, "interrupt")) {
         throw RInterruptedException();

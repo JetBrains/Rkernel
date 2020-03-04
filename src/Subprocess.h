@@ -20,6 +20,7 @@
 
 #include <string>
 #include "RStuff/RInclude.h"
+#include "RStuff/Export.h"
 
 void initDoSystem();
 SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP rho);

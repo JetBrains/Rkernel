@@ -28,6 +28,7 @@
 #include "util/StringUtil.h"
 #include "EventLoop.h"
 #include "RStuff/RObjects.h"
+#include "RStuff/RUtil.h"
 
 using namespace grpc;
 

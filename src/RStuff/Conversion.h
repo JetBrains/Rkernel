@@ -20,7 +20,6 @@
 #include "RInclude.h"
 #include <string>
 #include <vector>
-#include "Export.h"
 
 inline SEXP mkCharUTF8(const char* s) {
   return Rf_mkCharCE(s, CE_UTF8);
@@ -90,35 +89,10 @@ inline bool asBool(SEXP x) {
 inline bool isScalarString(SEXP x) { return TYPEOF(x) == STRSXP && Rf_length(x) == 1; }
 inline bool isDataFrame(SEXP x) { return TYPEOF(x) == VECSXP && Rf_inherits(x, "data.frame"); }
 
-inline const char* asStringUTF8OrError(SEXP x) {
-  if (TYPEOF(x) == STRSXP && Rf_length(x) == 1) x = STRING_ELT(x, 0);
-  if (TYPEOF(x) != CHARSXP) throw RInvalidArgument("Argument must be a non-NA scalar string");
-  if (x == NA_STRING) throw RInvalidArgument("Argument must not be NA");
-  return Rf_translateCharUTF8(x);
-}
-
-inline int asIntOrError(SEXP x) {
-  if (Rf_length(x) != 1) throw RInvalidArgument("Argument must be a scalar integer");
-  switch (TYPEOF(x)) {
-    case INTSXP: return *INTEGER(x);
-    case REALSXP: return (int)*REAL(x);
-    default: throw RInvalidArgument("Argument must be a scalar integer");
-  }
-}
-
-inline double asDoubleOrError(SEXP x) {
-  if (Rf_length(x) != 1) throw RInvalidArgument("Argument must be a scalar double");
-  switch (TYPEOF(x)) {
-    case INTSXP: return (double)*INTEGER(x);
-    case REALSXP: return *REAL(x);
-    default: throw RInvalidArgument("Argument must be a scalar double");
-  }
-}
-
-inline bool asBoolOrError(SEXP x) {
-  if (Rf_length(x) != 1 || TYPEOF(x) != LGLSXP) throw RInvalidArgument("Argument must be scalar logical");
-  return *LOGICAL(x);
-}
+const char* asStringUTF8OrError(SEXP x);
+int asIntOrError(SEXP x);
+double asDoubleOrError(SEXP x);
+bool asBoolOrError(SEXP x);
 
 SEXP makeCharacterVector(std::vector<std::string> const& v);
 SEXP makeCharacterVector(std::vector<std::string> const& v, std::vector<std::string> const& names);

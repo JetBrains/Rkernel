@@ -19,15 +19,25 @@
 
 #include <exception>
 #include <string>
+#include "MySEXP.h"
 
 class RExceptionBase : public std::exception {};
 
 class RError : public RExceptionBase {
+  PrSEXP e;
   std::string message;
 public:
-  RError() : message("Evaluation error.") {}
-  RError(std::string const& s) : message("Evaluation error: " + s) {}
-  const char* what() const throw() override { return message.c_str(); }
+  RError(SEXP e) : e(e), message((std::string)"Evaluation error: " + getErrorMessage(e)) {}
+  const char* what() const throw() override {
+    return message.c_str();
+  }
+  SEXP getRError() const {
+    return e;
+  }
+private:
+  static const char* getErrorMessage(SEXP e) {
+    return asStringUTF8(Rf_eval(Rf_lang2(Rf_install("conditionMessage"), e), R_GlobalEnv));
+  }
 };
 
 class RInterruptedException : public RExceptionBase {

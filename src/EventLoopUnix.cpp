@@ -20,6 +20,7 @@
 #include "debugger/RDebugger.h"
 #include <unistd.h>
 #include "RStuff/RInclude.h"
+#include "RStuff/RUtil.h"
 
 static const int ACTIVITY = 27;
 static int eventLoopPipe[2];

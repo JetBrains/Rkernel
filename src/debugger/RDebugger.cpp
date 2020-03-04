@@ -20,6 +20,7 @@
 #include "SourceFileManager.h"
 #include "../RStuff/RUtil.h"
 #include "../RInternals/RInternals.h"
+#include "../RStuff/Export.h"
 
 RDebugger rDebugger;
 
@@ -328,6 +329,7 @@ std::vector<RDebugger::ContextDump> RDebugger::getContextDump(ShieldSEXP const& 
 
 std::vector<RDebuggerStackFrame> RDebugger::buildStack(std::vector<ContextDump> const& contexts) {
   std::vector<RDebuggerStackFrame> stack;
+  if (contexts.empty()) return stack;
   WithDebuggerEnabled with(false);
 
   bool wasStackBottom = false;
@@ -389,6 +391,6 @@ std::vector<RDebuggerStackFrame> RDebugger::getLastErrorStack() {
   return result;
 }
 
-SEXP RDebugger::getLastError() {
-  return lastError == nullptr ? R_NilValue : (SEXP)*lastError;
+void RDebugger::resetLastErrorStack() {
+  lastErrorStackDump.clear();
 }

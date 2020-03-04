@@ -73,7 +73,7 @@ public:
 
   std::vector<RDebuggerStackFrame> const& getStack();
   std::vector<RDebuggerStackFrame> getLastErrorStack();
-  SEXP getLastError();
+  void resetLastErrorStack();
 
   void setCommand(DebuggerCommand c);
   void setRunToPositionCommand(std::string const& fileId, int line);

@@ -26,6 +26,20 @@
 static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool withEcho = true, bool isDebug = false,
                             bool withExceptionHandler = false);
 
+static void exceptionToProto(ShieldSEXP const& e, ExceptionInfo *proto) {
+  if (Rf_inherits(e, "interrupt")) {
+    proto->mutable_interrupted();
+    proto->set_message("Interrupted");
+  } {
+    proto->mutable_simpleerror();
+    try {
+      proto->set_message(asStringUTF8(RI->conditionMessage(e)));
+    } catch (RError const&) {
+      proto->set_message("Error");
+    }
+  }
+}
+
 Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) {
   executeOnMainThread([&] {
     std::string const& code = request->code();
@@ -53,16 +67,10 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         AsyncEvent event;
         event.mutable_busy();
         asyncEvents.push(event);
+        rDebugger.resetLastErrorStack();
       }
       PrSEXP expressions;
-      try {
-        expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
-      } catch (RError const& e) {
-        std::string message = '\n' + std::string(e.what()) + '\n';
-        myWriteConsoleEx(message.c_str(), message.size(), STDERR);
-        throw;
-      }
-      if (isDebug) rDebugger.setCommand(CONTINUE);
+      expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
       executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl);
     } catch (RError const& e) {
       if (writer != nullptr) {
@@ -71,15 +79,9 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         writer->Write(response);
       }
       if (isRepl) {
-        lastErrorStack = rDebugger.getLastErrorStack();
         AsyncEvent event;
-        ShieldSEXP error = rDebugger.getLastError();
-        if (Rf_inherits(error, "condition")) {
-          ShieldSEXP conditionMessage = RI->conditionMessage(error);
-          event.mutable_exception()->set_text(asStringUTF8(conditionMessage));
-        } else {
-          event.mutable_exception()->set_text("Error");
-        }
+        exceptionToProto(e.getRError(), event.mutable_exception()->mutable_exception());
+        lastErrorStack = rDebugger.getLastErrorStack();
         buildStackProto(lastErrorStack, event.mutable_exception()->mutable_stack());
         rpiService->sendAsyncEvent(event);
       } else {
@@ -87,9 +89,17 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         myWriteConsoleEx(msg.c_str(), msg.size(), STDERR);
       }
     } catch (RInterruptedException const& e) {
-      ExecuteCodeResponse response;
-      response.set_exception("Interrupted");
-      writer->Write(response);
+      if (isRepl) {
+        AsyncEvent event;
+        event.mutable_exception()->mutable_exception()->set_message("Interrupted");
+        event.mutable_exception()->mutable_exception()->mutable_interrupted();
+        rpiService->sendAsyncEvent(event);
+      }
+      if (writer != nullptr) {
+        ExecuteCodeResponse response;
+        response.set_exception(e.what());
+        writer->Write(response);
+      }
     } catch (...) {
     }
 
