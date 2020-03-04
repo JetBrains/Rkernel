@@ -30,14 +30,21 @@ static void exceptionToProto(ShieldSEXP const& e, ExceptionInfo *proto) {
   if (Rf_inherits(e, "interrupt")) {
     proto->mutable_interrupted();
     proto->set_message("Interrupted");
-  } {
-    proto->mutable_simpleerror();
-    try {
-      proto->set_message(asStringUTF8(RI->conditionMessage(e)));
-    } catch (RError const&) {
-      proto->set_message("Error");
+    return;
+  }
+  try {
+    proto->set_message(asStringUTF8(RI->conditionMessage(e)));
+  } catch (RError const&) {
+    proto->set_message("Error");
+  }
+  if (Rf_inherits(e, "packageNotFoundError")) {
+    std::string package = asStringUTF8(e["package"]);
+    if (!package.empty()) {
+      proto->set_packagenotfound(package);
+      return;
     }
   }
+  proto->mutable_simpleerror();
 }
 
 Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequest* request, ServerWriter<ExecuteCodeResponse>* writer) {
