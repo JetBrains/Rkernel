@@ -56,6 +56,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
     bool streamOutput = request->streamoutput() && writer != nullptr;
     bool isRepl = request->isrepl();
     bool isDebug = isRepl && request->isdebug();
+    bool resetDebugCommand = isDebug && request->resetdebugcommand();
 
     ScopedAssign<bool> withIsReplOutput(isReplOutput, isRepl && !streamOutput);
     WithOutputHandler withOutputHandler(
@@ -75,6 +76,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         event.mutable_busy();
         asyncEvents.push(event);
         rDebugger.resetLastErrorStack();
+        if (resetDebugCommand) rDebugger.setCommand(CONTINUE);
       }
       PrSEXP expressions;
       expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
