@@ -1,10 +1,11 @@
 #!/usr/bin/env Rscript
 
 args = commandArgs(TRUE)
-
-if (length(args) != 0) {
-  warning("Usage: check_package.R")
-  quit(save = "no", status = 1, runLast = FALSE)
+cran <- FALSE
+if (args[1] == "--as-cran") {
+  cran <- TRUE
+  args <- tail(args, n = -1L)
 }
-
-devtools::check(document = FALSE)
+# Note: it doesn't have the same effect to set `cran` to FALSE
+# and pass "--as-cran" in `args`
+devtools::check(document = FALSE, cran = cran, args = args)
