@@ -75,7 +75,7 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   }
 
   std::string s;
-  if (addToHistory) {
+  if (addToHistory && !strncmp(prompt, "Browse[", strlen("Browse["))) {
     // That's browser prompt, we ignore them
     s = "f\n";
   } else {
