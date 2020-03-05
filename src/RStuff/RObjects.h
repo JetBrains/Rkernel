@@ -143,6 +143,8 @@ struct RObjects2 {
   PrSEXP srcfileLineOffset = Rf_install("rwr_line_offset");
   PrSEXP breakpointInfoAttr = Rf_install("rwr_bp_info");
   PrSEXP isPhysicalFileFlag = Rf_install("rwr_physical");
+  PrSEXP doNotStopFlag = Rf_install("rwr_do_not_stop");
+  PrSEXP doNotStopRecursiveFlag = Rf_install("rwr_do_not_stop_rec");
 
   PrSEXP linesSymbol = Rf_install("lines");
 
@@ -159,7 +161,7 @@ struct RObjects2 {
   PrSEXP wrapEval = evalCode(
       "function(expr, env, isDebug) {\n"
       "  e <- environment()\n"
-      "  if (isDebug) {"
+      "  if (isDebug) {\n"
       "    .Call(\".jetbrains_debugger_enable\")\n"
       "    attr(e, \"rwr_stop_here\") <- TRUE\n"
       "    on.exit(.Call(\".jetbrains_debugger_disable\"))\n"
@@ -171,13 +173,19 @@ struct RObjects2 {
 
   // print(x) is called like this in order to pass "mimicsAutoPrint" check in print.data.table
   PrSEXP printWrapper = evalCode(
-      "function(x) {\n"
+      "function(expr, env, isDebug = FALSE) {\n"
       "  knit_print.default <- function() {\n"
-      "    (function() {"
+      "    knit_print.default <- function() {\n"
       "      e <- environment()\n"
+      "      if (isDebug) {\n"
+      "        .Call(\".jetbrains_debugger_enable\")\n"
+      "        on.exit(.Call(\".jetbrains_debugger_disable\"))\n"
+      "      }\n"
       "      attr(e, \"rwr_stack_bottom\") <- TRUE\n"
-      "      base::print(x)"
-      "    })()\n"
+      "      attr(e, \"rwr_real_env\") <- env\n"
+      "      .Internal(eval(expr, env, baseenv()))\n"
+      "    }\n"
+      "    knit_print.default()\n"
       "  }\n"
       "  knit_print.default()\n"
       "}\n", globalEnv);
