@@ -19,7 +19,6 @@
 #include "RDebugger.h"
 #include "SourceFileManager.h"
 #include "../RStuff/RUtil.h"
-#include "../RInternals/RInternals.h"
 #include "../RStuff/Export.h"
 
 RDebugger rDebugger;
@@ -28,22 +27,26 @@ static SEXP debugDoBegin(SEXP call, SEXP op, SEXP args, SEXP rho);
 
 void RDebugger::init() {
   runToPositionTarget = R_NilValue;
+  beginOffset = getPrimOffset(RI->begin);
+  defaultDoBegin = getFunTabFunction(beginOffset);
+
+  for (const char* func : {"::", ":::", "..getNamespace"}) {
+    Rf_setAttrib(sourceFileManager.getFunctionSrcref(RI->baseEnv[func], func),
+        RI->doNotStopRecursiveFlag, toSEXP(true));
+  }
 }
 
 void RDebugger::enable() {
   if (_isEnabled) return;
   _isEnabled = true;
   prevJIT = asInt(RI->compilerEnableJIT(0));
-  int beginOffset = getPrimOffset(RI->begin);
-  prevDoBegin = getFunTabFunction(beginOffset);
   setFunTabFunction(beginOffset, debugDoBegin);
 }
 
 void RDebugger::disable() {
   if (!_isEnabled) return;
   _isEnabled = false;
-  int beginOffset = getPrimOffset(RI->begin);
-  setFunTabFunction(beginOffset, prevDoBegin);
+  setFunTabFunction(beginOffset, defaultDoBegin);
   RI->compilerEnableJIT(prevJIT);
 }
 
@@ -230,8 +233,8 @@ void RDebugger::buildDebugPrompt(AsyncEvent::DebugPrompt* prompt) {
   buildStackProto(stack, prompt->mutable_stack());
 }
 
-static SEXP debugDoBegin(SEXP call, SEXP, SEXP args, SEXP rho) {
-  return rDebugger.doBegin(call, args, rho);
+static SEXP debugDoBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
+  return rDebugger.doBegin(call, op, args, rho);
 }
 
 static RContext* getCurrentCallContext() {
@@ -242,7 +245,7 @@ static RContext* getCurrentCallContext() {
   return ctx;
 }
 
-SEXP RDebugger::doBegin(SEXP call, SEXP args, SEXP rho) {
+SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
   SEXP s = R_NilValue;
   RContext* ctx = getCurrentCallContext();
   SEXP function = R_NilValue, functionEnv = R_NilValue;
@@ -252,7 +255,12 @@ SEXP RDebugger::doBegin(SEXP call, SEXP args, SEXP rho) {
     functionEnv = getEnvironment(ctx);
     suggestedFunctionName = getCallFunctionName(getCall(ctx));
   }
-  sourceFileManager.getFunctionSrcref(function, suggestedFunctionName);
+  SEXP functionSrcref = sourceFileManager.getFunctionSrcref(function, suggestedFunctionName);
+  if (Rf_getAttrib(functionSrcref, RI->doNotStopRecursiveFlag) != R_NilValue) {
+    disable();
+    Rf_eval(Rf_lang2(RI->onExit, Rf_lang1(RI->jetbrainsDebuggerEnable)), rho);
+    return rDebugger.defaultDoBegin(call, op, args, rho);
+  }
   SEXP srcrefs = getBlockSrcrefs(call);
   bool isPhysical;
   {
@@ -292,7 +300,7 @@ SEXP RDebugger::doBegin(SEXP call, SEXP args, SEXP rho) {
         }
       }
       bool rDebugFlag = RDEBUG(R_Srcref);
-      if (stopHere || rDebugFlag) {
+      if ((stopHere || rDebugFlag) && Rf_getAttrib(R_Srcref, RI->doNotStopFlag) == R_NilValue) {
         doBreakpoint(CAR(args), rDebugFlag ? getBreakpointInfoAttrib(R_Srcref) : nullptr, stopHere, rho);
       }
       s = Rf_eval(CAR(args), rho);

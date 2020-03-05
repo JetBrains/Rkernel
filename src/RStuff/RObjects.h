@@ -75,6 +75,7 @@ struct RObjects2 {
   PrSEXP nchar = baseEnv.getVar("nchar");
   PrSEXP neq = baseEnv.getVar("!=");
   PrSEXP nrow = baseEnv.getVar("nrow");
+  PrSEXP onExit = baseEnv.getVar("on.exit");
   PrSEXP options = baseEnv.getVar("options");
   PrSEXP parse = baseEnv.getVar("parse");
   PrSEXP paste = baseEnv.getVar("paste");
@@ -151,6 +152,8 @@ struct RObjects2 {
   PrSEXP srcfileLineOffset = Rf_install("rwr_line_offset");
   PrSEXP breakpointInfoAttr = Rf_install("rwr_bp_info");
   PrSEXP isPhysicalFileFlag = Rf_install("rwr_physical");
+  PrSEXP doNotStopFlag = Rf_install("rwr_do_not_stop");
+  PrSEXP doNotStopRecursiveFlag = Rf_install("rwr_do_not_stop_rec");
 
   PrSEXP linesSymbol = Rf_install("lines");
 
@@ -167,7 +170,7 @@ struct RObjects2 {
   PrSEXP wrapEval = evalCode(
       "function(expr, env, isDebug) {\n"
       "  e <- environment()\n"
-      "  if (isDebug) {"
+      "  if (isDebug) {\n"
       "    .Call(\".jetbrains_debugger_enable\")\n"
       "    attr(e, \"rwr_stop_here\") <- TRUE\n"
       "    on.exit(.Call(\".jetbrains_debugger_disable\"))\n"
@@ -179,13 +182,19 @@ struct RObjects2 {
 
   // print(x) is called like this in order to pass "mimicsAutoPrint" check in print.data.table
   PrSEXP printWrapper = evalCode(
-      "function(x) {\n"
+      "function(expr, env, isDebug = FALSE) {\n"
       "  knit_print.default <- function() {\n"
-      "    (function() {"
+      "    knit_print.default <- function() {\n"
       "      e <- environment()\n"
+      "      if (isDebug) {\n"
+      "        .Call(\".jetbrains_debugger_enable\")\n"
+      "        on.exit(.Call(\".jetbrains_debugger_disable\"))\n"
+      "      }\n"
       "      attr(e, \"rwr_stack_bottom\") <- TRUE\n"
-      "      base::print(x)"
-      "    })()\n"
+      "      attr(e, \"rwr_real_env\") <- env\n"
+      "      .Internal(eval(expr, env, baseenv()))\n"
+      "    }\n"
+      "    knit_print.default()\n"
       "  }\n"
       "  knit_print.default()\n"
       "}\n", globalEnv);
@@ -193,6 +202,9 @@ struct RObjects2 {
   PrSEXP withReplExceptionHandler = evalCode(
       "function(x) withCallingHandlers(x, error = function(e) .Call(\".jetbrains_exception_handler\", e))\n",
       baseEnv);
+
+  PrSEXP jetbrainsDebuggerEnable = evalCode(
+      "function() .Call(\".jetbrains_debugger_enable\")", baseEnv);
 };
 
 extern std::unique_ptr<RObjects2> RI;

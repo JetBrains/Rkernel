@@ -230,6 +230,23 @@ static SEXP cloneSrcref(SEXP srcref) {
   return newSrcref;
 }
 
+static SEXP wrapWithSrcref(PrSEXP forEval, ShieldSEXP const& srcref, bool isPrint = false) {
+  if (srcref != R_NilValue) {
+    forEval = Rf_lang2(Rf_install("{"), forEval);
+    ShieldSEXP newSrcrefs = Rf_allocVector(VECSXP, 2);
+    SET_VECTOR_ELT(newSrcrefs, 0, cloneSrcref(srcref));
+    if (isPrint) {
+      ShieldSEXP newSrcref = cloneSrcref(srcref);
+      Rf_setAttrib(newSrcref, RI->doNotStopFlag, toSEXP(true));
+      SET_VECTOR_ELT(newSrcrefs, 1, newSrcref);
+    } else {
+      SET_VECTOR_ELT(newSrcrefs, 1, srcref);
+    }
+    Rf_setAttrib(forEval, RI->srcrefAttr, newSrcrefs);
+  }
+  return RI->expression(forEval);
+}
+
 static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool withEcho, bool isDebug,
     bool withExceptionHandler) {
   if (exprs.type() != EXPRSXP || env.type() != ENVSXP) {
@@ -240,14 +257,7 @@ static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool
   for (int i = 0; i < length; ++i) {
     PrSEXP forEval = exprs[i];
     ShieldSEXP srcref = getSrcref(srcrefs, i);
-    if (srcref != R_NilValue) {
-      forEval = Rf_lang2(Rf_install("{"), forEval);
-      ShieldSEXP newSrcrefs = Rf_allocVector(VECSXP, 2);
-      SET_VECTOR_ELT(newSrcrefs, 0, cloneSrcref(srcref));
-      SET_VECTOR_ELT(newSrcrefs, 1, srcref);
-      Rf_setAttrib(forEval, RI->srcrefAttr, newSrcrefs);
-    }
-    forEval = RI->expression(forEval);
+    forEval = wrapWithSrcref(forEval, srcref);
     forEval = Rf_lang4(RI->wrapEval, forEval, env, toSEXP(isDebug));
     if (withExceptionHandler) {
       forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
@@ -257,11 +267,13 @@ static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool
     }
     PrSEXP result = safeEval(forEval, R_GlobalEnv);
     if (withEcho && asBool(result["visible"])) {
+      forEval = Rf_lang2(Rf_install("print"), result["value"]);
+      forEval = wrapWithSrcref(forEval, srcref, true);
+      forEval = Rf_lang4(RI->printWrapper, forEval, env, toSEXP(isDebug));
       if (withExceptionHandler) {
-        safeEval(Rf_lang2(RI->withReplExceptionHandler, Rf_lang2(RI->printWrapper, result["value"])), R_GlobalEnv);
-      } else {
-        RI->printWrapper(result["value"]);
+        forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
       }
+      safeEval(forEval, env);
     }
   }
 }
