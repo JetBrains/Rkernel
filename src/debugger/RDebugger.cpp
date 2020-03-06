@@ -261,16 +261,12 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
       SEXP call, op, args, rho;
     } funcArgs = { call, op, args, rho };
     disable();
-#if R_VERSION >= R_Version(3, 5, 0)
     return R_UnwindProtect([] (void* ptr) {
       Args *funcArgs = (Args*)ptr;
       return rDebugger.defaultDoBegin(funcArgs->call, funcArgs->op, funcArgs->args, funcArgs->rho);
     }, (void*)&funcArgs, [] (void*, Rboolean) {
       rDebugger.enable();
     }, nullptr, nullptr);
-#else
-    return rDebugger.defaultDoBegin(call, op, args, rho);
-#endif
   }
   SEXP srcrefs = getBlockSrcrefs(call);
   bool isPhysical;
