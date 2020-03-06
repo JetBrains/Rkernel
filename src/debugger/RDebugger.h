@@ -66,7 +66,7 @@ public:
   void refreshBreakpoint(std::string const& file, int line);
   void muteBreakpoints(bool mute);
 
-  SEXP doBegin(SEXP call, SEXP op, SEXP args, SEXP rho);
+  SEXP doBegin(SEXP call, SEXP args, SEXP rho);
   void doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint, bool isStepStop, SEXP env);
   void doHandleException(ShieldSEXP const& e);
   void buildDebugPrompt(AsyncEvent::DebugPrompt* prompt);
@@ -82,8 +82,7 @@ private:
   volatile bool _isEnabled = false;
   bool breakpointsMuted = false;
   int prevJIT;
-  int beginOffset;
-  FunTabFunction defaultDoBegin;
+  FunTabFunction prevDoBegin;
 
   struct InternalBreakpointInfo {
     PrSEXP srcref;
