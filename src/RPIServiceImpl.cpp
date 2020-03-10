@@ -276,6 +276,7 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
       if (!cancelled) {
         cancelled = true;
         R_interrupts_pending = 1;
+        eventLoopExecute([] {});
       }
       if (terminate) {
         return;
