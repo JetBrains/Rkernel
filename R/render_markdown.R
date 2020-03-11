@@ -108,4 +108,9 @@ if (!rmarkdown::pandoc_available(minimum_pandoc_version)) {
   install_pandoc(library_path)
 }
 
-rmarkdown::render(file_path, output_dir = dirname(file_path), knit_root_dir = knit_root_directory)
+runtime <-rmarkdown::yaml_front_matter(file_path)$runtime
+if (!is.null(runtime) && grepl("^shiny", runtime)) {
+  rmarkdown::run(file_path, shiny_args = list(launch.browser = TRUE))
+} else {
+  rmarkdown::render(file_path, output_dir = dirname(file_path), knit_root_dir = knit_root_directory)
+}
