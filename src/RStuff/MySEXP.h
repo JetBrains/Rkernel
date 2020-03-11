@@ -67,7 +67,9 @@ public:
     if (TYPEOF(x) != ENVSXP) return R_NilValue;
     SEXP var = Rf_findVarInFrame(x, Rf_install(name.c_str()));
     if (var == R_UnboundValue) return R_NilValue;
-    if (TYPEOF(var) == PROMSXP && evaluatePromise) return safeEval(var, x);
+    if (TYPEOF(var) == PROMSXP && evaluatePromise) {
+      return safeEval(Rf_install(name.c_str()), x);
+    }
     return var;
   }
 

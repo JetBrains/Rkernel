@@ -248,8 +248,10 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
   std::condition_variable doneVar;
   volatile bool done = false;
   volatile bool cancelled = false;
+  volatile bool started = false;
   eventLoopExecute([&] {
     R_interrupts_pending = 0;
+    started = true;
     if (!cancelled) {
       try {
         f();
@@ -275,7 +277,7 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
     if (context->IsCancelled()) {
       if (!cancelled) {
         cancelled = true;
-        R_interrupts_pending = 1;
+        if (started) R_interrupts_pending = 1;
         eventLoopExecute([] {});
       }
       if (terminate) {

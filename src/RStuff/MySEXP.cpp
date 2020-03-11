@@ -37,7 +37,7 @@ SEXP safeEval(SEXP expr, SEXP env) {
   ShieldSEXP shieldExpr = expr, shieldEnv = env;
   ShieldSEXP call1 = Rf_lang3(Rf_install("evalq"), expr, env);
   static PrSEXP handler = createErrorHandler();
-  ShieldSEXP call2 = Rf_lang4(Rf_install("tryCatch"), expr, handler, handler);
+  ShieldSEXP call2 = Rf_lang4(Rf_install("tryCatch"), call1, handler, handler);
   SET_TAG(CDDR(call2), Rf_install("error"));
   SET_TAG(CDDDR(call2), Rf_install("interrupt"));
   ShieldSEXP value = Rf_eval(call2, R_BaseEnv);
