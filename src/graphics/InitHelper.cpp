@@ -32,4 +32,8 @@ InitHelper::~InitHelper() {
   }
 }
 
+pGEDevDesc InitHelper::getPreviousDevice() {
+  return previousDevice;
+}
+
 }  // graphics

@@ -360,6 +360,12 @@ void MasterDevice::restart() {
   auto slaveDevice = SlaveDevice(currentSnapshotDirectory + "/" + DUMMY_SNAPSHOT_NAME, currentScreenParameters);
   auto slaveDevDesc = slaveDevice.getDescriptor();
 
+  // Note: under some circumstances (R interpreter failures) slave device's descriptor can be null
+  if (!slaveDevDesc) {
+    delete masterDevDesc;
+    return;
+  }
+
   setMasterDeviceSize(masterDevDesc, slaveDevDesc);
 
   masterDevDesc->xCharOffset = slaveDevDesc->xCharOffset;

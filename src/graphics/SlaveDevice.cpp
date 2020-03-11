@@ -46,7 +46,15 @@ std::string calculateInitCommand(const std::string &snapshotPath, ScreenParamete
 pGEDevDesc init(const std::string &snapshotPath, ScreenParameters screenParameters) {
   InitHelper helper; // helper backups and restores active device and copies its display list to slave device
   Evaluator::evaluate(calculateInitCommand(snapshotPath, screenParameters));
-  return GEcurrentDevice();
+  auto current = GEcurrentDevice();
+  // Note: if init command fails, `current` will point to the previous device
+  // and not the new one which may lead to some bugs such as endless recursion.
+  // Null pointer result will be used to indicate such a situation
+  if (current != helper.getPreviousDevice()) {
+    return current;
+  } else {
+    return nullptr;
+  }
 }
 
 }  // anonymous
@@ -61,13 +69,19 @@ pGEDevDesc SlaveDevice::getGeDescriptor() {
 }
 
 pDevDesc SlaveDevice::getDescriptor() {
-  return descriptor->dev;
+  if (descriptor != nullptr) {
+    return descriptor->dev;
+  } else {
+    return nullptr;
+  }
 }
 
 SlaveDevice::~SlaveDevice() {
   DEVICE_TRACE;
-  GEkillDevice(descriptor);
-  descriptor = nullptr;
+  if (descriptor != nullptr) {
+    GEkillDevice(descriptor);
+    descriptor = nullptr;
+  }
 }
 
 }  // graphics
