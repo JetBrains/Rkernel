@@ -68,7 +68,7 @@ public:
 
   SEXP doBegin(SEXP call, SEXP op, SEXP args, SEXP rho);
   void doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint, bool isStepStop, SEXP env);
-  void doHandleException(ShieldSEXP const& e);
+  void doHandleException(SEXP e);
   void buildDebugPrompt(AsyncEvent::DebugPrompt* prompt);
 
   std::vector<RDebuggerStackFrame> const& getStack();
@@ -106,7 +106,7 @@ private:
   std::vector<ContextDump> lastErrorStackDump;
   std::unique_ptr<PrSEXP> lastError;
 
-  static std::vector<ContextDump> getContextDump(ShieldSEXP const& currentCall);
+  static std::vector<ContextDump> getContextDump(SEXP currentCall);
   static std::vector<RDebuggerStackFrame> buildStack(std::vector<ContextDump> const& contexts);
 };
 

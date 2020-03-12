@@ -108,7 +108,8 @@ struct RObjects2 {
   PrSEXP httpd = tools.getVar("httpd");
   PrSEXP httpdPort = tools.getVar("httpdPort");
 
-  SEXP evalCode(std::string const& code, ShieldSEXP const& env) {
+  SEXP evalCode(std::string const& code, SEXP env) {
+    SHIELD(env);
     return eval(parse(named("text", code)), named("envir", env));
   }
 

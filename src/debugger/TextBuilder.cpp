@@ -70,8 +70,8 @@ static bool isBinaryOperator(std::string const& s) {
   return false;
 }
 
-void TextBuilder::build(ShieldSEXP const& _expr) {
-  SEXP expr = _expr;
+void TextBuilder::build(SEXP expr) {
+  SHIELD(expr);
   switch (TYPEOF(expr)) {
     case NILSXP: {
       text << "NULL";
@@ -380,8 +380,8 @@ void TextBuilder::build(ShieldSEXP const& _expr) {
   }
 }
 
-void TextBuilder::buildFunctionHeader(ShieldSEXP const& _args) {
-  SEXP args = _args;
+void TextBuilder::buildFunctionHeader(SEXP args) {
+  SHIELD(args);
   text << "function(";
   SEXP names = Rf_getAttrib(args, R_NamesSymbol);
   int i = 0;
@@ -399,7 +399,8 @@ void TextBuilder::buildFunctionHeader(ShieldSEXP const& _args) {
   text << ")";
 }
 
-void TextBuilder::buildFunction(ShieldSEXP const& func, bool withBody) {
+void TextBuilder::buildFunction(SEXP func, bool withBody) {
+  SHIELD(func);
   switch (TYPEOF(func)) {
     case CLOSXP: {
       buildFunctionHeader(FORMALS(func));
@@ -452,7 +453,8 @@ int TextBuilder::currentPosition() {
   return (int)text.tellp() - currentLineStart;
 }
 
-void TextBuilder::setSrcrefs(ShieldSEXP const& srcfile) {
+void TextBuilder::setSrcrefs(SEXP srcfile) {
+  SHIELD(srcfile);
   ShieldSEXP wholeSrcref = getWholeSrcref(srcfile);
   for (auto const& elem : newSrcrefs) {
     SEXP expr = elem.first;
@@ -474,7 +476,8 @@ void TextBuilder::setSrcrefs(ShieldSEXP const& srcfile) {
   }
 }
 
-SEXP TextBuilder::getWholeSrcref(ShieldSEXP const& srcfile) {
+SEXP TextBuilder::getWholeSrcref(SEXP srcfile) {
+  SHIELD(srcfile);
   ShieldSEXP lloc = Rf_allocVector(INTSXP, 4);
   INTEGER(lloc)[0] = 1;
   INTEGER(lloc)[1] = 1;

@@ -67,7 +67,8 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
   return Status::OK;
 }
 
-static std::string getClasses(ShieldSEXP const& obj) {
+static std::string getClasses(SEXP obj) {
+  SHIELD(obj);
   return asStringUTF8(RI->paste(RI->classes(obj), named("collapse", ",")));
 }
 
@@ -116,9 +117,8 @@ Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameG
     int ncol = asInt(RI->ncol(dataFrame));
     for (int i = 0; i < ncol; ++i) {
       DataFrameGetDataResponse::Column* columnProto = response->add_columns();
-      ShieldSEXP column = RI->subscript(
-          ShieldSEXP(RI->doubleSubscript(dataFrame, i + 1)),
-          ShieldSEXP(RI->colon(start + 1, end)));
+      ShieldSEXP wholeColumn = RI->doubleSubscript(dataFrame, i + 1);
+      ShieldSEXP column = RI->subscript(wholeColumn, RI->colon(start + 1, end));
       std::string cls = getClasses(column);
       if (cls == "integer") {
         for (int j = 0; j < column.length(); ++j) {
@@ -177,7 +177,8 @@ Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSort
   return Status::OK;
 }
 
-static SEXP applyFilter(ShieldSEXP const& df, DataFrameFilterRequest::Filter const& filter) {
+static SEXP applyFilter(SEXP df, DataFrameFilterRequest::Filter const& filter) {
+  SHIELD(df);
   int nrow = asInt(RI->nrow(df));
   if (filter.has_true_()) {
     return RI->rep(true, nrow);

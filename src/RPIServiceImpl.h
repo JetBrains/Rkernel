@@ -143,7 +143,7 @@ public:
 
   OutputHandler getOutputHandlerForChildProcess();
 
-  void setValueImpl(RRef const& ref, ShieldSEXP value);
+  void setValueImpl(RRef const& ref, SEXP value);
   SEXP dereference(RRef const& ref);
 
   OutputHandler replOutputHandler;

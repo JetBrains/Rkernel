@@ -26,11 +26,11 @@
 
 class TextBuilder {
 public:
-  void build(ShieldSEXP const& expr);
-  void buildFunction(ShieldSEXP const& func, bool withBody = true);
+  void build(SEXP expr);
+  void buildFunction(SEXP func, bool withBody = true);
   std::string getText();
-  void setSrcrefs(ShieldSEXP const& srcfile);
-  SEXP getWholeSrcref(ShieldSEXP const& srcfile);
+  void setSrcrefs(SEXP srcfile);
+  SEXP getWholeSrcref(SEXP srcfile);
 
 private:
   std::ostringstream text;
@@ -40,7 +40,7 @@ private:
   void newline();
   int currentPosition();
 
-  void buildFunctionHeader(ShieldSEXP const& args);
+  void buildFunctionHeader(SEXP args);
 
   struct Srcref {
     int startLine, startPosition, endLine, endPosition;

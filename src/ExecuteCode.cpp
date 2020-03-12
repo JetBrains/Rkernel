@@ -23,10 +23,11 @@
 #include "RStuff/RUtil.h"
 #include "EventLoop.h"
 
-static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool withEcho = true, bool isDebug = false,
+static void executeCodeImpl(SEXP exprs, SEXP env, bool withEcho = true, bool isDebug = false,
                             bool withExceptionHandler = false);
 
-static void exceptionToProto(ShieldSEXP const& e, ExceptionInfo *proto) {
+static void exceptionToProto(SEXP _e, ExceptionInfo *proto) {
+  ShieldSEXP e = _e;
   if (Rf_inherits(e, "interrupt")) {
     proto->mutable_interrupted();
     proto->set_message("Interrupted");
@@ -245,7 +246,8 @@ static SEXP cloneSrcref(SEXP srcref) {
   return newSrcref;
 }
 
-static SEXP wrapWithSrcref(PrSEXP forEval, ShieldSEXP const& srcref, bool isPrint = false) {
+static SEXP wrapWithSrcref(PrSEXP forEval, SEXP srcref, bool isPrint = false) {
+  SHIELD(srcref);
   if (srcref != R_NilValue) {
     forEval = Rf_lang2(Rf_install("{"), forEval);
     ShieldSEXP newSrcrefs = Rf_allocVector(VECSXP, 2);
@@ -262,8 +264,10 @@ static SEXP wrapWithSrcref(PrSEXP forEval, ShieldSEXP const& srcref, bool isPrin
   return RI->expression(forEval);
 }
 
-static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool withEcho, bool isDebug,
+static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     bool withExceptionHandler) {
+  ShieldSEXP exprs = _exprs;
+  ShieldSEXP env = _env;
   if (exprs.type() != EXPRSXP || env.type() != ENVSXP) {
     return;
   }

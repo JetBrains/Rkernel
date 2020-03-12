@@ -54,7 +54,8 @@ private:
   PrSEXP oldValue;
 };
 
-inline std::string getPrintedValue(ShieldSEXP const& a) {
+inline std::string getPrintedValue(SEXP a) {
+  SHIELD(a);
   std::string result;
   WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
     if (type == STDOUT) {
@@ -66,7 +67,8 @@ inline std::string getPrintedValue(ShieldSEXP const& a) {
   return result;
 }
 
-inline std::string getPrintedValueWithLimit(ShieldSEXP const& a, int maxLength) {
+inline std::string getPrintedValueWithLimit(SEXP a, int maxLength) {
+  SHIELD(a);
   std::string result;
   try {
     WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
@@ -126,13 +128,15 @@ inline SEXP getBlockSrcrefs(SEXP expr) {
   return R_NilValue;
 }
 
-inline std::string getFunctionHeader(ShieldSEXP const& func) {
+inline std::string getFunctionHeader(SEXP func) {
+  SHIELD(func);
   TextBuilder builder;
   builder.buildFunction(func, false);
   return builder.getText();
 }
 
-inline SEXP invokeFunction(ShieldSEXP const& func, std::vector<PrSEXP> const& args) {
+inline SEXP invokeFunction(SEXP func, std::vector<PrSEXP> const& args) {
+  SHIELD(func);
   PrSEXP list = R_NilValue;
   for (int i = (int)args.size() - 1; i >= 0; --i) {
     list = Rf_lcons(args[i], list);
@@ -154,7 +158,8 @@ inline const char* getCallFunctionName(SEXP call) {
   return TYPEOF(func) == SYMSXP ? asStringUTF8(PRINTNAME(func)) : "";
 }
 
-inline std::pair<const char*, int> srcrefToPosition(ShieldSEXP const& srcref) {
+inline std::pair<const char*, int> srcrefToPosition(SEXP _srcref) {
+  ShieldSEXP srcref = _srcref;
   if (srcref.type() == INTSXP && Rf_length(srcref) >= 1) {
     ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
     const char* fileId = SourceFileManager::getSrcfileId(srcfile);

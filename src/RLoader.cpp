@@ -23,7 +23,8 @@
 const int MAX_PREVIEW_STRING_LENGTH = 200;
 const int MAX_PREVIEW_PRINTED_COUNT = 20;
 
-void getValueInfo(ShieldSEXP var, ValueInfo* result) {
+void getValueInfo(SEXP _var, ValueInfo* result) {
+  ShieldSEXP var = _var;
   try {
     auto type = var.type();
     if (type == PROMSXP) {

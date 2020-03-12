@@ -244,7 +244,8 @@ Status RPIServiceImpl::getEqualityObject(ServerContext* context, const RRef* req
   return Status::OK;
 }
 
-void RPIServiceImpl::setValueImpl(RRef const& ref, ShieldSEXP value) {
+void RPIServiceImpl::setValueImpl(RRef const& ref, SEXP value) {
+  SHIELD(value);
   switch (ref.ref_case()) {
     case RRef::kMember: {
       ShieldSEXP env = dereference(ref.member().env());

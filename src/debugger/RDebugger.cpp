@@ -172,7 +172,8 @@ void RDebugger::resetRunToPositionTarget() {
   }
 }
 
-static bool checkCondition(std::string const& condition, ShieldSEXP const& env) {
+static bool checkCondition(std::string const& condition, SEXP env) {
+  SHIELD(env);
   if (condition.empty()) {
     return true;
   }
@@ -186,7 +187,8 @@ static bool checkCondition(std::string const& condition, ShieldSEXP const& env) 
   }
 }
 
-static void evaluateAndLog(std::string const& expression, ShieldSEXP const& env) {
+static void evaluateAndLog(std::string const& expression, SEXP env) {
+  SHIELD(env);
   if (expression.empty()) {
     return;
   }
@@ -313,12 +315,14 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
   return s;
 }
 
-void RDebugger::doHandleException(ShieldSEXP const& e) {
+void RDebugger::doHandleException(SEXP e) {
+  SHIELD(e);
   lastErrorStackDump = getContextDump(R_NilValue);
   lastError = std::make_unique<PrSEXP>(e);
 }
 
-std::vector<RDebugger::ContextDump> RDebugger::getContextDump(ShieldSEXP const& currentCall) {
+std::vector<RDebugger::ContextDump> RDebugger::getContextDump(SEXP currentCall) {
+  SHIELD(currentCall);
   std::vector<ContextDump> dump;
   ContextDump initial { currentCall, R_NilValue, R_Srcref ? R_Srcref : R_NilValue, R_NilValue };
   dump.push_back(initial);

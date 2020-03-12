@@ -88,6 +88,8 @@ if(APPLE)
     add_definitions(-D_MACOS)
 endif()
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DRWRAPPER_DEBUG")
+
 if (DEFINED CRASHPAD_DIR)
     message("Crashpad is enabled")
     add_definitions( -DCRASHPAD_ENABLED )

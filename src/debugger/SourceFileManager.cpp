@@ -39,12 +39,14 @@ SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(std::string 
   return sourceFile;
 }
 
-SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(ShieldSEXP const& srcfile) {
+SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(SEXP srcfile) {
+  SHIELD(srcfile);
   ShieldSEXP ptr = Rf_getAttrib(srcfile, RI->srcfilePtrAttr);
   return TYPEOF(ptr) == EXTPTRSXP ? (SourceFile*)EXTPTR_PTR(ptr) : nullptr;
 }
 
-const char* SourceFileManager::getSrcfileId(ShieldSEXP const& srcfile) {
+const char* SourceFileManager::getSrcfileId(SEXP srcfile) {
+  SHIELD(srcfile);
   SourceFile *sourceFile = getSourceFileInfo(srcfile);
   return sourceFile == nullptr ? nullptr : sourceFile->fileId.c_str();
 }
@@ -54,7 +56,8 @@ static bool isSrcrefProcessed(SEXP srcref) {
   return TYPEOF(flag) == EXTPTRSXP && EXTPTR_PTR(flag) != nullptr;
 }
 
-void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, ShieldSEXP const& srcref) {
+void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, SEXP srcref) {
+  SHIELD(srcref);
   if (isSrcrefProcessed(srcref)) return;
   if (steps.count(line)) {
     ShieldSEXP oldSrcref = steps[line];
@@ -71,8 +74,10 @@ void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<in
   rDebugger.refreshBreakpoint(fileId, line);
 }
 
-void SourceFileManager::setSteps(ShieldSEXP const& expr, std::string const& fileId, ShieldSEXP const& srcfile,
+void SourceFileManager::setSteps(SEXP _expr, std::string const& fileId, SEXP srcfile,
                                  std::unordered_map<int, SEXP>& steps, int lineOffset) {
+  ShieldSEXP expr = _expr;
+  SHIELD(srcfile);
   switch (TYPEOF(expr)) {
     case EXPRSXP: {
       ShieldSEXP srcrefs = getBlockSrcrefs(expr);
@@ -142,7 +147,8 @@ std::string SourceFileManager::getNewFileId() {
   }
 }
 
-SEXP SourceFileManager::getFunctionSrcref(ShieldSEXP const& func, std::string const& suggestedFileName) {
+SEXP SourceFileManager::getFunctionSrcref(SEXP _func, std::string const& suggestedFileName) {
+  ShieldSEXP func = _func;
   PrSEXP srcref = Rf_getAttrib(func, RI->srcrefAttr);
   if (srcref == R_NilValue && TYPEOF(func) == CLOSXP) {
     srcref = Rf_getAttrib(BODY(func), RI->srcrefAttr);
@@ -240,7 +246,8 @@ SEXP SourceFileManager::saveState() {
   return list;
 }
 
-void SourceFileManager::loadState(ShieldSEXP const& list) {
+void SourceFileManager::loadState(SEXP _list) {
+  ShieldSEXP list = _list;
   if (list.type() != VECSXP) return;
   for (int i = 0; i < list.length(); ++i) {
     ShieldSEXP entry = list[i];

@@ -23,6 +23,6 @@
 
 #include "RPIServiceImpl.h"
 
-void getValueInfo(ShieldSEXP var, ValueInfo* result);
+void getValueInfo(SEXP var, ValueInfo* result);
 
 #endif //RWRAPPER_R_LOADER_H

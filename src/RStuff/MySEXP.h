@@ -17,12 +17,13 @@
 #ifndef RWRAPPER_R_STUFF_MY_SEXP_H
 #define RWRAPPER_R_STUFF_MY_SEXP_H
 
+#include "Conversion.h"
 #include "RInclude.h"
 #include <algorithm>
-#include "Conversion.h"
-#include <utility>
-#include <type_traits>
+#include <cassert>
 #include <string>
+#include <type_traits>
+#include <utility>
 
 template <typename T>
 struct Named {
@@ -170,6 +171,13 @@ public:
   }
 };
 
+#ifdef RWRAPPER_DEBUG
+extern "C" {
+extern int R_PPStackTop;
+extern SEXP* R_PPStack;
+}
+#endif
+
 class ShieldSEXP : public BaseSEXP {
 public:
   ShieldSEXP(SEXP sexp = R_NilValue) : BaseSEXP(sexp) {
@@ -183,10 +191,15 @@ public:
   }
 
   ~ShieldSEXP() {
+#ifdef RWRAPPER_DEBUG
+    assert(R_PPStack[R_PPStackTop - 1] == x);
+#endif
     UNPROTECT(1);
   }
 
   ShieldSEXP& operator = (ShieldSEXP rhs) = delete;
 };
+
+#define SHIELD(x) ShieldSEXP x##_shield = x
 
 #endif //RWRAPPER_R_STUFF_MY_SEXP_H
