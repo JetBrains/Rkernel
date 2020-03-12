@@ -39,7 +39,7 @@ static void exceptionToProto(ShieldSEXP const& e, ExceptionInfo *proto) {
   }
   try {
     ShieldSEXP call = RI->conditionCall(e);
-    if (call != R_NilValue) {
+    if (call != R_NilValue && !(call.type() == LANGSXP && CAR(call) == RI->wrapEval)) {
       TextBuilder b;
       b.build(call);
       proto->set_call(b.getText());
