@@ -37,6 +37,15 @@ static void exceptionToProto(ShieldSEXP const& e, ExceptionInfo *proto) {
   } catch (RError const&) {
     proto->set_message("Error");
   }
+  try {
+    ShieldSEXP call = RI->conditionCall(e);
+    if (call != R_NilValue) {
+      TextBuilder b;
+      b.build(call);
+      proto->set_call(b.getText());
+    }
+  } catch (RError const&) {
+  }
   if (Rf_inherits(e, "packageNotFoundError")) {
     std::string package = asStringUTF8(e["package"]);
     if (!package.empty()) {
@@ -273,7 +282,11 @@ static void executeCodeImpl(ShieldSEXP const& exprs, ShieldSEXP const& env, bool
     }
     PrSEXP result = safeEval(forEval, R_GlobalEnv);
     if (withEcho && asBool(result["visible"])) {
-      forEval = Rf_lang2(Rf_install("print"), result["value"]);
+      forEval = result["value"];
+      if (forEval.type() == LANGSXP || forEval.type() == SYMSXP) {
+        forEval = Rf_lang2(RI->quote, forEval);
+      }
+      forEval = Rf_lang2(Rf_install("print"), forEval);
       forEval = wrapWithSrcref(forEval, srcref, true);
       forEval = Rf_lang4(RI->printWrapper, forEval, env, toSEXP(isDebug));
       if (withExceptionHandler) {

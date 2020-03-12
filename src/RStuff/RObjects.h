@@ -39,6 +39,7 @@ struct RObjects2 {
   PrSEXP begin = baseEnv.getVar("{");
   PrSEXP classes = baseEnv.getVar("class");
   PrSEXP colon = baseEnv.getVar(":");
+  PrSEXP conditionCall = baseEnv.getVar("conditionCall");
   PrSEXP conditionMessage = baseEnv.getVar("conditionMessage");
   PrSEXP dataFrame = baseEnv.getVar("data.frame");
   PrSEXP dirCreate = baseEnv.getVar("dir.create");
@@ -81,6 +82,7 @@ struct RObjects2 {
   PrSEXP paste = baseEnv.getVar("paste");
   PrSEXP print = baseEnv.getVar("print");
   PrSEXP q = baseEnv.getVar("q");
+  PrSEXP quote = baseEnv.getVar("quote");
   PrSEXP rep = baseEnv.getVar("rep");
   PrSEXP rm = baseEnv.getVar("rm");
   PrSEXP saveImage = baseEnv.getVar("save.image");
