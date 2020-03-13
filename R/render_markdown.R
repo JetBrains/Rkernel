@@ -86,14 +86,20 @@ install_pandoc <- function(library_path) {
 
 args = commandArgs(TRUE)
 
-if (length(args) != 3) {
-    warning("Usage: render_markdown.R <library_path> <file_path> <render_directory>")
+if (length(args) != 3 && length(args) != 4) {
+    warning(paste0("Usage: render_markdown.R <library_path> <file_path> <render_directory> [result_file]\n",
+                   "  Path to output will be saved to [result_file]"))
     quit(save = "no", status = 1, runLast = FALSE)
 }
 
 library_path <- args[1]
 file_path <- args[2]
 knit_root_directory <- args[3]
+if (length(args) >= 4) {
+  result_file <- args[4]
+} else {
+  result_file <- NA
+}
 
 # RMarkdown looks for Pandoc in PATH and RSTUDIO_PANDOC envs
 # We don't want to touch RStudio's envs that's why we'd rather adjust current PATH
@@ -112,5 +118,8 @@ runtime <-rmarkdown::yaml_front_matter(file_path)$runtime
 if (!is.null(runtime) && grepl("^shiny", runtime)) {
   rmarkdown::run(file_path, shiny_args = list(launch.browser = TRUE))
 } else {
-  rmarkdown::render(file_path, output_dir = dirname(file_path), knit_root_dir = knit_root_directory)
+  output_file <- rmarkdown::render(file_path, output_dir = dirname(file_path), knit_root_dir = knit_root_directory)
+  if (!is.na(result_file)) {
+    cat(output_file, file = result_file)
+  }
 }
