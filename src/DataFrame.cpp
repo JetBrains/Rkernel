@@ -42,10 +42,10 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
       if (names[i].empty()) names[i] = "Column " + std::to_string(i + 1);
     }
     dataFrame = RI->namesAssign(dataFrame, names);
-    if (RI->dplyr->isTbl(dataFrame)) {
+    if (asBool(RI->dplyr->isTbl(dataFrame))) {
       dataFrame = RI->dplyr->ungroup(dataFrame);
     } else {
-      if (!RI->isDataFrame(dataFrame)) {
+      if (!asBool(RI->isDataFrame(dataFrame))) {
         dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
       }
       dataFrame = RI->dplyr->asTbl(dataFrame);

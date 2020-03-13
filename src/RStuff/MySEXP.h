@@ -126,14 +126,22 @@ private:
     return result;
   }
 
-  template <typename T, typename ...Args>
-  static SEXP buildArgList(Named<T>&& a, Args&& ...args) {
+  template <typename ...Args>
+  static SEXP buildArgList(SEXP a, Args&& ...args) {
+    PROTECT(a);
     SEXP next;
     PROTECT(next = buildArgList(std::forward<Args>(args)...));
-    SEXP result = Rf_lcons(toSEXP(a.value), next);
+    SEXP result = Rf_lcons(toSEXP(a), next);
+    UNPROTECT(2);
+    return result;
+  }
+
+  template <typename T, typename ...Args>
+  static SEXP buildArgList(Named<T>&& a, Args&& ...args) {
+    SEXP result = buildArgList(a.value, std::forward<Args>(args)...);
     PROTECT(result);
     SET_TAG(result, Rf_install(a.name));
-    UNPROTECT(2);
+    UNPROTECT(1);
     return result;
   }
 
