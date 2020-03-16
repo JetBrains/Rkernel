@@ -24,7 +24,7 @@
 #include "EventLoop.h"
 
 static void executeCodeImpl(SEXP exprs, SEXP env, bool withEcho = true, bool isDebug = false,
-                            bool withExceptionHandler = false);
+                            bool withExceptionHandler = false, bool setLasValue = false);
 
 static void exceptionToProto(SEXP _e, ExceptionInfo *proto) {
   ShieldSEXP e = _e;
@@ -67,6 +67,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
     bool isRepl = request->isrepl();
     bool isDebug = isRepl && request->isdebug();
     bool firstDebugCommand = isDebug && request->firstdebugcommand();
+    bool setLastValue = request->setlastvalue();
 
     ScopedAssign<bool> withIsReplOutput(isReplOutput, isRepl && !streamOutput);
     WithOutputHandler withOutputHandler(
@@ -96,7 +97,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
       }
       PrSEXP expressions;
       expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
-      executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl);
+      executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl, setLastValue);
     } catch (RError const& e) {
       if (writer != nullptr) {
         ExecuteCodeResponse response;
@@ -265,7 +266,7 @@ static SEXP wrapWithSrcref(PrSEXP forEval, SEXP srcref, bool isPrint = false) {
 }
 
 static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
-    bool withExceptionHandler) {
+    bool withExceptionHandler, bool setLastValue) {
   ShieldSEXP exprs = _exprs;
   ShieldSEXP env = _env;
   if (exprs.type() != EXPRSXP || env.type() != ENVSXP) {
@@ -284,9 +285,10 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     if (withEcho) {
       forEval = Rf_lang2(RI->withVisible, forEval);
     }
-    PrSEXP result = safeEval(forEval, R_GlobalEnv);
+    ShieldSEXP result = safeEval(forEval, R_GlobalEnv);
+    ShieldSEXP value = result["value"];
     if (withEcho && asBool(result["visible"])) {
-      forEval = result["value"];
+      forEval = value;
       if (forEval.type() == LANGSXP || forEval.type() == SYMSXP) {
         forEval = Rf_lang2(RI->quote, forEval);
       }
@@ -297,6 +299,9 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
         forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
       }
       safeEval(forEval, env);
+    }
+    if (setLastValue) {
+      SET_SYMVALUE(R_LastvalueSymbol, value);
     }
   }
 }

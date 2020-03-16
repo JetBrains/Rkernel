@@ -131,7 +131,7 @@ private:
     PROTECT(a);
     SEXP next;
     PROTECT(next = buildArgList(std::forward<Args>(args)...));
-    SEXP result = Rf_lcons(toSEXP(a), next);
+    SEXP result = Rf_lcons(a, next);
     UNPROTECT(2);
     return result;
   }
