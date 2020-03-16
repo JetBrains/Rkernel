@@ -14,11 +14,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 #include "RPIServiceImpl.h"
-#include <grpcpp/server_builder.h>
 #include "RStuff/RUtil.h"
 #include "util/ContainerUtil.h"
+#include <grpcpp/server_builder.h>
+#include <limits>
 
 const int MAX_PREVIEW_STRING_LENGTH = 200;
 const int MAX_PREVIEW_PRINTED_COUNT = 20;
@@ -50,7 +50,7 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
       builder.build(var);
       result->mutable_value()->set_textvalue(builder.getText());
     } else if (type == DOTSXP) {
-      result->mutable_list()->set_length(Rf_length(var));
+      result->mutable_list()->set_length(Rf_xlength(var));
     } else if (type == CLOSXP || type == SPECIALSXP || type == BUILTINSXP) {
       result->mutable_function()->set_header(getFunctionHeader(var));
     } else if (type == ENVSXP) {
@@ -67,7 +67,7 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
       } else {
         ValueInfo::Value* value = result->mutable_value();
         if (type == LGLSXP || type == INTSXP || type == REALSXP || type == CPLXSXP || type == NILSXP) {
-          int length = var.length();
+          R_xlen_t length = var.length();
           value->set_isvector(length > 1);
           if (length <= MAX_PREVIEW_PRINTED_COUNT) {
             value->set_textvalue(getPrintedValue(RI->unclass(var)));
@@ -81,8 +81,9 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
           int length = var.length();
           value->set_isvector(length > 1);
           bool isComplete = length <= MAX_PREVIEW_PRINTED_COUNT;
+          ShieldSEXP unclassed = RI->unclass(var);
           ShieldSEXP vector =
-              isComplete ? RI->unclass(var) : RI->subscript(RI->unclass(var), RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
+              isComplete ? (SEXP)unclassed : RI->subscript(unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
           ShieldSEXP vectorPrefix = RI->substring(vector, 1, MAX_PREVIEW_STRING_LENGTH);
           ShieldSEXP nchar = RI->nchar(vectorPrefix);
           for (int i = 0; isComplete && i < vectorPrefix.length(); ++i) {
@@ -121,15 +122,15 @@ Status RPIServiceImpl::loaderGetParentEnvs(ServerContext* context, const RRef* r
 Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVariablesRequest* request, VariablesResponse* response) {
   executeOnMainThread([&] {
     ShieldSEXP obj = dereference(request->obj());
-    int reqStart = request->start();
-    int reqEnd = request->end();
-    if (reqEnd == -1) reqEnd = INT_MAX;
+    R_xlen_t reqStart = request->start();
+    R_xlen_t reqEnd = request->end();
+    if (reqEnd == -1) reqEnd = std::numeric_limits<R_xlen_t>::max();
     if (obj.type() == ENVSXP) {
       response->set_isenv(true);
       ShieldSEXP ls = RI->ls(named("envir", obj), named("all.names", true));
       if (ls.type() != STRSXP) return;
       response->set_totalcount(ls.length());
-      for (int i = std::max(0, reqStart); i < std::min<int>(ls.length(), reqEnd); ++i) {
+      for (int i = std::max<R_xlen_t>(0, reqStart); i < std::min(ls.length(), reqEnd); ++i) {
         VariablesResponse::Variable* var = response->add_vars();
         var->set_name(stringEltUTF8(ls, i));
         getValueInfo(obj.getVar(stringEltNative(ls, i), false), var->mutable_value());
@@ -158,13 +159,15 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
         obj.type() != RAWSXP && obj.type() != CPLXSXP && obj.type() != LGLSXP && obj.type() != EXPRSXP) {
       return;
     }
-    int length = obj.length();
+    R_xlen_t length = obj.length();
     response->set_totalcount(length);
-    ShieldSEXP names = Rf_getAttrib(obj, R_NamesSymbol);
-    for (int i = std::max(0, reqStart); i < std::min(length, reqEnd); ++i) {
+    ShieldSEXP unclassed = RI->unclass(obj);
+    ShieldSEXP filtered = RI->subscript(unclassed, RI->colon(reqStart + 1, std::min(length, reqEnd)));
+    ShieldSEXP names = Rf_getAttrib(filtered, R_NamesSymbol);
+    for (int i = 0; i < filtered.length(); ++i) {
       VariablesResponse::Variable* var = response->add_vars();
       var->set_name(stringEltUTF8(names, i));
-      getValueInfo(obj[i], var->mutable_value());
+      getValueInfo(filtered[i], var->mutable_value());
     }
   }, context);
   return Status::OK;

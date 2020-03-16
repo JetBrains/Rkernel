@@ -67,8 +67,8 @@ SEXP RPIServiceImpl::dereference(RRef const& ref) {
     }
     case RRef::kListElement: {
       ShieldSEXP list = dereference(ref.listelement().list());
-      int index = ref.listelement().index();
-      return list[index];
+      long long index = ref.listelement().index();
+      return RI->doubleSubscript(RI->unclass(list), index + 1);
     }
     default:
       return R_NilValue;

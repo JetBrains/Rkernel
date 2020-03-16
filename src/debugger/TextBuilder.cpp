@@ -87,7 +87,7 @@ void TextBuilder::build(SEXP expr) {
       int i = 0;
       while (expr != R_NilValue) {
         if (i > 0) text << ", ";
-        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
+        const char* name = TYPEOF(names) == STRSXP && Rf_xlength(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
         if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
         build(CAR(expr));
         expr = CDR(expr);
@@ -131,7 +131,7 @@ void TextBuilder::build(SEXP expr) {
         newline();
         text << "}";
         newSrcrefs.emplace_back(expr, std::move(srcrefs));
-      } else if (functionName == "if" && Rf_length(args) >= 2 && Rf_length(args) <= 3) {
+      } else if (functionName == "if" && Rf_xlength(args) >= 2 && Rf_xlength(args) <= 3) {
         text << "if (";
         build(CAR(args));
         args = CDR(args);
@@ -142,18 +142,18 @@ void TextBuilder::build(SEXP expr) {
           text << " else ";
           build(CAR(args));
         }
-      } else if (functionName == "(" && Rf_length(args) == 1) {
+      } else if (functionName == "(" && Rf_xlength(args) == 1) {
         text << "(";
         build(CAR(args));
         text << ")";
-      } else if (functionName == "function" && Rf_length(args) >= 2) {
+      } else if (functionName == "function" && Rf_xlength(args) >= 2) {
         buildFunctionHeader(CAR(args));
         text << " ";
         build(CADR(args));
-      } else if (isUnaryOperator(functionName) && Rf_length(args) == 1) {
+      } else if (isUnaryOperator(functionName) && Rf_xlength(args) == 1) {
         text << functionName;
         build(CAR(args));
-      } else if (isBinaryOperator(functionName) && Rf_length(args) == 2) {
+      } else if (isBinaryOperator(functionName) && Rf_xlength(args) == 2) {
         build(CAR(args));
         if (functionName == "::" || functionName == ":::" || functionName == "$") {
           text << functionName;
@@ -161,7 +161,7 @@ void TextBuilder::build(SEXP expr) {
           text << " " << functionName << " ";
         }
         build(CADR(args));
-      } else if ((functionName == "[" || functionName == "[[") && Rf_length(args) >= 1) {
+      } else if ((functionName == "[" || functionName == "[[") && Rf_xlength(args) >= 1) {
         build(CAR(args));
         text << functionName;
         args = CDR(args);
@@ -170,7 +170,7 @@ void TextBuilder::build(SEXP expr) {
         while (args != R_NilValue) {
           if (i > 1) text << ", ";
           ++i;
-          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
+          const char* name = TYPEOF(names) == STRSXP && Rf_xlength(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
           if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
           build(CAR(args));
           args = CDR(args);
@@ -178,19 +178,19 @@ void TextBuilder::build(SEXP expr) {
         text << (functionName == "[" ? "]" : "]]");
       } else if ((functionName == "break" || functionName == "next") && args == R_NilValue) {
         text << functionName;
-      } else if (functionName == "for" && Rf_length(args) == 3) {
+      } else if (functionName == "for" && Rf_xlength(args) == 3) {
         text << "for (";
         build(CAR(args));
         text << " in ";
         build(CADR(args));
         text << ") ";
         build(CADDR(args));
-      } else if (functionName == "while" && Rf_length(args) == 2) {
+      } else if (functionName == "while" && Rf_xlength(args) == 2) {
         text << "while (";
         build(CAR(args));
         text << ") ";
         build(CADR(args));
-      } else if (functionName == "repeat" && Rf_length(args) == 1) {
+      } else if (functionName == "repeat" && Rf_xlength(args) == 1) {
         text << "repeat ";
         build(CAR(args));
       } else {
@@ -201,7 +201,7 @@ void TextBuilder::build(SEXP expr) {
         while (args != R_NilValue) {
           if (i > 0) text << ", ";
           ++i;
-          const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
+          const char* name = TYPEOF(names) == STRSXP && Rf_xlength(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
           if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
           build(CAR(args));
           args = CDR(args);
@@ -219,7 +219,7 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case LGLSXP: {
-      int length = Rf_length(expr);
+      int length = Rf_xlength(expr);
       if (length == 0) {
         text << "integer(0)";
       } else {
@@ -240,7 +240,7 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case INTSXP: {
-      int length = Rf_length(expr);
+      int length = Rf_xlength(expr);
       if (length == 0) {
         text << "integer(0)";
       } else {
@@ -259,7 +259,7 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case REALSXP: {
-      int length = Rf_length(expr);
+      int length = Rf_xlength(expr);
       if (length == 0) {
         text << "numeric(0)";
       } else {
@@ -278,7 +278,7 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case CPLXSXP: {
-      int length = Rf_length(expr);
+      int length = Rf_xlength(expr);
       if (length == 0) {
         text << "complex(0)";
       } else {
@@ -306,7 +306,7 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case STRSXP: {
-      int length = Rf_length(expr);
+      int length = Rf_xlength(expr);
       if (length == 0) {
         text << "character(0)";
       } else {
@@ -335,10 +335,10 @@ void TextBuilder::build(SEXP expr) {
         text << "expression(";
       }
       SEXP names = Rf_getAttrib(expr, R_NamesSymbol);
-      int length = Rf_length(expr);
+      int length = Rf_xlength(expr);
       for (int i = 0; i < length; ++i) {
         if (i > 0) text << ", ";
-        const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
+        const char* name = TYPEOF(names) == STRSXP && Rf_xlength(names) > i ? asStringUTF8(STRING_ELT(names, i)) : "";
         if (strlen(name) != 0) text << quoteIfNeeded(name) << " = ";
         build(VECTOR_ELT(expr, i));
       }
@@ -358,7 +358,7 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case RAWSXP: {
-      int length = Rf_length(expr);
+      int length = Rf_xlength(expr);
       if (length == 0) {
         text << "raw(0)";
       } else {
@@ -387,7 +387,7 @@ void TextBuilder::buildFunctionHeader(SEXP args) {
   int i = 0;
   while (TYPEOF(args) == LISTSXP) {
     if (i > 0) text << ", ";
-    const char* name = TYPEOF(names) == STRSXP && Rf_length(names) > i ? asStringUTF8(STRING_ELT(names, i)) : ".";
+    const char* name = TYPEOF(names) == STRSXP && Rf_xlength(names) > i ? asStringUTF8(STRING_ELT(names, i)) : ".";
     text << quoteIfNeeded(name);
     if (TYPEOF(CAR(args)) != SYMSXP || strlen(CHAR(PRINTNAME(CAR(args)))) > 0) {
       text << " = ";

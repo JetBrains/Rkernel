@@ -91,7 +91,7 @@ public:
         return CAR(cur);
       }
       default: {
-        if ((unsigned) index >= (unsigned) ::Rf_length(x)) return R_NilValue;
+        if ((size_t) index >= (size_t) ::Rf_xlength(x)) return R_NilValue;
         switch (TYPEOF(x)) {
           case EXPRSXP:
           case VECSXP: return VECTOR_ELT(x, index);
@@ -109,7 +109,7 @@ public:
 
   SEXP operator [] (const char* name) const;
 
-  int length() const { return ::Rf_length(x); }
+  R_xlen_t length() const { return ::Rf_xlength(x); }
 
   template <typename ...Args>
   SEXP operator () (Args&& ...args) {

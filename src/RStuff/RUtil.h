@@ -113,9 +113,9 @@ inline SEXP parseCode(std::string const& code, bool keepSource = false) {
 
 inline SEXP getSrcref(SEXP srcrefs, int i) {
   SEXP result;
-  if (!Rf_isNull(srcrefs) && Rf_length(srcrefs) > i
+  if (!Rf_isNull(srcrefs) && Rf_xlength(srcrefs) > i
       && !Rf_isNull(result = VECTOR_ELT(srcrefs, i))
-      && TYPEOF(result) == INTSXP && Rf_length(result) >= 6) {
+      && TYPEOF(result) == INTSXP && Rf_xlength(result) >= 6) {
     return result;
   } else {
     return R_NilValue;
@@ -160,13 +160,13 @@ inline const char* getCallFunctionName(SEXP call) {
 
 inline std::pair<const char*, int> srcrefToPosition(SEXP _srcref) {
   ShieldSEXP srcref = _srcref;
-  if (srcref.type() == INTSXP && Rf_length(srcref) >= 1) {
+  if (srcref.type() == INTSXP && Rf_xlength(srcref) >= 1) {
     ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
     const char* fileId = SourceFileManager::getSrcfileId(srcfile);
     if (fileId != nullptr) {
       ShieldSEXP lineOffsetAttr = Rf_getAttrib(srcfile, RI->srcfileLineOffset);
       int lineOffset = 0;
-      if (lineOffsetAttr.type() == INTSXP && Rf_length(lineOffsetAttr) == 1) {
+      if (lineOffsetAttr.type() == INTSXP && Rf_xlength(lineOffsetAttr) == 1) {
         lineOffset = INTEGER(lineOffsetAttr)[0];
       }
       return {fileId, INTEGER(srcref)[0] - 1 + lineOffset};

@@ -31,7 +31,7 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   }
 
   SEXP cmdExp = CAR(args);
-  if (!Rf_isString(cmdExp) || Rf_length(cmdExp) != 1)
+  if (!Rf_isString(cmdExp) || Rf_xlength(cmdExp) != 1)
     Rf_errorcall(call, "character string expected as first argument");
   const char* cmd = CHAR(STRING_ELT(cmdExp, 0));
   args = CDR(args);

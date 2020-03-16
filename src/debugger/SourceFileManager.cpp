@@ -153,7 +153,7 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP _func, std::string const& suggest
   if (srcref == R_NilValue && TYPEOF(func) == CLOSXP) {
     srcref = Rf_getAttrib(BODY(func), RI->srcrefAttr);
     if (srcref.type() == VECSXP) {
-      srcref = (Rf_length(srcref) > 0 ? VECTOR_ELT(srcref, 0) : R_NilValue);
+      srcref = (srcref.length() > 0 ? VECTOR_ELT(srcref, 0) : R_NilValue);
     }
   }
   if (isSrcrefProcessed(srcref)) return srcref;
@@ -217,7 +217,7 @@ std::string SourceFileManager::getSourceFileText(std::string const& fileId) {
   ShieldSEXP lines = it->second->lines;
   if (lines.type() != STRSXP) return "";
   std::string result;
-  for (int i = 0; i < Rf_length(lines); ++i) {
+  for (int i = 0; i < lines.length(); ++i) {
     result += stringEltUTF8(lines, i);
     result += '\n';
   }

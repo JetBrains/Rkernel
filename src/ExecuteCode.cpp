@@ -240,8 +240,8 @@ OutputHandler RPIServiceImpl::getOutputHandlerForChildProcess() {
 }
 
 static SEXP cloneSrcref(SEXP srcref) {
-  SEXP newSrcref = Rf_allocVector(INTSXP, Rf_length(srcref));
-  memcpy(INTEGER(newSrcref), INTEGER(srcref), sizeof(int) * Rf_length(srcref));
+  ShieldSEXP newSrcref = Rf_allocVector(INTSXP, Rf_xlength(srcref));
+  memcpy(INTEGER(newSrcref), INTEGER(srcref), sizeof(int) * Rf_xlength(srcref));
   Rf_setAttrib(newSrcref, RI->srcfileAttr, Rf_getAttrib(srcref, RI->srcfileAttr));
   Rf_setAttrib(newSrcref, R_ClassSymbol, Rf_mkString("srcref"));
   return newSrcref;

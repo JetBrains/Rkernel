@@ -38,7 +38,7 @@ inline SEXP mkStringUTF8(std::string const& s) {
 inline const char* asStringUTF8(SEXP x) {
   switch (TYPEOF(x)) {
     case STRSXP:
-      if (Rf_length(x) != 1) return "";
+      if (Rf_xlength(x) != 1) return "";
       if (STRING_ELT(x, 0) == NA_STRING) return "";
       return Rf_translateCharUTF8(STRING_ELT(x, 0));
     case CHARSXP:
@@ -51,20 +51,20 @@ inline const char* asStringUTF8(SEXP x) {
 
 inline const char* stringEltUTF8(SEXP x, int index) {
   if (TYPEOF(x) != STRSXP) return "";
-  if ((unsigned)index >= (unsigned)Rf_length(x)) return "";
+  if ((unsigned)index >= (unsigned)Rf_xlength(x)) return "";
   if (STRING_ELT(x, index) == NA_STRING) return "";
   return Rf_translateCharUTF8(STRING_ELT(x, index));
 }
 
 inline const char* stringEltNative(SEXP x, int index) {
   if (TYPEOF(x) != STRSXP) return "";
-  if ((unsigned)index >= (unsigned)Rf_length(x)) return "";
+  if ((unsigned)index >= (unsigned)Rf_xlength(x)) return "";
   if (STRING_ELT(x, index) == NA_STRING) return "";
   return Rf_translateChar(STRING_ELT(x, index));
 }
 
 inline int asInt(SEXP x) {
-  if (Rf_length(x) != 1) return 0;
+  if (Rf_xlength(x) != 1) return 0;
   switch (TYPEOF(x)) {
     case INTSXP: return *INTEGER(x);
     case REALSXP: return (int)*REAL(x);
@@ -73,7 +73,7 @@ inline int asInt(SEXP x) {
 }
 
 inline long long asInt64(SEXP x) {
-  if (Rf_length(x) != 1) return 0;
+  if (Rf_xlength(x) != 1) return 0;
   switch (TYPEOF(x)) {
   case INTSXP: return *INTEGER(x);
   case REALSXP: return (long long)*REAL(x);
@@ -82,7 +82,7 @@ inline long long asInt64(SEXP x) {
 }
 
 inline double asDouble(SEXP x) {
-  if (Rf_length(x) != 1) return 0.0;
+  if (Rf_xlength(x) != 1) return 0.0;
   switch (TYPEOF(x)) {
     case INTSXP: return (double)*INTEGER(x);
     case REALSXP: return *REAL(x);
@@ -91,11 +91,11 @@ inline double asDouble(SEXP x) {
 }
 
 inline bool asBool(SEXP x) {
-  if (Rf_length(x) != 1 || TYPEOF(x) != LGLSXP) return false;
+  if (Rf_xlength(x) != 1 || TYPEOF(x) != LGLSXP) return false;
   return *LOGICAL(x);
 }
 
-inline bool isScalarString(SEXP x) { return TYPEOF(x) == STRSXP && Rf_length(x) == 1; }
+inline bool isScalarString(SEXP x) { return TYPEOF(x) == STRSXP && Rf_xlength(x) == 1; }
 inline bool isDataFrame(SEXP x) { return TYPEOF(x) == VECSXP && Rf_inherits(x, "data.frame"); }
 
 const char* asStringUTF8OrError(SEXP x);
@@ -107,15 +107,18 @@ bool asBoolOrError(SEXP x);
 SEXP makeCharacterVector(std::vector<std::string> const& v);
 SEXP makeCharacterVector(std::vector<std::string> const& v, std::vector<std::string> const& names);
 
+inline SEXP toSEXP(SEXP a) { return a; }
 inline SEXP toSEXP(std::string const& s) { return mkStringUTF8(s); }
 inline SEXP toSEXP(const char* s) { return mkStringUTF8(s); }
 inline SEXP toSEXP(int x) { return Rf_ScalarInteger(x); }
+inline SEXP toSEXP(long int x) { return Rf_ScalarInteger(x); }
 inline SEXP toSEXP(bool x) { return Rf_ScalarLogical(x); }
 inline SEXP toSEXP(double x) { return Rf_ScalarReal(x); }
 inline SEXP toSEXP(std::vector<std::string> const& x) { return makeCharacterVector(x); }
-
-template <typename T>
-inline SEXP toSEXP(T const& a) { return (SEXP)a; }
+inline SEXP toSEXP(long long x) {
+  if (INT_MIN < x && x <= INT_MAX) return Rf_ScalarInteger(x);
+  return Rf_ScalarReal(x);
+}
 
 inline const char* nativeToUTF8(const char* s, int len) {
   return asStringUTF8(Rf_mkCharLen(s, len));

@@ -25,14 +25,14 @@ SEXP mkStringUTF8(const char* s) {
 }
 
 const char* asStringUTF8OrError(SEXP x) {
-  if (TYPEOF(x) == STRSXP && Rf_length(x) == 1) x = STRING_ELT(x, 0);
+  if (TYPEOF(x) == STRSXP && Rf_xlength(x) == 1) x = STRING_ELT(x, 0);
   if (TYPEOF(x) != CHARSXP) throw RInvalidArgument("Argument must be a non-NA scalar string");
   if (x == NA_STRING) throw RInvalidArgument("Argument must not be NA");
   return Rf_translateCharUTF8(x);
 }
 
 int asIntOrError(SEXP x) {
-  if (Rf_length(x) != 1) throw RInvalidArgument("Argument must be a scalar integer");
+  if (Rf_xlength(x) != 1) throw RInvalidArgument("Argument must be a scalar integer");
   switch (TYPEOF(x)) {
     case INTSXP: return *INTEGER(x);
     case REALSXP: return (int)*REAL(x);
@@ -41,7 +41,7 @@ int asIntOrError(SEXP x) {
 }
 
 long long asInt64OrError(SEXP x) {
-  if (Rf_length(x) != 1) throw RInvalidArgument("Argument must be a scalar integer");
+  if (Rf_xlength(x) != 1) throw RInvalidArgument("Argument must be a scalar integer");
   switch (TYPEOF(x)) {
   case INTSXP: return *INTEGER(x);
   case REALSXP: return (long long)*REAL(x);
@@ -50,7 +50,7 @@ long long asInt64OrError(SEXP x) {
 }
 
 double asDoubleOrError(SEXP x) {
-  if (Rf_length(x) != 1) throw RInvalidArgument("Argument must be a scalar double");
+  if (Rf_xlength(x) != 1) throw RInvalidArgument("Argument must be a scalar double");
   switch (TYPEOF(x)) {
     case INTSXP: return (double)*INTEGER(x);
     case REALSXP: return *REAL(x);
@@ -59,7 +59,7 @@ double asDoubleOrError(SEXP x) {
 }
 
 bool asBoolOrError(SEXP x) {
-  if (Rf_length(x) != 1 || TYPEOF(x) != LGLSXP) throw RInvalidArgument("Argument must be scalar logical");
+  if (Rf_xlength(x) != 1 || TYPEOF(x) != LGLSXP) throw RInvalidArgument("Argument must be scalar logical");
   return *LOGICAL(x);
 }
 
