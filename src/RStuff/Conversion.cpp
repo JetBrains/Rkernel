@@ -40,6 +40,15 @@ int asIntOrError(SEXP x) {
   }
 }
 
+long long asInt64OrError(SEXP x) {
+  if (Rf_length(x) != 1) throw RInvalidArgument("Argument must be a scalar integer");
+  switch (TYPEOF(x)) {
+  case INTSXP: return *INTEGER(x);
+  case REALSXP: return (long long)*REAL(x);
+  default: throw RInvalidArgument("Argument must be a scalar integer");
+  }
+}
+
 double asDoubleOrError(SEXP x) {
   if (Rf_length(x) != 1) throw RInvalidArgument("Argument must be a scalar double");
   switch (TYPEOF(x)) {

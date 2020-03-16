@@ -35,7 +35,15 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
         return;
       }
       getValueInfo(PRVALUE(var), result);
-    } else if (type == LANGSXP || type == SYMSXP) {
+      return;
+    }
+    ShieldSEXP classes = RI->classes(Rf_lang2(RI->quote, var));
+    if (classes.type() == STRSXP) {
+      for (int i = 0; i < classes.length(); ++i) {
+        result->add_cls(stringEltUTF8(classes, i));
+      }
+    }
+    if (type == LANGSXP || type == SYMSXP) {
       result->mutable_value()->set_iscomplete(true);
       result->mutable_value()->set_isvector(false);
       TextBuilder builder;
@@ -181,6 +189,21 @@ Status RPIServiceImpl::loaderGetValueInfo(ServerContext* context, const RRef* re
       response->mutable_error()->set_text(e.what());
     } catch (...) {
       response->mutable_error()->set_text("Error");
+    }
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::getObjectSizes(ServerContext* context, const RRefList* request, Int64List* response) {
+  executeOnMainThread([&] {
+    for (RRef const& ref : request->refs()) {
+      long long size;
+      try {
+        size = asInt64OrError(RI->objectSize(Rf_lang2(RI->quote, dereference(ref))));
+      } catch (RExceptionBase const&) {
+        size = -1;
+      }
+      response->add_list(size);
     }
   }, context);
   return Status::OK;

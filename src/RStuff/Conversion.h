@@ -72,6 +72,15 @@ inline int asInt(SEXP x) {
   }
 }
 
+inline long long asInt64(SEXP x) {
+  if (Rf_length(x) != 1) return 0;
+  switch (TYPEOF(x)) {
+  case INTSXP: return *INTEGER(x);
+  case REALSXP: return (long long)*REAL(x);
+  default: return 0;
+  }
+}
+
 inline double asDouble(SEXP x) {
   if (Rf_length(x) != 1) return 0.0;
   switch (TYPEOF(x)) {
@@ -91,6 +100,7 @@ inline bool isDataFrame(SEXP x) { return TYPEOF(x) == VECSXP && Rf_inherits(x, "
 
 const char* asStringUTF8OrError(SEXP x);
 int asIntOrError(SEXP x);
+long long asInt64OrError(SEXP x);
 double asDoubleOrError(SEXP x);
 bool asBoolOrError(SEXP x);
 

@@ -104,6 +104,9 @@ struct RObjects2 {
   PrSEXP compiler = loadNamespace("compiler");
   PrSEXP compilerEnableJIT = compiler.getVar("enableJIT");
 
+  PrSEXP utils = loadNamespace("utils");
+  PrSEXP objectSize = utils.getVar("object.size");
+
   PrSEXP tools = loadNamespace("tools");
   PrSEXP httpd = tools.getVar("httpd");
   PrSEXP httpdPort = tools.getVar("httpdPort");
