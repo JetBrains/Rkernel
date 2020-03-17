@@ -74,6 +74,12 @@ void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<in
   rDebugger.refreshBreakpoint(fileId, line);
 }
 
+static void markProcessed(SEXP srcref) {
+  SHIELD(srcref);
+  if (isSrcrefProcessed(srcref)) return;
+  Rf_setAttrib(srcref, RI->srcrefProcessedFlag, R_MakeExternalPtr((void*)1, R_NilValue, R_NilValue));
+}
+
 void SourceFileManager::setSteps(SEXP _expr, std::string const& fileId, SEXP srcfile,
                                  std::unordered_map<int, SEXP>& steps, int lineOffset) {
   ShieldSEXP expr = _expr;
@@ -93,6 +99,12 @@ void SourceFileManager::setSteps(SEXP _expr, std::string const& fileId, SEXP src
       break;
     }
     case LANGSXP: {
+      if (Rf_length(expr) >= 4 && TYPEOF(CAR(expr)) == SYMSXP && !strcmp(CHAR(PRINTNAME(CAR(expr))), "function")) {
+        ShieldSEXP srcref = CADDDR(expr);
+        if (srcref != R_NilValue) {
+          markProcessed(srcref);
+        }
+      }
       ShieldSEXP srcrefs = getBlockSrcrefs(expr);
       int i = 0;
       SEXP cur = expr;
@@ -150,13 +162,17 @@ std::string SourceFileManager::getNewFileId() {
 SEXP SourceFileManager::getFunctionSrcref(SEXP _func, std::string const& suggestedFileName) {
   ShieldSEXP func = _func;
   PrSEXP srcref = Rf_getAttrib(func, RI->srcrefAttr);
-  if (srcref == R_NilValue && TYPEOF(func) == CLOSXP) {
-    srcref = Rf_getAttrib(BODY(func), RI->srcrefAttr);
+  if (isSrcrefProcessed(srcref)) return srcref;
+  if (func.type() == CLOSXP) {
+    srcref = Rf_getAttrib(BODY_EXPR(func), RI->srcrefAttr);
     if (srcref.type() == VECSXP) {
       srcref = (srcref.length() > 0 ? VECTOR_ELT(srcref, 0) : R_NilValue);
     }
+    if (isSrcrefProcessed(srcref)) {
+      Rf_setAttrib(func, RI->srcrefAttr, srcref);
+      return srcref;
+    }
   }
-  if (isSrcrefProcessed(srcref)) return srcref;
   PrSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
   SourceFile *sourceFile = getSourceFileInfo(srcfile);
 
@@ -204,11 +220,17 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP _func, std::string const& suggest
     }
     sourceFile->lines = Rf_findVarInFrame(srcfile, RI->linesSymbol);
   }
+  srcref = Rf_getAttrib(func, RI->srcrefAttr);
   if (func.type() == CLOSXP) {
     setSteps(FORMALS(func), fileId, srcfile, sourceFile->steps, 0);
     setSteps(BODY_EXPR(func), fileId, srcfile, sourceFile->steps, 0);
+    if (srcref == R_NilValue) {
+      srcref = Rf_getAttrib(BODY_EXPR(func), RI->srcrefAttr);
+      Rf_setAttrib(func, RI->srcrefAttr, srcref);
+    }
   }
-  return Rf_getAttrib(func, RI->srcrefAttr);
+  if (srcref != R_NilValue && !isSrcrefProcessed(srcref)) markProcessed(srcref);
+  return srcref;
 }
 
 std::string SourceFileManager::getSourceFileText(std::string const& fileId) {
