@@ -64,14 +64,18 @@ public:
     }
   }
 
-  SEXP getVar(std::string const& name, bool evaluatePromise = true) const {
+  SEXP getVar(const char* name, bool evaluatePromise = true) const {
     if (TYPEOF(x) != ENVSXP) return R_NilValue;
-    SEXP var = Rf_findVarInFrame(x, Rf_install(name.c_str()));
+    SEXP var = Rf_findVarInFrame(x, Rf_install(name));
     if (var == R_UnboundValue) return R_NilValue;
     if (TYPEOF(var) == PROMSXP && evaluatePromise) {
-      return safeEval(Rf_install(name.c_str()), x);
+      return safeEval(Rf_install(name), x);
     }
     return var;
+  }
+
+  SEXP getVar(std::string const& name, bool evaluatePromise = true) const {
+    return getVar(name.c_str(), evaluatePromise);
   }
 
   SEXP assign(std::string const& name, SEXP value) const;

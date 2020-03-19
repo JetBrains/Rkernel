@@ -24,6 +24,8 @@ struct RContext {};
 
 void initRInternals();
 
+bool isOldR();
+
 RContext* getGlobalContext();
 RContext* getNextContext(RContext* ctx);
 bool isCallContext(RContext* ctx);

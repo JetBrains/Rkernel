@@ -107,6 +107,7 @@ private:
   std::unique_ptr<PrSEXP> lastError;
 
   static std::vector<ContextDump> getContextDump(SEXP currentCall);
+  static std::vector<ContextDump> getContextDumpErr();
   static std::vector<RDebuggerStackFrame> buildStack(std::vector<ContextDump> const& contexts);
 };
 
@@ -132,6 +133,9 @@ public:
 private:
   bool previousValue;
 };
+
+void initBytecodeHandling();
+void loadBytecodeRegistry();
 
 void buildStackProto(std::vector<RDebuggerStackFrame> const& stack, StackFrameList *listProto);
 

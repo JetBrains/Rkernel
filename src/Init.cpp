@@ -32,11 +32,13 @@
 static void initDoQuit();
 
 void initRWrapper() {
+  initRInternals();
+  initBytecodeHandling();
+
   DllInfo *dll = R_getEmbeddingDllInfo();
   initCppExports(dll);
 
   RI = std::make_unique<RObjects2>();
-  initRInternals();
 
   // Init colored output
   setFunTabFunction(getFunTabOffset("isatty"), [](SEXP call, SEXP op, SEXP args, SEXP env) {

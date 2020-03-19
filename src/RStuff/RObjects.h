@@ -92,6 +92,9 @@ struct RObjects2 {
   PrSEXP srcref = baseEnv.getVar("srcref");
   PrSEXP subscript = baseEnv.getVar("[");
   PrSEXP substring = baseEnv.getVar("substring");
+  PrSEXP sysCalls = baseEnv.getVar("sys.calls");
+  PrSEXP sysFunction = baseEnv.getVar("sys.function");
+  PrSEXP sysFrames = baseEnv.getVar("sys.frames");
   PrSEXP sysLoadImage = baseEnv.getVar("sys.load.image");
   PrSEXP textConnection = baseEnv.getVar("textConnection");
   PrSEXP unclass = baseEnv.getVar("unclass");

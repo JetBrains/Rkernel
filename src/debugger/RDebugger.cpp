@@ -14,12 +14,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
-#include "../RPIServiceImpl.h"
 #include "RDebugger.h"
-#include "SourceFileManager.h"
-#include "../RStuff/RUtil.h"
+#include "../RPIServiceImpl.h"
 #include "../RStuff/Export.h"
+#include "../RStuff/MySEXP.h"
+#include "../RStuff/RUtil.h"
+#include "SourceFileManager.h"
 
 RDebugger rDebugger;
 
@@ -36,10 +36,13 @@ void RDebugger::init() {
   }
 }
 
+static void setBytecodeEnabled(bool enabled);
+
 void RDebugger::enable() {
   if (_isEnabled) return;
   _isEnabled = true;
   prevJIT = asInt(RI->compilerEnableJIT(0));
+  setBytecodeEnabled(false);
   setFunTabFunction(beginOffset, debugDoBegin);
 }
 
@@ -47,6 +50,7 @@ void RDebugger::disable() {
   if (!_isEnabled) return;
   _isEnabled = false;
   setFunTabFunction(beginOffset, defaultDoBegin);
+  setBytecodeEnabled(true);
   RI->compilerEnableJIT(prevJIT);
 }
 
@@ -316,9 +320,39 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
 }
 
 void RDebugger::doHandleException(SEXP e) {
-  SHIELD(e);
-  lastErrorStackDump = getContextDump(R_NilValue);
   lastError = std::make_unique<PrSEXP>(e);
+  lastErrorStackDump = getContextDumpErr();
+}
+
+std::vector<RDebugger::ContextDump> RDebugger::getContextDumpErr() {
+  SEXP rho = R_GlobalEnv;
+  RContext* ctx = getGlobalContext();
+  while (ctx != nullptr) {
+    if (isCallContext(ctx)) {
+      rho = getEnvironment(ctx);
+      break;
+    }
+    ctx = getNextContext(ctx);
+  }
+  ShieldSEXP calls = Rf_eval(Rf_lang1(RI->sysCalls), rho);
+  ShieldSEXP frames = Rf_eval(Rf_lang1(RI->sysFrames), rho);
+  std::vector<ContextDump> dump;
+  for (int i = 0; i < frames.length(); ++i) {
+    SEXP func;
+    try {
+      func = safeEval(Rf_lang2(RI->sysFunction, toSEXP(i + 1)), rho);
+    } catch (RExceptionBase const&) {
+      func = R_NilValue;
+    }
+    ContextDump current = {
+      .call = calls[i],
+      .function = func,
+      .srcref = Rf_getAttrib(calls[i], RI->srcrefAttr),
+      .environment = frames[i]
+    };
+    dump.push_back(current);
+  }
+  return dump;
 }
 
 std::vector<RDebugger::ContextDump> RDebugger::getContextDump(SEXP currentCall) {
@@ -405,4 +439,85 @@ std::vector<RDebuggerStackFrame> RDebugger::getLastErrorStack() {
 
 void RDebugger::resetLastErrorStack() {
   lastErrorStackDump.clear();
+}
+
+static std::unordered_map<SEXP, int> allBytecode;
+static bool bytecodeEnabled = true;
+static void registerBytecode(SEXP bytecode) {
+  if (allBytecode.count(bytecode)) return;
+  if (bytecodeEnabled) {
+    allBytecode[bytecode] = 0;
+  } else {
+    SEXP code = BCODE_CODE(bytecode);
+    allBytecode[bytecode] = INTEGER(code)[0];
+    INTEGER(code)[0] = INT_MAX;
+  }
+  if (isOldR()) {
+    ShieldSEXP s = Rf_install("fin");
+    Rf_setAttrib(bytecode, s, createFinalizer([bytecode]() { allBytecode.erase(bytecode); }));
+  } else {
+    R_RegisterCFinalizer(bytecode, [](SEXP x) { allBytecode.erase(x); });
+  }
+}
+
+void initBytecodeHandling() {
+  static int doMkCodeOffset = getFunTabOffset("mkCode");
+  static FunTabFunction oldDoMkCode = getFunTabFunction(doMkCodeOffset);
+  setFunTabFunction(doMkCodeOffset, [] (SEXP call, SEXP op, SEXP args, SEXP env) {
+    SEXP result = oldDoMkCode(call, op, args, env);
+    if (TYPEOF(result) == BCODESXP) {
+      PROTECT(result);
+      registerBytecode(result);
+      UNPROTECT(1);
+    }
+    return result;
+  });
+  static int doLazyLoadOffset = getFunTabOffset("lazyLoadDBfetch");
+  static FunTabFunction oldLazyLoad = getFunTabFunction(doLazyLoadOffset);
+  setFunTabFunction(doLazyLoadOffset, [] (SEXP call, SEXP op, SEXP args, SEXP env) {
+    SEXP result = oldLazyLoad(call, op, args, env);
+    SEXP x = result;
+    if (TYPEOF(x) == CLOSXP) x = BODY(x);
+    if (TYPEOF(x) == BCODESXP) {
+      PROTECT(result);
+      registerBytecode(x);
+      UNPROTECT(1);
+    }
+    return result;
+  });
+
+  ShieldSEXP myBytecode = Rf_cons(Rf_ScalarInteger(INT_MAX), R_NilValue);
+  SET_TYPEOF(myBytecode, BCODESXP);
+  Rf_eval(myBytecode, R_GlobalEnv);
+}
+
+static void setBytecodeEnabled(bool enabled) {
+  if (enabled == bytecodeEnabled) return;
+  bytecodeEnabled = enabled;
+  if (enabled) {
+    for (auto const& p : allBytecode) {
+      SEXP bytecode = p.first;
+      INTEGER(BCODE_CODE(bytecode))[0] = p.second;
+    }
+  } else {
+    for (auto &p : allBytecode) {
+      SEXP code = BCODE_CODE(p.first);
+      p.second = INTEGER(code)[0];
+      INTEGER(code)[0] = INT_MAX;
+    }
+  }
+}
+
+void loadBytecodeRegistry() {
+  ShieldSEXP ls = RI->ls(named("envir", R_GlobalEnv), named("all.names", true));
+  if (TYPEOF(ls) != STRSXP) return;
+  for (int i = 0; i < ls.length(); ++i) {
+    ShieldSEXP f = RI->globalEnv.getVar(stringEltNative(ls, i), false);
+    if (f.type() == CLOSXP) {
+      ShieldSEXP code = BODY(f);
+      if (code.type() == BCODESXP) {
+        registerBytecode(code);
+      }
+    }
+  }
 }

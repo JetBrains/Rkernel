@@ -25,7 +25,11 @@
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
 
-static bool isOldR = false; // R 3.3 and before
+static bool _isOldR = false; // R 3.3 and before
+
+bool isOldR() {
+  return _isOldR;
+}
 
 void initRInternals() {
   ShieldSEXP v = Rf_eval(Rf_install("version"), R_BaseEnv);
@@ -33,7 +37,7 @@ void initRInternals() {
   ShieldSEXP major = v["major"];
   ShieldSEXP minor = v["minor"];
   std::string version = (std::string)asStringUTF8(major) + "." + asStringUTF8(minor);
-  isOldR = version <= "3.3.3";
+  _isOldR = version <= "3.3.3";
 }
 
 RContext* getGlobalContext() {
@@ -41,7 +45,7 @@ RContext* getGlobalContext() {
 }
 
 bool isCallContext(RContext* ctx) {
-  if (isOldR) {
+  if (_isOldR) {
     return ((RCNTXT_old*) ctx)->callflag & CTXT_FUNCTION;
   } else {
     return ((RCNTXT_new*) ctx)->callflag & CTXT_FUNCTION;
@@ -49,7 +53,7 @@ bool isCallContext(RContext* ctx) {
 }
 
 RContext* getNextContext(RContext* ctx) {
-  if (isOldR) {
+  if (_isOldR) {
     return (RContext*) ((RCNTXT_old*) ctx)->nextcontext;
   } else {
     return (RContext*) ((RCNTXT_new*) ctx)->nextcontext;
@@ -57,7 +61,7 @@ RContext* getNextContext(RContext* ctx) {
 }
 
 SEXP getFunction(RContext* ctx) {
-  if (isOldR) {
+  if (_isOldR) {
     return ((RCNTXT_old*) ctx)->callfun;
   } else {
     return ((RCNTXT_new*) ctx)->callfun;
@@ -65,7 +69,7 @@ SEXP getFunction(RContext* ctx) {
 }
 
 SEXP getCall(RContext* ctx) {
-  if (isOldR) {
+  if (_isOldR) {
     return ((RCNTXT_old*) ctx)->call;
   } else {
     return ((RCNTXT_new*) ctx)->call;
@@ -73,7 +77,7 @@ SEXP getCall(RContext* ctx) {
 }
 
 SEXP getSrcref(RContext* ctx) {
-  if (isOldR) {
+  if (_isOldR) {
     return ((RCNTXT_old*) ctx)->srcref;
   } else {
     return ((RCNTXT_new*) ctx)->srcref;
@@ -81,7 +85,7 @@ SEXP getSrcref(RContext* ctx) {
 }
 
 SEXP getEnvironment(RContext* ctx) {
-  if (isOldR) {
+  if (_isOldR) {
     return ((RCNTXT_old*) ctx)->cloenv;
   } else {
     return ((RCNTXT_new*) ctx)->cloenv;
