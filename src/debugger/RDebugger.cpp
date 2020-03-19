@@ -345,10 +345,10 @@ std::vector<RDebugger::ContextDump> RDebugger::getContextDumpErr() {
       func = R_NilValue;
     }
     ContextDump current = {
-      .call = calls[i],
-      .function = func,
-      .srcref = Rf_getAttrib(calls[i], RI->srcrefAttr),
-      .environment = frames[i]
+      calls[i],
+      func,
+      Rf_getAttrib(calls[i], RI->srcrefAttr),
+      frames[i]
     };
     dump.push_back(current);
   }
