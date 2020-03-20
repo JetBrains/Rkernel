@@ -17,6 +17,7 @@
 #include "RPIServiceImpl.h"
 #include "RStuff/RUtil.h"
 #include "util/ContainerUtil.h"
+#include "util/StringUtil.h"
 #include <grpcpp/server_builder.h>
 #include <limits>
 
@@ -175,11 +176,15 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
 
 Status RPIServiceImpl::loaderGetLoadedNamespaces(ServerContext* context, const Empty*, StringList* response) {
   executeOnMainThread([&] {
-    ShieldSEXP namespaces = RI->loadedNamespaces();
-    if (TYPEOF(namespaces) != STRSXP) return;
-    for (int i = 0; i < namespaces.length(); ++i) {
-      response->add_list(stringEltUTF8(namespaces, i));
+    PrSEXP env = RI->globalEnv.parentEnv();
+    while (env != R_EmptyEnv && env != R_NilValue) {
+      std::string name = asStringUTF8(RI->environmentName(env));
+      if (startsWith(name, "package:")) {
+        response->add_list(name.substr(strlen("package:")));
+      }
+      env = env.parentEnv();
     }
+    response->add_list("base");
   }, context);
   return Status::OK;
 }
