@@ -41,9 +41,7 @@ static void exceptionToProto(SEXP _e, ExceptionInfo *proto) {
   try {
     ShieldSEXP call = RI->conditionCall(e);
     if (call != R_NilValue && !(call.type() == LANGSXP && CAR(call) == RI->wrapEval)) {
-      TextBuilder b;
-      b.build(call);
-      proto->set_call(b.getText());
+      proto->set_call(getPrintedValue(call));
     }
   } catch (RError const&) {
   }
@@ -288,13 +286,11 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     ShieldSEXP result = safeEval(forEval, R_GlobalEnv);
     ShieldSEXP value = result["value"];
     if (withEcho && asBool(result["visible"])) {
-      forEval = value;
-      if (forEval.type() == LANGSXP || forEval.type() == SYMSXP) {
-        forEval = Rf_lang2(RI->quote, forEval);
-      }
-      forEval = Rf_lang2(Rf_install("print"), forEval);
+      ShieldSEXP quoted = Rf_lang2(RI->quote, value);
+      ShieldSEXP xSymbol = Rf_install("x");
+      forEval = Rf_lang2(Rf_install("print"), xSymbol);
       forEval = wrapWithSrcref(forEval, srcref, true);
-      forEval = Rf_lang4(RI->printWrapper, forEval, env, toSEXP(isDebug));
+      forEval = Rf_lang5(RI->printWrapper, forEval, quoted, env, toSEXP(isDebug));
       if (withExceptionHandler) {
         forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
       }

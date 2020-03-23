@@ -36,6 +36,7 @@ struct RObjects2 {
   PrSEXP asLogical = baseEnv.getVar("as.logical");
   PrSEXP asPOSIXct = baseEnv.getVar("as.POSIXct");
   PrSEXP assign = baseEnv.getVar("assign");
+  PrSEXP assignOperator = baseEnv.getVar("<-");
   PrSEXP begin = baseEnv.getVar("{");
   PrSEXP classes = baseEnv.getVar("class");
   PrSEXP colon = baseEnv.getVar(":");
@@ -67,6 +68,7 @@ struct RObjects2 {
   PrSEXP list = baseEnv.getVar("list");
   PrSEXP loadedNamespaces = baseEnv.getVar("loadedNamespaces");
   PrSEXP loadNamespace = baseEnv.getVar("loadNamespace");
+  PrSEXP local = baseEnv.getVar("local");
   PrSEXP ls = baseEnv.getVar("ls");
   PrSEXP message = baseEnv.getVar("message");
   PrSEXP names = baseEnv.getVar("names");
@@ -191,7 +193,7 @@ struct RObjects2 {
 
   // print(x) is called like this in order to pass "mimicsAutoPrint" check in print.data.table
   PrSEXP printWrapper = evalCode(
-      "function(expr, env, isDebug = FALSE) {\n"
+      "function(expr, value, env, isDebug = FALSE) {\n"
       "  knit_print.default <- function() {\n"
       "    knit_print.default <- function() {\n"
       "      e <- environment()\n"
@@ -201,7 +203,10 @@ struct RObjects2 {
       "      }\n"
       "      attr(e, \"rwr_stack_bottom\") <- TRUE\n"
       "      attr(e, \"rwr_real_env\") <- env\n"
-      "      .Internal(eval(expr, env, baseenv()))\n"
+      "      e2 <- new.env()\n"
+      "      e2$x <- value\n"
+      "      attr(e2, \"rwr_real_env\") <- env\n"
+      "      .Internal(eval(expr, e2, baseenv()))\n"
       "    }\n"
       "    knit_print.default()\n"
       "  }\n"

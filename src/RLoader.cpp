@@ -56,6 +56,12 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
       result->mutable_function()->set_header(getFunctionHeader(var));
     } else if (type == ENVSXP) {
       result->mutable_environment()->set_name(asStringUTF8(RI->environmentName(var)));
+    } else if (type == BCODESXP || type == WEAKREFSXP || type == EXTPTRSXP) {
+      result->mutable_value()->set_iscomplete(true);
+      result->mutable_value()->set_isvector(false);
+      result->mutable_value()->set_textvalue(getPrintedValue(RI->unclass(Rf_lang2(RI->quote, var))));
+    } else if (type == CHARSXP) {
+      getValueInfo(Rf_ScalarString(var), result);
     } else {
       if (Rf_inherits(var, "ggplot")) {
         result->mutable_graph();

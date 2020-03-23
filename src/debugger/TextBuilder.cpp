@@ -103,11 +103,11 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case ENVSXP: {
-      text << "`unknown_environment`";
+      text << "`environment`";
       break;
     }
     case PROMSXP: {
-      text << "`unknown_promise`";
+      text << "`promise`";
       break;
     }
     case LANGSXP: {
@@ -228,7 +228,7 @@ void TextBuilder::build(SEXP expr) {
           if (i > 0) text << ", ";
           int value = LOGICAL(expr)[i];
           if (value == NA_LOGICAL) {
-            text << "NA_logical_";
+            text << "NA";
           } else if (value) {
             text << "TRUE";
           } else {
@@ -346,15 +346,15 @@ void TextBuilder::build(SEXP expr) {
       break;
     }
     case BCODESXP: {
-      text << "`unknown_bytecode`";
+      text << "`bytecode`";
       break;
     }
     case EXTPTRSXP: {
-      text << "`unknown_extptr`";
+      text << "`extptr`";
       break;
     }
     case WEAKREFSXP: {
-      text << "`unknown_weakref`";
+      text << "`weakref`";
       break;
     }
     case RAWSXP: {

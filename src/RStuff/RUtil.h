@@ -63,7 +63,7 @@ inline std::string getPrintedValue(SEXP a) {
     }
   });
   WithOption option("width", DEFAULT_WIDTH);
-  RI->print(a);
+  RI->print(Rf_lang2(RI->quote, a));
   return result;
 }
 
@@ -82,7 +82,7 @@ inline std::string getPrintedValueWithLimit(SEXP a, int maxLength) {
       }
     });
     WithOption option("width", DEFAULT_WIDTH);
-    RI->print(a);
+    RI->print(Rf_lang2(RI->quote, a));
   } catch (RInterruptedException const&) {
   }
   R_interrupts_pending = 0;
