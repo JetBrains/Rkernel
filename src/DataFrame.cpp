@@ -63,7 +63,7 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
     }
     response->set_value(persistentRefStorage.add(dataFrame));
     dataFramesCache.insert(response->value());
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -104,7 +104,7 @@ Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* requ
                                  Rf_inherits(column, "POSIXt"));
       }
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -155,7 +155,7 @@ Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameG
         }
       }
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -173,7 +173,7 @@ Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSort
       }
     }
     response->set_value(persistentRefStorage.add(invokeFunction(RI->dplyr->arrange, arrangeArgs)));
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -264,13 +264,13 @@ Status RPIServiceImpl::dataFrameFilter(ServerContext* context, const DataFrameFi
     ShieldSEXP dataFrame = dereference(request->ref());
     int index = persistentRefStorage.add(RI->dplyr->filter(dataFrame, applyFilter(dataFrame, request->filter())));
     response->set_value(index);
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
 Status RPIServiceImpl::dataFrameDispose(ServerContext*, const Int32Value* request, Empty*) {
   executeOnMainThread([&] {
     dataFramesCache.erase(request->value());
-  });
+  }, nullptr, true);
   return Status::OK;
 }

@@ -23,14 +23,22 @@
 
 static HWND dummyWindow;
 static BlockingQueue<std::function<void()>> queue;
+static BlockingQueue<std::function<void()>> immediateQueue;
 static bool doBreakEventLoop = false;
 static std::string breakEventLoopValue;
 static volatile bool _isEventHandlerRunning = false;
 
+bool executeWithLater(std::function<void()> const& f);
+
+static LRESULT CALLBACK dummyWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+  runImmediateTasks();
+  return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
 void initEventLoop() {
   static const char* CLASS_NAME  = "RWrapperEventLoop";
   WNDCLASS wc = {};
-  wc.lpfnWndProc = DefWindowProc;
+  wc.lpfnWndProc = dummyWndProc;
   wc.hInstance = GetModuleHandle(nullptr);
   wc.lpszClassName = CLASS_NAME;
   if (!RegisterClass(&wc)) {
@@ -48,8 +56,13 @@ void quitEventLoop() {
   DestroyWindow(dummyWindow);
 }
 
-void eventLoopExecute(std::function<void()> const& f) {
-  queue.push(f);
+void eventLoopExecute(std::function<void()> const& f, bool immediate) {
+  if (immediate) {
+    immediateQueue.push(f);
+    executeWithLater(runImmediateTasks);
+  } else {
+    queue.push(f);
+  }
   PostMessage(dummyWindow, WM_USER, 0, 0);
 }
 
@@ -67,6 +80,7 @@ std::string runEventLoop(bool disableOutput) {
       WithDebuggerEnabled withDebugger(false);
       doBreakEventLoop = false;
       do {
+        runImmediateTasks();
         try {
           f();
         } catch (...) {
@@ -87,4 +101,18 @@ std::string runEventLoop(bool disableOutput) {
 
 bool isEventHandlerRunning() {
   return _isEventHandlerRunning;
+}
+
+void runImmediateTasks() {
+  std::function<void()> f;
+  if (immediateQueue.poll(f)) {
+    WithOutputHandler withOutputHandler(emptyOutputHandler);
+    WithDebuggerEnabled withDebugger(false);
+    do {
+      try {
+        f();
+      } catch (...) {
+      }
+    } while (immediateQueue.poll(f));
+  }
 }

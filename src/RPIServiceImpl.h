@@ -140,7 +140,7 @@ public:
   volatile bool terminate = false;
   volatile bool terminateProceed = false;
 
-  void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr);
+  void executeOnMainThread(std::function<void()> const& f, ServerContext* contextForCancellation = nullptr, bool immediate = false);
 
   OutputHandler getOutputHandlerForChildProcess();
 

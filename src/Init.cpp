@@ -30,6 +30,7 @@
 #endif
 
 static void initDoQuit();
+static void initDynLoad();
 
 void initRWrapper() {
   initRInternals();
@@ -58,6 +59,7 @@ void initRWrapper() {
 
   initDoSystem();
   initDoQuit();
+  initDynLoad();
   rDebugger.init();
   htmlViewerInit();
   initEventLoop();
@@ -116,4 +118,28 @@ static void initDoQuit() {
     R_CleanUp(SA_NOSAVE, status, runLast);
     exit(0);
   });
+}
+
+static void initDynLoad() {
+  static int dynLoadOffset = getFunTabOffset("dyn.load");
+  static auto oldDynLoad = getFunTabFunction(dynLoadOffset);
+  setFunTabFunction(dynLoadOffset, [] (SEXP call, SEXP op, SEXP args, SEXP env) {
+    SEXP result = oldDynLoad(call, op, args, env);
+    PROTECT(result);
+    initLaterAPI();
+    UNPROTECT(1);
+    return result;
+  });
+
+  static int dynUnloadOffset = getFunTabOffset("dyn.unload");
+  static auto oldDynUnload = getFunTabFunction(dynUnloadOffset);
+  setFunTabFunction(dynUnloadOffset, [] (SEXP call, SEXP op, SEXP args, SEXP env) {
+    SEXP result = oldDynUnload(call, op, args, env);
+    PROTECT(result);
+    initLaterAPI();
+    UNPROTECT(1);
+    return result;
+  });
+
+  initLaterAPI();
 }

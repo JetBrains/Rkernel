@@ -22,9 +22,12 @@
 
 void initEventLoop();
 void quitEventLoop();
-void eventLoopExecute(std::function<void()> const& f);
+void eventLoopExecute(std::function<void()> const& f, bool immediate = false);
 void breakEventLoop(std::string s = "");
 std::string runEventLoop(bool disableOutput = true);
 bool isEventHandlerRunning();
+void runImmediateTasks();
+
+void initLaterAPI();
 
 #endif //RWRAPPER_EVENT_LOOP_H

@@ -152,6 +152,16 @@ CppExport SEXP _jetbrains_raiseSigsegv() {
   return R_NilValue;
 }
 
+CppExport SEXP _jetbrains_runFunction(SEXP f) {
+  PROTECT(f);
+  if (TYPEOF(f) == EXTPTRSXP) {
+    void (*func)() = (void(*)())EXTPTR_PTR(f);
+    if (func != nullptr) func();
+  }
+  UNPROTECT(1);
+  return R_NilValue;
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -170,6 +180,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_showFile", (DL_FUNC) &_jetbrains_showFile, 2},
     {".jetbrains_processBrowseURL", (DL_FUNC) &_jetbrains_processBrowseURL, 1},
     {".jetbrains_raiseSigsegv", (DL_FUNC) &_jetbrains_raiseSigsegv, 0},
+    {".jetbrains_runFunction", (DL_FUNC) &_jetbrains_runFunction, 1},
     {nullptr, nullptr, 0}
 };
 

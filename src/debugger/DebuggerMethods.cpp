@@ -27,7 +27,7 @@ Status RPIServiceImpl::debugAddBreakpoint(ServerContext*, const DebugAddBreakpoi
     breakpoint.suspend = request.suspend();
     breakpoint.evaluateAndLog = request.evaluateandlog();
     breakpoint.condition = request.condition();
-  });
+  }, true);
   return Status::OK;
 }
 
@@ -35,7 +35,7 @@ Status RPIServiceImpl::debugRemoveBreakpoint(ServerContext*, const SourcePositio
   auto request = *req;
   eventLoopExecute([=] {
     rDebugger.removeBreakpoint(request.fileid(), request.line());
-  });
+  }, true);
   return Status::OK;
 }
 
@@ -126,20 +126,20 @@ Status RPIServiceImpl::debugMuteBreakpoints(ServerContext*, const BoolValue* req
   bool mute = request->value();
   eventLoopExecute([=] {
     rDebugger.muteBreakpoints(mute);
-  });
+  }, true);
   return Status::OK;
 }
 
 Status RPIServiceImpl::getSourceFileText(ServerContext* context, const StringValue* request, StringValue* response) {
   executeOnMainThread([&] {
     response->set_value(sourceFileManager.getSourceFileText(request->value()));
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
 Status RPIServiceImpl::getSourceFileName(ServerContext* context, const StringValue* request, StringValue* response) {
   executeOnMainThread([&] {
     response->set_value(sourceFileManager.getSourceFileName(request->value()));
-  }, context);
+  }, context, true);
   return Status::OK;
 }

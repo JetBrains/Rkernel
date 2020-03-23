@@ -65,7 +65,7 @@ Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, goog
     } catch (RExceptionBase const&) {
       RI->q("default", 0, false);
     }
-  });
+  }, true);
   return Status::OK;
 }
 
@@ -77,7 +77,7 @@ Status RPIServiceImpl::quitProceed(ServerContext*, const Empty*, Empty*) {
 Status RPIServiceImpl::getWorkingDir(ServerContext* context, const Empty*, StringValue* response) {
   executeOnMainThread([&] {
     response->set_value(asStringUTF8(RI->getwd()));
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 

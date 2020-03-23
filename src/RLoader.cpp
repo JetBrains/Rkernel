@@ -122,7 +122,7 @@ Status RPIServiceImpl::loaderGetParentEnvs(ServerContext* context, const RRef* r
       ParentEnvsResponse::EnvInfo* envInfo = response->add_envs();
       envInfo->set_name(asStringUTF8(RI->environmentName(environment)));
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -176,7 +176,7 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
       var->set_name(stringEltUTF8(names, i));
       getValueInfo(filtered[i], var->mutable_value());
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -191,7 +191,7 @@ Status RPIServiceImpl::loaderGetLoadedNamespaces(ServerContext* context, const E
       env = env.parentEnv();
     }
     response->add_list("base");
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -204,7 +204,7 @@ Status RPIServiceImpl::loaderGetValueInfo(ServerContext* context, const RRef* re
     } catch (...) {
       response->mutable_error()->set_text("Error");
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -219,6 +219,6 @@ Status RPIServiceImpl::getObjectSizes(ServerContext* context, const RRefList* re
       }
       response->add_list(size);
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }

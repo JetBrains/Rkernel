@@ -82,7 +82,7 @@ Status RPIServiceImpl::copyToPersistentRef(ServerContext* context, const RRef* r
     } catch (RExceptionBase const& e) {
       response->set_error(e.what());
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -109,7 +109,7 @@ Status RPIServiceImpl::evaluateAsText(ServerContext* context, const RRef* reques
     } catch (RExceptionBase const& e) {
       response->set_value(e.what());
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -120,7 +120,7 @@ Status RPIServiceImpl::evaluateAsBoolean(ServerContext* context, const RRef* req
     } catch (RExceptionBase const&) {
       response->set_value(false);
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -141,7 +141,7 @@ Status RPIServiceImpl::getDistinctStrings(ServerContext* context, const RRef* re
         response->add_list(s);
       }
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -152,7 +152,7 @@ Status RPIServiceImpl::loadObjectNames(ServerContext* context, const RRef* reque
     for (int i = 0; i < names.length(); ++i) {
       response->add_list(stringEltUTF8(names, i));
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -165,7 +165,7 @@ Status RPIServiceImpl::findAllNamedArguments(ServerContext* context, const RRef*
     for (int i = 0; i < result.length(); ++i) {
       response->add_list(stringEltUTF8(result, i));
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -187,7 +187,7 @@ Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableCo
       column->set_name(stringEltUTF8(names, i));
       column->set_type(asStringUTF8(RI->paste(RI->classes(table[i]), named("collapse", ","))));
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -198,7 +198,7 @@ Status RPIServiceImpl::getFormalArguments(ServerContext* context, const RRef* re
     for (int i = 0; i < names.length(); ++i) {
       response->add_list(stringEltUTF8(names, i));
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -209,7 +209,7 @@ Status RPIServiceImpl::getRMarkdownChunkOptions(ServerContext* context, const Em
     for (int i = 0; i < options.length(); ++i) {
       response->add_list(stringEltUTF8(options, i));
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -229,7 +229,7 @@ Status RPIServiceImpl::getFunctionSourcePosition(ServerContext* context, const R
     auto position = srcrefToPosition(sourceFileManager.getFunctionSrcref(function, suggestedFileName));
     response->set_fileid(position.first);
     response->set_line(position.second);
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -240,7 +240,7 @@ Status RPIServiceImpl::getEqualityObject(ServerContext* context, const RRef* req
     } catch (RExceptionBase const&) {
       response->set_value(0);
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }
 
@@ -274,6 +274,6 @@ Status RPIServiceImpl::setValue(ServerContext* context, const SetValueRequest* r
     } catch (...) {
       response->set_error("Error");
     }
-  }, context);
+  }, context, true);
   return Status::OK;
 }

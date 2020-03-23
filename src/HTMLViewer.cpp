@@ -144,6 +144,6 @@ Status RPIServiceImpl::httpdRequest(ServerContext* context, const StringValue* r
     response->set_success(result.success);
     response->set_content(std::move(result.content));
     response->set_url(std::move(result.url));
-  }, context);
+  }, context, true);
   return Status::OK;
 }

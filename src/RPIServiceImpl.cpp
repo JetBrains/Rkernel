@@ -242,7 +242,7 @@ void RPIServiceImpl::sendAsyncEvent(AsyncEvent const& e) {
   asyncEvents.push(e);
 }
 
-void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerContext* context) {
+void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerContext* context, bool immediate) {
   std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
   std::condition_variable doneVar;
@@ -265,7 +265,7 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
     done = true;
     doneVar.notify_one();
     R_interrupts_pending = 0;
-  });
+  }, immediate);
   if (context == nullptr) {
     while (!done) {
       doneVar.wait(lock);

@@ -219,6 +219,9 @@ struct RObjects2 {
 
   PrSEXP jetbrainsDebuggerEnable = evalCode(
       "function() .Call(\".jetbrains_debugger_enable\")", baseEnv);
+
+  PrSEXP jetbrainsRunFunction = evalCode(
+      "function(f) .Call(\".jetbrains_runFunction\", f)", baseEnv);
 };
 
 extern std::unique_ptr<RObjects2> RI;

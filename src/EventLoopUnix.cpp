@@ -28,9 +28,12 @@ static std::mutex pipeMutex;
 static bool pipeFilled = false;
 
 static BlockingQueue<std::function<void()>> queue;
+static BlockingQueue<std::function<void()>> immediateQueue;
 static bool doBreakEventLoop = false;
 static std::string breakEventLoopValue;
 static volatile bool _isEventHandlerRunning = false;
+
+bool executeWithLater(std::function<void()> const& f);
 
 void initEventLoop() {
   if (pipe(eventLoopPipe)) {
@@ -38,11 +41,15 @@ void initEventLoop() {
     exit(1);
   }
   addInputHandler(R_InputHandlers, eventLoopPipe[0], [](void*) {
-    std::unique_lock<std::mutex> lock(pipeMutex);
-    if (!pipeFilled) return;
-    char c;
-    read(eventLoopPipe[0], &c, 1);
-    pipeFilled = false;
+    {
+      std::unique_lock<std::mutex> lock(pipeMutex);
+      if (pipeFilled) {
+        char c;
+        read(eventLoopPipe[0], &c, 1);
+        pipeFilled = false;
+      }
+    }
+    runImmediateTasks();
   }, ACTIVITY);
 }
 
@@ -51,9 +58,14 @@ void quitEventLoop() {
   close(eventLoopPipe[1]);
 }
 
-void eventLoopExecute(std::function<void()> const& f) {
-  queue.push(f);
+void eventLoopExecute(std::function<void()> const& f, bool immediate) {
   std::unique_lock<std::mutex> lock(pipeMutex);
+  if (immediate) {
+    immediateQueue.push(f);
+    executeWithLater(runImmediateTasks);
+  } else {
+    queue.push(f);
+  }
   if (pipeFilled) return;
   char c = '\0';
   write(eventLoopPipe[1], &c, 1);
@@ -74,6 +86,7 @@ std::string runEventLoop(bool disableOutput) {
       WithDebuggerEnabled withDebugger(false);
       doBreakEventLoop = false;
       do {
+        runImmediateTasks();
         try {
           f();
         } catch (...) {
@@ -94,4 +107,18 @@ std::string runEventLoop(bool disableOutput) {
 
 bool isEventHandlerRunning() {
   return _isEventHandlerRunning;
+}
+
+void runImmediateTasks() {
+  std::function<void()> f;
+  if (immediateQueue.poll(f)) {
+    WithOutputHandler withOutputHandler(emptyOutputHandler);
+    WithDebuggerEnabled withDebugger(false);
+    do {
+      try {
+        f();
+      } catch (...) {
+      }
+    } while (immediateQueue.poll(f));
+  }
 }

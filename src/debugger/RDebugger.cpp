@@ -17,7 +17,6 @@
 #include "RDebugger.h"
 #include "../RPIServiceImpl.h"
 #include "../RStuff/Export.h"
-#include "../RStuff/MySEXP.h"
 #include "../RStuff/RUtil.h"
 #include "SourceFileManager.h"
 
