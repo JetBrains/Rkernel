@@ -24,7 +24,8 @@
 #include "EventLoop.h"
 
 static void executeCodeImpl(SEXP exprs, SEXP env, bool withEcho = true, bool isDebug = false,
-                            bool withExceptionHandler = false, bool setLasValue = false);
+                            bool withExceptionHandler = false, bool setLasValue = false,
+                            bool callToplevelHandlers = false);
 
 static void exceptionToProto(SEXP _e, ExceptionInfo *proto) {
   ShieldSEXP e = _e;
@@ -95,7 +96,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
       }
       PrSEXP expressions;
       expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
-      executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl, setLastValue);
+      executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl, setLastValue, isRepl);
     } catch (RError const& e) {
       if (writer != nullptr) {
         ExecuteCodeResponse response;
@@ -245,6 +246,10 @@ static SEXP cloneSrcref(SEXP srcref) {
   return newSrcref;
 }
 
+extern "C" {
+void Rf_callToplevelHandlers(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible);
+}
+
 static SEXP wrapWithSrcref(PrSEXP forEval, SEXP srcref, bool isPrint = false) {
   SHIELD(srcref);
   if (srcref != R_NilValue) {
@@ -264,7 +269,7 @@ static SEXP wrapWithSrcref(PrSEXP forEval, SEXP srcref, bool isPrint = false) {
 }
 
 static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
-    bool withExceptionHandler, bool setLastValue) {
+    bool withExceptionHandler, bool setLastValue, bool callToplevelHandlers) {
   ShieldSEXP exprs = _exprs;
   ShieldSEXP env = _env;
   if (exprs.type() != EXPRSXP || env.type() != ENVSXP) {
@@ -285,7 +290,9 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     }
     ShieldSEXP result = safeEval(forEval, R_GlobalEnv);
     ShieldSEXP value = result["value"];
+    bool visible = false;
     if (withEcho && asBool(result["visible"])) {
+      visible = true;
       ShieldSEXP quoted = Rf_lang2(RI->quote, value);
       ShieldSEXP xSymbol = Rf_install("x");
       forEval = Rf_lang2(Rf_install("print"), xSymbol);
@@ -298,6 +305,9 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     }
     if (setLastValue) {
       SET_SYMVALUE(R_LastvalueSymbol, value);
+    }
+    if (callToplevelHandlers) {
+      Rf_callToplevelHandlers(exprs[i], value, TRUE, visible ? TRUE : FALSE);
     }
   }
 }
