@@ -485,39 +485,33 @@ void initBytecodeHandling() {
     }
     return result;
   });
-
-  ShieldSEXP myBytecode = Rf_cons(Rf_ScalarInteger(INT_MAX), R_NilValue);
-  SET_TYPEOF(myBytecode, BCODESXP);
-  Rf_eval(myBytecode, R_GlobalEnv);
 }
 
 static void setBytecodeEnabled(bool enabled) {
   if (enabled == bytecodeEnabled) return;
-  bytecodeEnabled = enabled;
   if (enabled) {
     for (auto const& p : allBytecode) {
       SEXP bytecode = p.first;
       INTEGER(BCODE_CODE(bytecode))[0] = p.second;
     }
   } else {
+    static bool firstTime = true;
+    if (firstTime) {
+      firstTime = false;
+      ShieldSEXP myBytecode = Rf_cons(Rf_ScalarInteger(INT_MAX), R_NilValue);
+      SET_TYPEOF(myBytecode, BCODESXP);
+      WithOption with("warn", -1);
+      Rf_eval(myBytecode, R_GlobalEnv);
+      walkObjects([] (SEXP x) {
+        if (TYPEOF(x) == BCODESXP) registerBytecode(x);
+      }, Rf_list2(R_GlobalEnv, R_NamespaceRegistry));
+    }
     for (auto &p : allBytecode) {
       SEXP code = BCODE_CODE(p.first);
       p.second = INTEGER(code)[0];
       INTEGER(code)[0] = INT_MAX;
     }
   }
+  bytecodeEnabled = enabled;
 }
 
-void loadBytecodeRegistry() {
-  ShieldSEXP ls = RI->ls(named("envir", R_GlobalEnv), named("all.names", true));
-  if (TYPEOF(ls) != STRSXP) return;
-  for (int i = 0; i < ls.length(); ++i) {
-    ShieldSEXP f = RI->globalEnv.getVar(stringEltNative(ls, i), false);
-    if (f.type() == CLOSXP) {
-      ShieldSEXP code = BODY(f);
-      if (code.type() == BCODESXP) {
-        registerBytecode(code);
-      }
-    }
-  }
-}

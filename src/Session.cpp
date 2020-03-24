@@ -77,7 +77,6 @@ void loadWorkspace(std::string const& path) {
       sourceFileManager.loadState(savedDataEnv["SourceFileManager"]);
       RI->rm(SAVED_DATA_ENV, named("envir", R_GlobalEnv));
     }
-    loadBytecodeRegistry();
     REprintf("Workspace restored from %s\n", path.c_str());
   } catch (RError const& e) {
     REprintf("Failed to restore workspace: %s\n", e.what());

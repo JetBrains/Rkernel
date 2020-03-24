@@ -28,6 +28,7 @@
 #include "Conversion.h"
 #include "MySEXP.h"
 #include "RObjects.h"
+#include <unordered_set>
 
 const int DEFAULT_WIDTH = 80;
 const int R_MIN_WIDTH_OPT = 10;
@@ -185,6 +186,92 @@ inline SEXP createFinalizer(Func fin) {
     delete ptr;
   });
   return e;
+}
+
+template<class Func>
+inline void walkObjectsImpl(Func const& f, std::unordered_set<SEXP> &visited, SEXP x) {
+  if (x == R_NilValue || x == R_UnboundValue || TYPEOF(x) == CHARSXP || visited.count(x)) return;
+  visited.insert(x);
+  f(x);
+  switch (TYPEOF(x)) {
+    case SYMSXP: {
+      walkObjectsImpl(f, visited, PRINTNAME(x));
+      walkObjectsImpl(f, visited, SYMVALUE(x));
+      walkObjectsImpl(f, visited, INTERNAL(x));
+      break;
+    }
+    case DOTSXP:
+    case LANGSXP:
+    case LISTSXP: {
+      walkObjectsImpl(f, visited, CAR(x));
+      walkObjectsImpl(f, visited, CDR(x));
+      walkObjectsImpl(f, visited, TAG(x));
+      break;
+    }
+    case CLOSXP: {
+      walkObjectsImpl(f, visited, FORMALS(x));
+      walkObjectsImpl(f, visited, BODY(x));
+      walkObjectsImpl(f, visited, CLOENV(x));
+      break;
+    }
+    case ENVSXP: {
+      if (x != R_EmptyEnv) {
+        walkObjectsImpl(f, visited, ENCLOS(x));
+        walkObjectsImpl(f, visited, FRAME(x));
+        walkObjectsImpl(f, visited, HASHTAB(x));
+      }
+      break;
+    }
+    case PROMSXP: {
+      walkObjectsImpl(f, visited, PRVALUE(x));
+      walkObjectsImpl(f, visited, PRCODE(x));
+      walkObjectsImpl(f, visited, PRENV(x));
+      break;
+    }
+    case STRSXP: {
+      R_xlen_t length = Rf_xlength(x);
+      for (R_xlen_t i = 0; i < length; ++i) {
+        walkObjectsImpl(f, visited, STRING_ELT(x, i));
+      }
+      break;
+    }
+    case EXPRSXP:
+    case VECSXP: {
+      R_xlen_t length = Rf_xlength(x);
+      for (R_xlen_t i = 0; i < length; ++i) {
+        walkObjectsImpl(f, visited, VECTOR_ELT(x, i));
+      }
+      break;
+    }
+    case BCODESXP: {
+      walkObjectsImpl(f, visited, BCODE_CODE(x));
+      walkObjectsImpl(f, visited, BCODE_CONSTS(x));
+      walkObjectsImpl(f, visited, BCODE_EXPR(x));
+      break;
+    }
+    case EXTPTRSXP: {
+      walkObjectsImpl(f, visited, EXTPTR_PROT(x));
+      walkObjectsImpl(f, visited, EXTPTR_TAG(x));
+      break;
+    }
+    case WEAKREFSXP: {
+      walkObjectsImpl(f, visited, R_WeakRefKey(x));
+      walkObjectsImpl(f, visited, R_WeakRefValue(x));
+      break;
+    }
+    case S4SXP: {
+      walkObjectsImpl(f, visited, TAG(x));
+      break;
+    }
+  }
+  walkObjectsImpl(f, visited, ATTRIB(x));
+}
+
+template<class Func>
+inline void walkObjects(Func const& f, SEXP x) {
+  SHIELD(x);
+  std::unordered_set<SEXP> visited;
+  walkObjectsImpl(f, visited, x);
 }
 
 #endif //RWRAPPER_R_UTIL_H

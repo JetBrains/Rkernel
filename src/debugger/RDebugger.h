@@ -135,7 +135,6 @@ private:
 };
 
 void initBytecodeHandling();
-void loadBytecodeRegistry();
 
 void buildStackProto(std::vector<RDebuggerStackFrame> const& stack, StackFrameList *listProto);
 
