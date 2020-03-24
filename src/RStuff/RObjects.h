@@ -121,6 +121,13 @@ struct RObjects2 {
     return eval(parse(named("text", code)), named("envir", env));
   }
 
+  SEXP installGlobalSymbol(const char* name, SEXP value) {
+    SHIELD(value);
+    ShieldSEXP symbol = Rf_install(name);
+    SET_SYMVALUE(symbol, value);
+    return symbol;
+  }
+
   struct DplyrObjects {
   private:
     PrSEXP baseEnv = R_BaseEnv;
@@ -178,7 +185,7 @@ struct RObjects2 {
       baseEnv
   );
 
-  PrSEXP wrapEval = evalCode(
+  PrSEXP wrapEval = installGlobalSymbol(".jetbrains_wrapEval", evalCode(
       "function(expr, env, isDebug) {\n"
       "  e <- environment()\n"
       "  if (isDebug) {\n"
@@ -189,10 +196,10 @@ struct RObjects2 {
       "  attr(e, \"rwr_stack_bottom\") <- TRUE\n"
       "  attr(e, \"rwr_real_env\") <- env\n"
       "  .Internal(eval(expr, env, baseenv()))\n"
-      "}\n", baseEnv);
+      "}\n", baseEnv));
 
   // print(x) is called like this in order to pass "mimicsAutoPrint" check in print.data.table
-  PrSEXP printWrapper = evalCode(
+  PrSEXP printWrapper = installGlobalSymbol(".jetbrains_printWrapper", evalCode(
       "function(expr, value, env, isDebug = FALSE) {\n"
       "  knit_print.default <- function() {\n"
       "    knit_print.default <- function() {\n"
@@ -211,7 +218,7 @@ struct RObjects2 {
       "    knit_print.default()\n"
       "  }\n"
       "  knit_print.default()\n"
-      "}\n", globalEnv);
+      "}\n", globalEnv));
 
   PrSEXP withReplExceptionHandler = evalCode(
       "function(x) withCallingHandlers(x, error = function(e) .Call(\".jetbrains_exception_handler\", e))\n",

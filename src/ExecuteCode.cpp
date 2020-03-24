@@ -288,7 +288,7 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     if (withEcho) {
       forEval = Rf_lang2(RI->withVisible, forEval);
     }
-    ShieldSEXP result = safeEval(forEval, R_GlobalEnv);
+    ShieldSEXP result = safeEval(forEval, R_BaseEnv);
     ShieldSEXP value = result["value"];
     bool visible = false;
     if (withEcho && asBool(result["visible"])) {
@@ -301,7 +301,7 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
       if (withExceptionHandler) {
         forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
       }
-      safeEval(forEval, env);
+      safeEval(forEval, R_BaseEnv);
     }
     if (setLastValue) {
       SET_SYMVALUE(R_LastvalueSymbol, value);
