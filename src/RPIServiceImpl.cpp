@@ -33,6 +33,14 @@
 using namespace grpc;
 
 namespace {
+  bool hasCurlDownloadInternal() {
+    static int offset = -2;
+    if (offset == -2) {
+      offset = getFunTabOffset("curlDownload");
+    }
+    return offset >= 0;
+  }
+
   std::string getResolutionString(int resolution) {
     if (resolution > 0) {
       return std::to_string(resolution);
@@ -152,6 +160,10 @@ Status RPIServiceImpl::repoInstallPackage(ServerContext* context, const RepoInst
   auto& arguments = request->arguments();
   for (auto& pair : arguments) {
     sout << ", " << pair.first << " = " << pair.second;
+  }
+  const auto& method = request->fallbackmethod();
+  if (!method.empty() && !hasCurlDownloadInternal()) {
+    sout << ", method = '" << method << "'";
   }
   sout << ")";
   return replExecuteCommand(context, sout.str());
