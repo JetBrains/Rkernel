@@ -254,13 +254,16 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
   SEXP s = R_NilValue;
   RContext* ctx = getCurrentCallContext();
   SEXP function = R_NilValue, functionEnv = R_NilValue;
-  const char* suggestedFunctionName = "";
-  if (ctx != nullptr) {
-    function = getFunction(ctx);
-    functionEnv = getEnvironment(ctx);
-    suggestedFunctionName = getCallFunctionName(getCall(ctx));
+  SEXP functionSrcref;
+  {
+    std::string suggestedFunctionName;
+    if (ctx != nullptr) {
+      function = getFunction(ctx);
+      functionEnv = getEnvironment(ctx);
+      suggestedFunctionName = getCallFunctionName(getCall(ctx));
+    }
+    functionSrcref = sourceFileManager.getFunctionSrcref(function, suggestedFunctionName);
   }
-  SEXP functionSrcref = sourceFileManager.getFunctionSrcref(function, suggestedFunctionName);
   if (Rf_getAttrib(functionSrcref, RI->doNotStopRecursiveFlag) != R_NilValue) {
     disable();
     Rf_eval(Rf_lang2(RI->onExit, Rf_lang1(RI->jetbrainsDebuggerEnable)), rho);

@@ -29,6 +29,7 @@
 #include "MySEXP.h"
 #include "RObjects.h"
 #include <unordered_set>
+#include "../util/StringUtil.h"
 
 const int DEFAULT_WIDTH = 80;
 const int R_MIN_WIDTH_OPT = 10;
@@ -151,12 +152,29 @@ inline SEXP currentEnvironment() {
   return env.type() == ENVSXP ? (SEXP)env : R_GlobalEnv;
 }
 
-inline const char* getCallFunctionName(SEXP call) {
+inline std::string getCallFunctionName(SEXP call) {
+  SHIELD(call);
   if (TYPEOF(call) != LANGSXP) {
     return "";
   }
-  SEXP func = CAR(call);
-  return TYPEOF(func) == SYMSXP ? asStringUTF8(PRINTNAME(func)) : "";
+  ShieldSEXP func = CAR(call);
+  if (func.type() == SYMSXP) {
+    return asStringUTF8(func);
+  }
+  if (func.type() == LANGSXP && func.length() == 3) {
+    SEXP op = CAR(func);
+    if (TYPEOF(op) == SYMSXP) {
+      std::string name = asStringUTF8(op);
+      if (name == "::" || name == ":::" || name == "$" || name == "@") {
+        std::string name1 = asStringUTF8(CADR(func));
+        std::string name2 = asStringUTF8(CADDR(func));
+        if (!name1.empty() && !name2.empty()) {
+          return quoteIfNeeded(name1) + name + quoteIfNeeded(name2);
+        }
+      }
+    }
+  }
+  return "";
 }
 
 inline std::pair<const char*, int> srcrefToPosition(SEXP _srcref) {

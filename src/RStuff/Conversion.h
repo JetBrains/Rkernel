@@ -44,6 +44,8 @@ inline const char* asStringUTF8(SEXP x) {
     case CHARSXP:
       if (x == NA_STRING) return "";
       return Rf_translateCharUTF8(x);
+    case SYMSXP:
+      return Rf_translateCharUTF8(PRINTNAME(x));
     default:
       return "";
   }

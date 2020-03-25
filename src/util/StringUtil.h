@@ -113,4 +113,23 @@ inline std::string joinToString(const TCollection& collection) {
   return joinToString(collection, [](const T& t) { return t; });
 }
 
+const std::unordered_set<std::string> RESERVED_WORDS = {
+    "if", "else", "repeat", "while", "function", "for", "in", "next", "break", "TRUE", "FALSE",
+    "NULL", "Inf", "NaN", "NA", "NA_integer_", "NA_real_", "NA_complex_", "NA_character_"
+};
+
+inline std::string quoteIdentifier(std::string const& s) {
+  return '`' + escape(s, "`") + '`';
+}
+
+inline std::string quoteIfNeeded(std::string const& s) {
+  if (RESERVED_WORDS.count(s)) return quoteIdentifier(s);
+  for (size_t i = 0; i < s.size(); ++i) {
+    char c = s[i];
+    bool isValid = c == '.' || isalpha(c) || (i > 0 && (isdigit(c) || c == '_'));
+    if (!isValid) return quoteIdentifier(s);
+  }
+  return s;
+}
+
 #endif //RWRAPPER_STRING_UTIL_H
