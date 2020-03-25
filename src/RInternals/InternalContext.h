@@ -31,7 +31,6 @@ typedef std::aligned_storage_t<256 + 16, 8> JMP_BUF;
 # endif
 #endif
 
-extern "C" {
 enum {
   CTXT_TOPLEVEL = 0,
   CTXT_NEXT = 1,
@@ -47,81 +46,108 @@ enum {
   CTXT_UNWIND = 128
 };
 
-struct R_bcstack_t {
-  int tag;
-  union {
-    int ival;
-    double dval;
-    SEXP sxpval;
-  } u;
-};
-
 // R 3.3 and before
-struct RCNTXT_old {
-  struct RCNTXT_old *nextcontext;
-  int callflag;
-  JMP_BUF cjmpbuf;
-  int cstacktop;
-  int evaldepth;
-  SEXP promargs;
-  SEXP callfun;
-  SEXP sysparent;
-  SEXP call;
-  SEXP cloenv;
-  SEXP conexit;
-  void (*cend)(void *);
-  void *cenddata;
-  void *vmax;
-  int intsusp;
-  int gcenabled;
-  SEXP handlerstack;
-  SEXP restartstack;
-  struct RPRSTACK *prstack;
-  R_bcstack_t *nodestack;
+struct RInternalStructures_3_3 {
+  struct RCNTXT {
+    struct RCNTXT_old *nextcontext;
+    int callflag;
+    JMP_BUF cjmpbuf;
+    int cstacktop;
+    int evaldepth;
+    SEXP promargs;
+    SEXP callfun;
+    SEXP sysparent;
+    SEXP call;
+    SEXP cloenv;
+    SEXP conexit;
+    void (*cend)(void *);
+    void *cenddata;
+    void *vmax;
+    int intsusp;
+    int gcenabled;
+    SEXP handlerstack;
+    SEXP restartstack;
+    struct RPRSTACK *prstack;
+    void *nodestack;
 #ifdef BC_INT_STACK
-  IStackval *intstack;
+    IStackval *intstack;
 #endif
-  SEXP srcref;
-  int browserfinish;
-  SEXP returnValue;
-  struct RCNTXT_old *jumptarget;
-  int jumpmask;
+    SEXP srcref;
+    int browserfinish;
+    SEXP returnValue;
+    struct RCNTXT_old *jumptarget;
+    int jumpmask;
+  };
 };
 
-// R 3.4 and after
-struct RCNTXT_new {
-  struct RCNTXT_new* nextcontext;
-  int callflag;
-  JMP_BUF cjmpbuf;
-  int cstacktop;
-  int evaldepth;
-  SEXP promargs;
-  SEXP callfun;
-  SEXP sysparent;
-  SEXP call;
-  SEXP cloenv;
-  SEXP conexit;
-
-  void (* cend)(void*);
-
-  void* cenddata;
-  void* vmax;
-  int intsusp;
-  int gcenabled;
-  int bcintactive;
-  SEXP bcbody;
-  void* bcpc;
-  SEXP handlerstack;
-  SEXP restartstack;
-  struct RPRSTACK* prstack;
-  R_bcstack_t* nodestack;
-  SEXP srcref;
-  int browserfinish;
-  SEXP returnValue;
-  struct RCNTXT_new* jumptarget;
-  int jumpmask;
+// R 3.4 - 3.6
+struct RInternalStructures_3_4 {
+  struct RCNTXT {
+    struct RCNTXT_new *nextcontext;
+    int callflag;
+    JMP_BUF cjmpbuf;
+    int cstacktop;
+    int evaldepth;
+    SEXP promargs;
+    SEXP callfun;
+    SEXP sysparent;
+    SEXP call;
+    SEXP cloenv;
+    SEXP conexit;
+    void (*cend)(void *);
+    void *cenddata;
+    void *vmax;
+    int intsusp;
+    int gcenabled;
+    int bcintactive;
+    SEXP bcbody;
+    void *bcpc;
+    SEXP handlerstack;
+    SEXP restartstack;
+    struct RPRSTACK *prstack;
+    void *nodestack;
+    SEXP srcref;
+    int browserfinish;
+    SEXP returnValue;
+    struct RCNTXT_new *jumptarget;
+    int jumpmask;
+  };
 };
-}
+
+// R 4.0
+struct RInternalStructures_4_0 {
+  struct RCNTXT {
+    struct RCNTXT *nextcontext;
+    int callflag;
+    JMP_BUF cjmpbuf;
+    int cstacktop;
+    int evaldepth;
+    SEXP promargs;
+    SEXP callfun;
+    SEXP sysparent;
+    SEXP call;
+    SEXP cloenv;
+    SEXP conexit;
+    void (*cend)(void *);
+    void *cenddata;
+    void *vmax;
+    int intsusp;
+    int gcenabled;
+    int bcintactive;
+    SEXP bcbody;
+    void* bcpc;
+    SEXP handlerstack;
+    SEXP restartstack;
+    struct RPRSTACK *prstack;
+    void *nodestack;
+    void *bcprottop;
+    SEXP srcref;
+    int browserfinish;
+    SEXP returnValue;
+    struct RCNTXT *jumptarget;
+    int jumpmask;
+  };
+};
 
 #ifdef Win32
 extern "C" {

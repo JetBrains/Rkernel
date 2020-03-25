@@ -265,7 +265,9 @@ static SEXP wrapWithSrcref(PrSEXP forEval, SEXP srcref, bool isPrint = false) {
     }
     Rf_setAttrib(forEval, RI->srcrefAttr, newSrcrefs);
   }
-  return RI->expression(forEval);
+  ShieldSEXP expression = Rf_allocVector(EXPRSXP, 1);
+  SET_VECTOR_ELT(expression, 0, forEval);
+  return expression;
 }
 
 static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,

@@ -25,10 +25,15 @@
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCDFAInspection"
 
-static bool _isOldR = false; // R 3.3 and before
+static int rVersion;
+
+#define SELECT(call, ...) \
+  if (rVersion <= 33) return call<RInternalStructures_3_3>(__VA_ARGS__);\
+  else if (rVersion < 40) return call<RInternalStructures_3_4>(__VA_ARGS__);\
+  else return call<RInternalStructures_4_0>(__VA_ARGS__)
 
 bool isOldR() {
-  return _isOldR;
+  return rVersion <= 33;
 }
 
 void initRInternals() {
@@ -36,61 +41,49 @@ void initRInternals() {
   if (v.type() != VECSXP) return;
   ShieldSEXP major = v["major"];
   ShieldSEXP minor = v["minor"];
-  std::string version = (std::string)asStringUTF8(major) + "." + asStringUTF8(minor);
-  _isOldR = version <= "3.3.3";
+  rVersion = 10 * atoi(asStringUTF8(major)) + (asStringUTF8(minor)[0] - '0');
 }
 
 RContext* getGlobalContext() {
   return (RContext*)R_GlobalContext;
 }
 
-bool isCallContext(RContext* ctx) {
-  if (_isOldR) {
-    return ((RCNTXT_old*) ctx)->callflag & CTXT_FUNCTION;
-  } else {
-    return ((RCNTXT_new*) ctx)->callflag & CTXT_FUNCTION;
-  }
+template<typename S>
+static bool _isCallContext(RContext* ctx) {
+  return ((typename S::RCNTXT*)ctx)->callflag & CTXT_FUNCTION;
 }
 
-RContext* getNextContext(RContext* ctx) {
-  if (_isOldR) {
-    return (RContext*) ((RCNTXT_old*) ctx)->nextcontext;
-  } else {
-    return (RContext*) ((RCNTXT_new*) ctx)->nextcontext;
-  }
+template<typename S>
+static RContext* _getNextContext(RContext* ctx) {
+  return (RContext*) ((typename S::RCNTXT*) ctx)->nextcontext;
 }
 
-SEXP getFunction(RContext* ctx) {
-  if (_isOldR) {
-    return ((RCNTXT_old*) ctx)->callfun;
-  } else {
-    return ((RCNTXT_new*) ctx)->callfun;
-  }
+template<typename S>
+static SEXP _getFunction(RContext* ctx) {
+  return ((typename S::RCNTXT*) ctx)->callfun;
 }
 
-SEXP getCall(RContext* ctx) {
-  if (_isOldR) {
-    return ((RCNTXT_old*) ctx)->call;
-  } else {
-    return ((RCNTXT_new*) ctx)->call;
-  }
+template<typename S>
+static SEXP _getCall(RContext* ctx) {
+  return ((typename S::RCNTXT*) ctx)->call;
 }
 
-SEXP getSrcref(RContext* ctx) {
-  if (_isOldR) {
-    return ((RCNTXT_old*) ctx)->srcref;
-  } else {
-    return ((RCNTXT_new*) ctx)->srcref;
-  }
+template<typename S>
+static SEXP _getSrcref(RContext* ctx) {
+  return ((typename S::RCNTXT*) ctx)->srcref;
 }
 
-SEXP getEnvironment(RContext* ctx) {
-  if (_isOldR) {
-    return ((RCNTXT_old*) ctx)->cloenv;
-  } else {
-    return ((RCNTXT_new*) ctx)->cloenv;
-  }
+template<typename S>
+static SEXP _getEnvironment(RContext* ctx) {
+  return ((typename S::RCNTXT*) ctx)->cloenv;
 }
+
+RContext* getNextContext(RContext* ctx) { SELECT(_getNextContext, ctx); }
+bool isCallContext(RContext* ctx) { SELECT(_isCallContext, ctx); }
+SEXP getFunction(RContext* ctx) { SELECT(_getFunction, ctx); }
+SEXP getCall(RContext* ctx) { SELECT(_getCall, ctx); }
+SEXP getSrcref(RContext* ctx) { SELECT(_getSrcref, ctx); }
+SEXP getEnvironment(RContext* ctx) { SELECT(_getEnvironment, ctx); }
 
 int getPrimOffset(SEXP expr) {
   return ((SEXPREC_impl*)expr)->u.primsxp.offset;
