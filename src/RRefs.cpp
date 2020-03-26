@@ -70,6 +70,10 @@ SEXP RPIServiceImpl::dereference(RRef const& ref) {
       long long index = ref.listelement().index();
       return RI->doubleSubscript(RI->unclass(list), index + 1);
     }
+    case RRef::kAttributes: {
+      ShieldSEXP x = dereference(ref.attributes());
+      return RI->attributes(Rf_lang2(RI->quote, x));
+    }
     default:
       return R_NilValue;
   }
@@ -256,6 +260,12 @@ void RPIServiceImpl::setValueImpl(RRef const& ref, SEXP value) {
       ShieldSEXP list = dereference(ref.listelement().list());
       ShieldSEXP newList = RI->doubleSubscriptAssign(list, ref.listelement().index() + 1, value);
       setValueImpl(ref.listelement().list(), newList);
+      break;
+    }
+    case RRef::kAttributes: {
+      ShieldSEXP obj = dereference(ref.attributes());
+      ShieldSEXP newObj = RI->attributesAssign(obj, value);
+      setValueImpl(ref.attributes(), newObj);
       break;
     }
     default: {

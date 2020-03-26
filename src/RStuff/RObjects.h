@@ -30,6 +30,8 @@ struct RObjects2 {
   PrSEXP version = baseEnv.getVar("version");
 
   PrSEXP any = baseEnv.getVar("any");
+  PrSEXP attributes = baseEnv.getVar("attributes");
+  PrSEXP attributesAssign = baseEnv.getVar("attributes<-");
   PrSEXP asCharacter = baseEnv.getVar("as.character");
   PrSEXP asDouble = baseEnv.getVar("as.double");
   PrSEXP asInteger = baseEnv.getVar("as.integer");

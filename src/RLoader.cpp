@@ -71,6 +71,8 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
         dataFrame->set_cols(asInt(RI->ncol(var)));
       } else if (type == VECSXP || type == LISTSXP || type == EXPRSXP) {
         result->mutable_list()->set_length(var.length());
+      } else if (type == S4SXP) {
+        result->mutable_value()->set_iss4(true);
       } else {
         ValueInfo::Value* value = result->mutable_value();
         if (type == LGLSXP || type == INTSXP || type == REALSXP || type == CPLXSXP || type == NILSXP) {
