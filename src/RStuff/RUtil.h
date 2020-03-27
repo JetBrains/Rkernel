@@ -233,7 +233,15 @@ inline void walkObjectsImpl(Func const& f, std::unordered_set<SEXP> &visited, SE
       break;
     }
     case ENVSXP: {
-      if (x != R_EmptyEnv) {
+      if (x == R_BaseEnv || x == R_BaseNamespace) {
+        ShieldSEXP names = RI->ls(R_BaseEnv, named("all.names", true));
+        if (names.type() == STRSXP) {
+          int length = names.length();
+          for (int i = 0; i < length; ++i) {
+            walkObjectsImpl(f, visited, RI->baseEnv.getVar(stringEltNative(names, i), false));
+          }
+        }
+      } else if (x != R_EmptyEnv) {
         walkObjectsImpl(f, visited, ENCLOS(x));
         walkObjectsImpl(f, visited, FRAME(x));
         walkObjectsImpl(f, visited, HASHTAB(x));
