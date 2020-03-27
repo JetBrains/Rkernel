@@ -31,6 +31,7 @@
 
 static void initDoQuit();
 static void initDynLoad();
+static void initDfltWarn();
 
 void initRWrapper() {
   initRInternals();
@@ -60,6 +61,7 @@ void initRWrapper() {
   initDoSystem();
   initDoQuit();
   initDynLoad();
+  initDfltWarn();
   rDebugger.init();
   htmlViewerInit();
   initEventLoop();
@@ -142,4 +144,24 @@ static void initDynLoad() {
   });
 
   initLaterAPI();
+}
+
+static void initDfltWarn() {
+  static int dfltWarnOffset = getFunTabOffset(".dfltWarn");
+  static auto oldDfltWarn = getFunTabFunction(dfltWarnOffset);
+  setFunTabFunction(dfltWarnOffset, [] (SEXP call, SEXP op, SEXP args, SEXP env) {
+    if (Rf_xlength(args) >= 2) {
+      SEXP ecall = CADR(args);
+      if (TYPEOF(ecall) == LANGSXP) {
+        SEXP sym = CAR(ecall);
+        if (TYPEOF(sym) == SYMSXP) {
+          const char* name = CHAR(PRINTNAME(sym));
+          if (!strcmp(name, ".jetbrains_wrapEval")) {
+            SETCADR(args, R_NilValue);
+          }
+        }
+      }
+    }
+    return oldDfltWarn(call, op, args, env);
+  });
 }
