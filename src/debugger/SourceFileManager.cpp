@@ -45,10 +45,49 @@ SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(SEXP srcfile
   return TYPEOF(ptr) == EXTPTRSXP ? (SourceFile*)EXTPTR_PTR(ptr) : nullptr;
 }
 
-const char* SourceFileManager::getSrcfileId(SEXP srcfile) {
+const char* SourceFileManager::getSrcfileId(SEXP srcfile, bool alwaysRegister) {
   SHIELD(srcfile);
   SourceFile *sourceFile = getSourceFileInfo(srcfile);
+  if (sourceFile == nullptr && alwaysRegister) {
+    sourceFile = registerSourceFile(srcfile);
+  }
   return sourceFile == nullptr ? nullptr : sourceFile->fileId.c_str();
+}
+
+SourceFileManager::SourceFile *SourceFileManager::registerSourceFile(SEXP _srcfile, std::string const& suggestedFileName) {
+  ShieldSEXP srcfile = _srcfile;
+  WithDebuggerEnabled with(false);
+  bool isFileValue = false;
+  std::string fileId;
+  if (srcfile.type() == ENVSXP) {
+    if (asBool(srcfile.getVar("isFile"))) {
+      ShieldSEXP wd = srcfile.getVar("wd");
+      ShieldSEXP filename = srcfile.getVar("filename");
+      ShieldSEXP path = safeEval(Rf_lang3(RI->myFilePath, wd, filename), R_GlobalEnv);
+      if (isScalarString(path)) {
+        isFileValue = true;
+        fileId = CHAR(STRING_ELT(path, 0));
+        Rf_setAttrib(srcfile, RI->isPhysicalFileFlag, Rf_ScalarLogical(true));
+      }
+    }
+  }
+  if (fileId.empty()) {
+    fileId = getNewFileId();
+  }
+  SourceFile* sourceFile = getSourceFileInfo(fileId);
+  ShieldSEXP extPtr = sourceFile->extPtr;
+  if (isFileValue) {
+    sourceFile->name = fileId;
+  } else if (suggestedFileName.empty()) {
+    sourceFile->name = "tmp";
+  } else {
+    sourceFile->name = suggestedFileName;
+  }
+  if (srcfile != R_NilValue) {
+    Rf_setAttrib(srcfile, RI->srcfilePtrAttr, sourceFile->extPtr);
+    sourceFile->lines = Rf_findVarInFrame(srcfile, RI->linesSymbol);
+  }
+  return sourceFile;
 }
 
 static bool isSrcrefProcessed(SEXP srcref) {
@@ -177,38 +216,14 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP _func, std::string const& suggest
   SourceFile *sourceFile = getSourceFileInfo(srcfile);
 
   std::string fileId;
-  bool isFileValue = false;
   if (sourceFile != nullptr) {
     fileId = sourceFile->fileId;
   } else {
-    WithDebuggerEnabled with(false);
-    if (srcfile.type() == ENVSXP) {
-      if (asBool(srcfile.getVar("isFile"))) {
-        ShieldSEXP wd = srcfile.getVar("wd");
-        ShieldSEXP filename = srcfile.getVar("filename");
-        ShieldSEXP path = safeEval(Rf_lang3(RI->myFilePath, wd, filename), R_GlobalEnv);
-        if (isScalarString(path)) {
-          isFileValue = true;
-          fileId = CHAR(STRING_ELT(path, 0));
-          Rf_setAttrib(srcfile, RI->isPhysicalFileFlag, Rf_ScalarLogical(true));
-        }
-      }
-    }
-    if (fileId.empty()) {
-      fileId = getNewFileId();
-    }
-    sourceFile = getSourceFileInfo(fileId);
+    sourceFile = registerSourceFile(srcfile, suggestedFileName);
+    fileId = sourceFile->fileId;
     ShieldSEXP extPtr = sourceFile->extPtr;
-    if (isFileValue) {
-      sourceFile->name = fileId;
-    } else if (suggestedFileName.empty()) {
-      sourceFile->name = "tmp";
-    } else {
-      sourceFile->name = suggestedFileName;
-    }
-    if (srcfile != R_NilValue) {
-      Rf_setAttrib(srcfile, RI->srcfilePtrAttr, sourceFile->extPtr);
-    } else {
+    if (srcfile == R_NilValue) {
+      WithDebuggerEnabled with(false);
       TextBuilder builder;
       builder.build(func);
       std::vector<std::string> lines = splitByLines(builder.getText());
@@ -217,8 +232,8 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP _func, std::string const& suggest
       Rf_setAttrib(srcfile, RI->srcfilePtrAttr, sourceFile->extPtr);
       builder.setSrcrefs(srcfile);
       Rf_setAttrib(func, RI->srcrefAttr, builder.getWholeSrcref(srcfile));
+      sourceFile->lines = Rf_findVarInFrame(srcfile, RI->linesSymbol);
     }
-    sourceFile->lines = Rf_findVarInFrame(srcfile, RI->linesSymbol);
   }
   srcref = Rf_getAttrib(func, RI->srcrefAttr);
   if (func.type() == CLOSXP) {

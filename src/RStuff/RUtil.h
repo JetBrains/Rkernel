@@ -181,7 +181,7 @@ inline std::pair<const char*, int> srcrefToPosition(SEXP _srcref) {
   ShieldSEXP srcref = _srcref;
   if (srcref.type() == INTSXP && Rf_xlength(srcref) >= 1) {
     ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
-    const char* fileId = SourceFileManager::getSrcfileId(srcfile);
+    const char* fileId = sourceFileManager.getSrcfileId(srcfile, true);
     if (fileId != nullptr) {
       ShieldSEXP lineOffsetAttr = Rf_getAttrib(srcfile, RI->srcfileLineOffset);
       int lineOffset = 0;

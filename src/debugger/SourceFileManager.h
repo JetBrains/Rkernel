@@ -31,7 +31,7 @@ public:
   SEXP getFunctionSrcref(SEXP func, std::string const& suggestedFileName = "");
   std::string getSourceFileText(std::string const& fileId);
   std::string getSourceFileName(std::string const& fileId);
-  static const char* getSrcfileId(SEXP srcfile);
+  const char* getSrcfileId(SEXP srcfile, bool alwaysRegister = false);
 
   SEXP saveState();
   void loadState(SEXP obj);
@@ -51,6 +51,7 @@ private:
   static void putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, SEXP srcref);
   static void setSteps(SEXP expr, std::string const& fileId, SEXP srcfile,
                        std::unordered_map<int, SEXP>& steps, int lineOffset);
+  SourceFile *registerSourceFile(SEXP srcfile, std::string const& suggestedFileName = "");
   std::string getNewFileId();
   SourceFile *getSourceFileInfo(std::string const& fileId);
   static SourceFile *getSourceFileInfo(SEXP srcfile);
