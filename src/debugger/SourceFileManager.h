@@ -27,6 +27,7 @@ class SourceFileManager {
 public:
   SEXP parseSourceFile(std::string const& code, std::string fileId, int lineOffset = 0);
   SEXP getStepSrcref(std::string const& file, int line);
+  void ensureExprProcessed(SEXP expr);
 
   SEXP getFunctionSrcref(SEXP func, std::string const& suggestedFileName = "");
   std::string getSourceFileText(std::string const& fileId);

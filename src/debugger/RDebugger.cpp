@@ -33,21 +33,28 @@ void RDebugger::init() {
     Rf_setAttrib(sourceFileManager.getFunctionSrcref(RI->baseEnv[func], func),
         RI->doNotStopRecursiveFlag, toSEXP(true));
   }
+  Rf_setAttrib(sourceFileManager.getFunctionSrcref(RI->baseEnv["source"], "source"),
+               RI->doNotStopFlag, toSEXP(true));
 }
 
 static void setBytecodeEnabled(bool enabled);
+static void overrideDoEval(bool enabled);
 
 void RDebugger::enable() {
   if (_isEnabled) return;
   _isEnabled = true;
   prevJIT = asInt(RI->compilerEnableJIT(0));
   setBytecodeEnabled(false);
-  setFunTabFunction(beginOffset, debugDoBegin);
+  setFunTabFunction(beginOffset, [] (SEXP call, SEXP op, SEXP args, SEXP rho) {
+    return rDebugger.doBegin(call, op, args, rho);
+  });
+  overrideDoEval(true);
 }
 
 void RDebugger::disable() {
   if (!_isEnabled) return;
   _isEnabled = false;
+  overrideDoEval(false);
   setFunTabFunction(beginOffset, defaultDoBegin);
   setBytecodeEnabled(true);
   RI->compilerEnableJIT(prevJIT);
@@ -129,30 +136,38 @@ void RDebugger::setCommand(DebuggerCommand c) {
   currentCommand = c;
   resetRunToPositionTarget();
   runToPositionTarget = R_NilValue;
-  RContext* ctx = getGlobalContext();
-  bool isFirst = true;
-  while (ctx != nullptr) {
-    if (isCallContext(ctx)) {
-      SEXP env = getEnvironment(ctx);
-      switch (c) {
-        case CONTINUE:
-        case STEP_INTO: {
-          Rf_setAttrib(env, RI->stopHereFlagAttr, R_NilValue);
-          break;
-        }
-        case STEP_OVER: {
-          Rf_setAttrib(env, RI->stopHereFlagAttr, toSEXP(true));
-          break;
-        }
-        case STEP_OUT: {
-          Rf_setAttrib(env, RI->stopHereFlagAttr, isFirst ? R_NilValue : toSEXP(true));
-          break;
-        }
-        default:;
-      }
-      isFirst = false;
+  std::vector<RContext*> contexts;
+  RContext* current = getGlobalContext();
+  while (current != nullptr) {
+    if (isCallContext(current)) {
+      contexts.push_back(current);
     }
-    ctx = getNextContext(ctx);
+    current = getNextContext(current);
+  }
+  if (!contexts.empty()) {
+    Rf_setAttrib(getEnvironment(contexts[0]), RI->stopHereFlagAttr, R_NilValue);
+  }
+  for (int i = (int)contexts.size() - 1; i >= 0; --i) {
+    RContext *ctx = contexts[i];
+    SEXP env = getEnvironment(ctx);
+    switch (c) {
+      case CONTINUE:
+      case STEP_INTO: {
+        Rf_setAttrib(env, RI->stopHereFlagAttr, R_NilValue);
+        break;
+      }
+      case STEP_OVER: {
+        Rf_setAttrib(env, RI->stopHereFlagAttr, toSEXP(getEvalDepth(ctx)));
+        break;
+      }
+      case STEP_OUT: {
+        if (i != 0) {
+          Rf_setAttrib(env, RI->stopHereFlagAttr, toSEXP(getEvalDepth(ctx)));
+        }
+        break;
+      }
+      default:;
+    }
   }
 }
 
@@ -238,10 +253,6 @@ void RDebugger::buildDebugPrompt(AsyncEvent::DebugPrompt* prompt) {
   buildStackProto(stack, prompt->mutable_stack());
 }
 
-static SEXP debugDoBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
-  return rDebugger.doBegin(call, op, args, rho);
-}
-
 static RContext* getCurrentCallContext() {
   RContext* ctx = getGlobalContext();
   while (ctx != nullptr && !isCallContext(ctx)) {
@@ -255,18 +266,23 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
   RContext* ctx = getCurrentCallContext();
   SEXP function = R_NilValue, functionEnv = R_NilValue;
   SEXP functionSrcref;
+  int currentEvalDepth = 0;
   {
     std::string suggestedFunctionName;
     if (ctx != nullptr) {
       function = getFunction(ctx);
       functionEnv = getEnvironment(ctx);
       suggestedFunctionName = getCallFunctionName(getCall(ctx));
+      currentEvalDepth = getEvalDepth(ctx);
     }
     functionSrcref = sourceFileManager.getFunctionSrcref(function, suggestedFunctionName);
   }
   if (Rf_getAttrib(functionSrcref, RI->doNotStopRecursiveFlag) != R_NilValue) {
     disable();
     Rf_eval(Rf_lang2(RI->onExit, Rf_lang1(RI->jetbrainsDebuggerEnable)), rho);
+    return rDebugger.defaultDoBegin(call, op, args, rho);
+  }
+  if (Rf_getAttrib(functionSrcref, RI->doNotStopFlag) != R_NilValue) {
     return rDebugger.defaultDoBegin(call, op, args, rho);
   }
   SEXP srcrefs = getBlockSrcrefs(call);
@@ -299,7 +315,8 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
         }
         case STEP_OVER:
         case STEP_OUT: {
-          stopHere = Rf_getAttrib(functionEnv, RI->stopHereFlagAttr) != R_NilValue;
+          SEXP flag = Rf_getAttrib(functionEnv, RI->stopHereFlagAttr);
+          stopHere = flag != R_NilValue && currentEvalDepth <= asInt(flag);
           break;
         }
         default: {
@@ -517,3 +534,42 @@ static void setBytecodeEnabled(bool enabled) {
   bytecodeEnabled = enabled;
 }
 
+static void overrideDoEval(bool enabled) {
+  static int doEvalOffset = getFunTabOffset("eval");
+  static FunTabFunction oldDoEval = getFunTabFunction(doEvalOffset);
+  if (enabled) {
+    setFunTabFunction(doEvalOffset, [](SEXP call, SEXP op, SEXP args, SEXP env) {
+      SEXP expr = args == R_NilValue ? R_NilValue : CAR(args);
+      if (TYPEOF(expr) != EXPRSXP) return oldDoEval(call, op, args, env);
+      sourceFileManager.ensureExprProcessed(expr);
+      SEXP srcrefs = getBlockSrcrefs(expr);
+      if (srcrefs == R_NilValue) return oldDoEval(call, op, args, env);
+      R_xlen_t length = Rf_xlength(expr);
+      SEXP newExpr = Rf_allocVector(EXPRSXP, length);
+      PROTECT(newExpr);
+      for (R_xlen_t i = 0; i < length; ++i) {
+        SEXP x = VECTOR_ELT(expr, i);
+        SEXP srcref = getSrcref(srcrefs, i);
+        if (srcref == R_NilValue) {
+          SET_VECTOR_ELT(newExpr, i, x);
+          continue;
+        }
+        x = Rf_lang2(Rf_install("{"), x);
+        SET_VECTOR_ELT(newExpr, i, x);
+        SEXP newSrcrefs = Rf_allocVector(VECSXP, 2);
+        PROTECT(newSrcrefs);
+        Rf_setAttrib(x, RI->srcrefAttr, newSrcrefs);
+        SET_VECTOR_ELT(newSrcrefs, 0, Rf_duplicate(srcref));
+        SET_VECTOR_ELT(newSrcrefs, 1, srcref);
+        UNPROTECT(1);
+      }
+      SEXP newArgs = Rf_cons(newExpr, CDR(args));
+      PROTECT(newArgs);
+      SEXP result = oldDoEval(call, op, newArgs, env);
+      UNPROTECT(2);
+      return result;
+    });
+  } else {
+    setFunTabFunction(doEvalOffset, oldDoEval);
+  }
+}

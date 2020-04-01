@@ -33,6 +33,7 @@ SEXP getFunction(RContext* ctx);
 SEXP getCall(RContext* ctx);
 SEXP getSrcref(RContext* ctx);
 SEXP getEnvironment(RContext* ctx);
+int getEvalDepth(RContext* ctx);
 
 typedef SEXP (*FunTabFunction)(SEXP, SEXP, SEXP, SEXP);
 

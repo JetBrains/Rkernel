@@ -78,12 +78,18 @@ static SEXP _getEnvironment(RContext* ctx) {
   return ((typename S::RCNTXT*) ctx)->cloenv;
 }
 
+template<typename S>
+static int _getEvalDepth(RContext* ctx) {
+  return ((typename S::RCNTXT*) ctx)->evaldepth;
+}
+
 RContext* getNextContext(RContext* ctx) { SELECT(_getNextContext, ctx); }
 bool isCallContext(RContext* ctx) { SELECT(_isCallContext, ctx); }
 SEXP getFunction(RContext* ctx) { SELECT(_getFunction, ctx); }
 SEXP getCall(RContext* ctx) { SELECT(_getCall, ctx); }
 SEXP getSrcref(RContext* ctx) { SELECT(_getSrcref, ctx); }
 SEXP getEnvironment(RContext* ctx) { SELECT(_getEnvironment, ctx); }
+int getEvalDepth(RContext* ctx) { SELECT(_getEvalDepth, ctx); }
 
 int getPrimOffset(SEXP expr) {
   return ((SEXPREC_impl*)expr)->u.primsxp.offset;

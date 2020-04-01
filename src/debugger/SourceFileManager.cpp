@@ -183,6 +183,18 @@ SEXP SourceFileManager::parseSourceFile(std::string const& code, std::string fil
   return expressions;
 }
 
+void SourceFileManager::ensureExprProcessed(SEXP _expr) {
+  ShieldSEXP expr = _expr;
+  ShieldSEXP srcrefs = getBlockSrcrefs(_expr);
+  if (Rf_length(srcrefs) == 0) return;
+  ShieldSEXP firstSrcref = srcrefs[0];
+  if (isSrcrefProcessed(firstSrcref)) return;
+  ShieldSEXP srcfile = Rf_getAttrib(firstSrcref, RI->srcfileAttr);
+  if (srcfile == R_NilValue) return;
+  std::string fileId = getSrcfileId(srcfile, true);
+  setSteps(expr, fileId, srcfile, getSourceFileInfo(fileId)->steps, 0);
+}
+
 SEXP SourceFileManager::getStepSrcref(std::string const& file, int line) {
   auto it = sourceFiles.find(file);
   if (it == sourceFiles.end()) return R_NilValue;
