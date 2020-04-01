@@ -45,7 +45,7 @@ cat(pPriority)
 
 
 exportedSymbols = getNamespaceExports(namespace)
-allSymbols = ls(exportedSymbols, envir = namespace, all.names = TRUE)
+allSymbols = unique(c(ls(envir = namespace, all.names = TRUE), exportedSymbols))
 #exportedSymbols = allSymbols = getNamespaceExports(namespace)
 
 #' some symbols are defined as functions in base.R but our parser does not like it.
