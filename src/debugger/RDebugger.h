@@ -58,6 +58,8 @@ public:
 
   void enable();
   void disable();
+  static void setBytecodeEnabled(bool enabled);
+  static bool isBytecodeEnabled();
   bool isEnabled();
   void clearStack();
 
@@ -81,7 +83,6 @@ public:
 private:
   volatile bool _isEnabled = false;
   bool breakpointsMuted = false;
-  int prevJIT;
   int beginOffset;
   FunTabFunction defaultDoBegin;
 

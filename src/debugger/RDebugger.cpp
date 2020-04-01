@@ -22,8 +22,6 @@
 
 RDebugger rDebugger;
 
-static SEXP debugDoBegin(SEXP call, SEXP op, SEXP args, SEXP rho);
-
 void RDebugger::init() {
   runToPositionTarget = R_NilValue;
   beginOffset = getPrimOffset(RI->begin);
@@ -37,14 +35,11 @@ void RDebugger::init() {
                RI->doNotStopFlag, toSEXP(true));
 }
 
-static void setBytecodeEnabled(bool enabled);
 static void overrideDoEval(bool enabled);
 
 void RDebugger::enable() {
   if (_isEnabled) return;
   _isEnabled = true;
-  prevJIT = asInt(RI->compilerEnableJIT(0));
-  setBytecodeEnabled(false);
   setFunTabFunction(beginOffset, [] (SEXP call, SEXP op, SEXP args, SEXP rho) {
     return rDebugger.doBegin(call, op, args, rho);
   });
@@ -56,8 +51,6 @@ void RDebugger::disable() {
   _isEnabled = false;
   overrideDoEval(false);
   setFunTabFunction(beginOffset, defaultDoBegin);
-  setBytecodeEnabled(true);
-  RI->compilerEnableJIT(prevJIT);
 }
 
 bool RDebugger::isEnabled() {
@@ -506,14 +499,18 @@ void initBytecodeHandling() {
   });
 }
 
-static void setBytecodeEnabled(bool enabled) {
+void RDebugger::setBytecodeEnabled(bool enabled) {
   if (enabled == bytecodeEnabled) return;
+  static PrSEXP prevJIT;
   if (enabled) {
     for (auto const& p : allBytecode) {
       SEXP bytecode = p.first;
       INTEGER(BCODE_CODE(bytecode))[0] = p.second;
     }
+    RI->compilerEnableJIT(prevJIT);
+    prevJIT = R_NilValue;
   } else {
+    prevJIT = RI->compilerEnableJIT(0);
     static bool firstTime = true;
     if (firstTime) {
       firstTime = false;
@@ -572,4 +569,8 @@ static void overrideDoEval(bool enabled) {
   } else {
     setFunTabFunction(doEvalOffset, oldDoEval);
   }
+}
+
+bool RDebugger::isBytecodeEnabled() {
+  return bytecodeEnabled;
 }

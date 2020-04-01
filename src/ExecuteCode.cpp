@@ -79,7 +79,9 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
           }
         });
 
+    bool disableBytecode = RDebugger::isBytecodeEnabled() && isDebug;
     try {
+      if (disableBytecode) RDebugger::setBytecodeEnabled(false);
       ScopedAssign<ReplState> withState(replState, isRepl ? REPL_BUSY : replState);
       if (isRepl) {
         AsyncEvent event;
@@ -127,6 +129,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
       }
     } catch (...) {
     }
+    if (disableBytecode) RDebugger::setBytecodeEnabled(true);
 
     if (isRepl) {
       AsyncEvent event;
