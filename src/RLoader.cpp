@@ -78,19 +78,19 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
         if (type == LGLSXP || type == INTSXP || type == REALSXP || type == CPLXSXP || type == NILSXP) {
           R_xlen_t length = var.length();
           value->set_isvector(length > 1);
+          ShieldSEXP unclassed = Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
           if (length <= MAX_PREVIEW_PRINTED_COUNT) {
-            value->set_textvalue(getPrintedValue(RI->unclass(var)));
+            value->set_textvalue(getPrintedValue(unclassed));
             value->set_iscomplete(true);
           } else {
-            value->set_textvalue(getPrintedValue(RI->unclass(
-                RI->subscript(var, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT)))));
+            value->set_textvalue(getPrintedValue(RI->subscript(unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT))));
             value->set_iscomplete(false);
           }
         } else if (type == STRSXP) {
           int length = var.length();
           value->set_isvector(length > 1);
           bool isComplete = length <= MAX_PREVIEW_PRINTED_COUNT;
-          ShieldSEXP unclassed = RI->unclass(var);
+          ShieldSEXP unclassed = Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
           ShieldSEXP vector =
               isComplete ? (SEXP)unclassed : RI->subscript(unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
           ShieldSEXP vectorPrefix = RI->substring(vector, 1, MAX_PREVIEW_STRING_LENGTH);
@@ -170,13 +170,13 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
     }
     R_xlen_t length = obj.length();
     response->set_totalcount(length);
-    ShieldSEXP unclassed = RI->unclass(obj);
+    ShieldSEXP unclassed = Rf_inherits(obj, "factor") ? (SEXP)obj : RI->unclass(obj);
     ShieldSEXP filtered = RI->subscript(unclassed, RI->colon(reqStart + 1, std::min(length, reqEnd)));
     ShieldSEXP names = Rf_getAttrib(filtered, R_NamesSymbol);
     for (int i = 0; i < filtered.length(); ++i) {
       VariablesResponse::Variable* var = response->add_vars();
       var->set_name(stringEltUTF8(names, i));
-      getValueInfo(filtered[i], var->mutable_value());
+      getValueInfo(RI->doubleSubscript(filtered, i + 1), var->mutable_value());
     }
   }, context, true);
   return Status::OK;

@@ -68,7 +68,8 @@ SEXP RPIServiceImpl::dereference(RRef const& ref) {
     case RRef::kListElement: {
       ShieldSEXP list = dereference(ref.listelement().list());
       long long index = ref.listelement().index();
-      return RI->doubleSubscript(RI->unclass(list), index + 1);
+      ShieldSEXP unclassed = Rf_inherits(list, "factor") ? (SEXP)list : RI->unclass(list);
+      return RI->doubleSubscript(unclassed, index + 1);
     }
     case RRef::kAttributes: {
       ShieldSEXP x = dereference(ref.attributes());

@@ -150,7 +150,7 @@ Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameG
             columnProto->add_values()->mutable_na();
           } else {
             columnProto->add_values()->set_stringvalue(
-              asStringUTF8(RI->paste(column[j], named("collapse", "; "))));
+              asStringUTF8(RI->paste(RI->doubleSubscript(column, j + 1), named("collapse", "; "))));
           }
         }
       }
