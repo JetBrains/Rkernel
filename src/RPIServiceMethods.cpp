@@ -32,8 +32,6 @@ static std::string getRVersion() {
 Status RPIServiceImpl::getInfo(ServerContext* context, const Empty*, GetInfoResponse* response) {
   executeOnMainThread([&] {
     response->set_rversion(getRVersion());
-    response->set_workspacefile(sessionManager.workspaceFile);
-    response->set_saveonexit(sessionManager.saveOnExit);
   }, context);
   return Status::OK;
 }
@@ -44,16 +42,27 @@ Status RPIServiceImpl::isBusy(ServerContext*, const Empty*, BoolValue* response)
 }
 
 Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerWriter<CommandOutput>* response) {
-    auto sourceInterop = std::ostringstream();
-    sourceInterop << "source(\"" << escapeStringCharacters(request->rscriptspath()) << "/init.R\")";
-    const Status &status = executeCommand(context, sourceInterop.str(), response);
-    if (!status.ok()) {
-      return status;
-    }
-    auto executeInit = std::ostringstream();
-    executeInit << ".jetbrains$init(\"" << escapeStringCharacters(request->rscriptspath()) << "/RSession\", \""
-                << escapeStringCharacters(request->projectdir()) << "\")";
-    return executeCommand(context, executeInit.str(), response);
+  if (!request->workspacefile().empty()) {
+    executeOnMainThread([&] {
+      sessionManager.workspaceFile = request->workspacefile();
+      sessionManager.saveOnExit = request->saveonexit();
+      if (request->loadworkspace()) {
+        WithOutputHandler withOutputHandler(rpiService->replOutputHandler);
+        sessionManager.loadWorkspace();
+      }
+    });
+  }
+
+  auto sourceInterop = std::ostringstream();
+  sourceInterop << "source(\"" << escapeStringCharacters(request->rscriptspath()) << "/init.R\")";
+  const Status &status = executeCommand(context, sourceInterop.str(), response);
+  if (!status.ok()) {
+    return status;
+  }
+  auto executeInit = std::ostringstream();
+  executeInit << ".jetbrains$init(\"" << escapeStringCharacters(request->rscriptspath()) << "/RSession\", \""
+              << escapeStringCharacters(request->projectdir()) << "\")";
+  return executeCommand(context, executeInit.str(), response);
 }
 
 Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, google::protobuf::Empty*) {

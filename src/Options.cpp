@@ -33,11 +33,6 @@ void CommandLineOptions::parse(int argc, char* argv[]) {
       exit(0);
     }
     withTimeout = result["with-timeout"].as<bool>();
-    if (result.count("workspace-file")) {
-      workspaceFile = result["workspace-file"].as<std::string>();
-      save = !result["no-save"].as<bool>();
-      restore = !result["no-restore"].as<bool>();
-    }
   } catch (cxxopts::OptionParseException const& e) {
     std::cerr << e.what() << "\n";
     exit(1);

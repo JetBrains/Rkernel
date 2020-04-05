@@ -25,6 +25,7 @@ public:
   void init();
   void quit();
 
+  void loadWorkspace(std::string const& path = "");
   void saveWorkspace(std::string const& path = "");
 
   std::string workspaceFile;

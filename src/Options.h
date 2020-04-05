@@ -21,8 +21,6 @@
 
 struct CommandLineOptions {
   bool withTimeout = false;
-  std::string workspaceFile;
-  bool save = false, restore = false;
 
   void parse(int argc, char* argv[]);
 };

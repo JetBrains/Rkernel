@@ -33,12 +33,6 @@ static void initSegvHandler();
 
 void SessionManager::init() {
   initSegvHandler();
-  workspaceFile = commandLineOptions.workspaceFile;
-  saveOnExit = commandLineOptions.save;
-  if (commandLineOptions.restore) {
-    WithOutputHandler withOutputHandler(rpiService->replOutputHandler);
-    loadWorkspace(commandLineOptions.workspaceFile);
-  }
 }
 
 void SessionManager::quit() {
@@ -68,7 +62,13 @@ void SessionManager::saveWorkspace(std::string const& path) {
   RI->rm(SAVED_DATA_ENV, named("envir", R_GlobalEnv));
 }
 
-void loadWorkspace(std::string const& path) {
+void SessionManager::loadWorkspace(std::string const& path) {
+  if (path == "") {
+    if (workspaceFile != "") {
+      loadWorkspace(workspaceFile);
+    }
+    return;
+  }
   try {
     if (!asBool(RI->fileExists(path))) return;
     RI->sysLoadImage(path, true);
