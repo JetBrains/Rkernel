@@ -63,6 +63,7 @@ struct RObjects2 {
   PrSEXP greater = baseEnv.getVar(">");
   PrSEXP grepl = baseEnv.getVar("grepl");
   PrSEXP identical = baseEnv.getVar("identical");
+  PrSEXP in = baseEnv.getVar("%in%");
   PrSEXP isDataFrame = baseEnv.getVar("is.data.frame");
   PrSEXP isNa = baseEnv.getVar("is.na");
   PrSEXP leq = baseEnv.getVar("<=");

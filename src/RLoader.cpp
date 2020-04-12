@@ -62,41 +62,58 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
       result->mutable_value()->set_textvalue(getPrintedValue(RI->unclass(Rf_lang2(RI->quote, var))));
     } else if (type == CHARSXP) {
       getValueInfo(Rf_ScalarString(var), result);
+    } else if (Rf_inherits(var, "ggplot")) {
+      result->mutable_graph();
+    } else if (Rf_inherits(var, "data.frame")) {
+      ValueInfo::DataFrame* dataFrame = result->mutable_dataframe();
+      dataFrame->set_rows(asInt(RI->nrow(var)));
+      dataFrame->set_cols(asInt(RI->ncol(var)));
+    } else if (type == S4SXP) {
+      result->mutable_value()->set_iss4(true);
     } else {
-      if (Rf_inherits(var, "ggplot")) {
-        result->mutable_graph();
-      } else if (Rf_inherits(var, "data.frame")) {
-        ValueInfo::DataFrame* dataFrame = result->mutable_dataframe();
-        dataFrame->set_rows(asInt(RI->nrow(var)));
-        dataFrame->set_cols(asInt(RI->ncol(var)));
-      } else if (type == VECSXP || type == LISTSXP || type == EXPRSXP) {
+      ShieldSEXP dim = Rf_getAttrib(var, R_DimSymbol);
+      if ((dim.type() == INTSXP || dim.type() == REALSXP) &&
+          dim.length() >= 2) {
+        for (int i = 0; i < dim.length(); ++i) {
+          result->mutable_matrix()->add_dim(asInt(dim[i]));
+        }
+        return;
+      }
+      if (type == VECSXP || type == LISTSXP || type == EXPRSXP) {
         result->mutable_list()->set_length(var.length());
-      } else if (type == S4SXP) {
-        result->mutable_value()->set_iss4(true);
       } else {
-        ValueInfo::Value* value = result->mutable_value();
-        if (type == LGLSXP || type == INTSXP || type == REALSXP || type == CPLXSXP || type == NILSXP) {
+        ValueInfo::Value *value = result->mutable_value();
+        if (type == LGLSXP || type == INTSXP || type == REALSXP ||
+            type == CPLXSXP || type == NILSXP) {
           R_xlen_t length = var.length();
           value->set_isvector(length > 1);
-          ShieldSEXP unclassed = Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
+          ShieldSEXP unclassed =
+              Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
           if (length <= MAX_PREVIEW_PRINTED_COUNT) {
             value->set_textvalue(getPrintedValue(unclassed));
             value->set_iscomplete(true);
           } else {
-            value->set_textvalue(getPrintedValue(RI->subscript(unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT))));
+            value->set_textvalue(getPrintedValue(RI->subscript(
+                unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT))));
             value->set_iscomplete(false);
           }
         } else if (type == STRSXP) {
           int length = var.length();
           value->set_isvector(length > 1);
           bool isComplete = length <= MAX_PREVIEW_PRINTED_COUNT;
-          ShieldSEXP unclassed = Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
+          ShieldSEXP unclassed =
+              Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
           ShieldSEXP vector =
-              isComplete ? (SEXP)unclassed : RI->subscript(unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
-          ShieldSEXP vectorPrefix = RI->substring(vector, 1, MAX_PREVIEW_STRING_LENGTH);
+              isComplete
+                  ? (SEXP)unclassed
+                  : RI->subscript(unclassed,
+                                  RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
+          ShieldSEXP vectorPrefix =
+              RI->substring(vector, 1, MAX_PREVIEW_STRING_LENGTH);
           ShieldSEXP nchar = RI->nchar(vectorPrefix);
           for (int i = 0; isComplete && i < vectorPrefix.length(); ++i) {
-            if (!vectorPrefix.isNA(i) && asInt(nchar[i]) == MAX_PREVIEW_STRING_LENGTH) {
+            if (!vectorPrefix.isNA(i) &&
+                asInt(nchar[i]) == MAX_PREVIEW_STRING_LENGTH) {
               isComplete = false;
             }
           }

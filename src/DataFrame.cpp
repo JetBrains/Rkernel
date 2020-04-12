@@ -27,6 +27,10 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
   executeOnMainThread([&] {
     if (!RI->initDplyr()) return;
     PrSEXP dataFrame = dereference(*request);
+    ShieldSEXP cls = RI->classes(dataFrame);
+    if (!strcmp(stringEltUTF8(cls, cls.length() - 1), "matrix")) {
+      dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
+    }
     if (!isDataFrame(dataFrame)) return;
     dataFrame = Rf_duplicate(dataFrame);
     int ncol = asInt(RI->ncol(dataFrame));
