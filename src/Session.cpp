@@ -47,6 +47,7 @@ void SessionManager::saveWorkspace(std::string const& path) {
     return;
   }
   WithDebuggerEnabled with(false);
+  ShieldSEXP oldWD = RI->getwd();
   try {
     ShieldSEXP savedDataEnv = RI->globalEnv.assign(SAVED_DATA_ENV, RI->newEnv());
     savedDataEnv.assign("SourceFileManager", sourceFileManager.saveState());
@@ -54,12 +55,17 @@ void SessionManager::saveWorkspace(std::string const& path) {
     if (!asBool(RI->dirExists(directory))) {
       RI->dirCreate(directory);
     }
-    RI->saveImage(path);
-    REprintf("Workspace saved to %s\n", path.c_str());
+    RI->setwd(directory);
+    RI->saveImage(RI->baseName(path));
+    RI->cat("Workspace saved to", path, "\n", named("file", RI->stdErr()));
   } catch (RError const& e) {
-    REprintf("Failed to save workspace: %s\n", e.what());
+    RI->cat("Failed to save workspace:", e.what(), "\n", named("file", RI->stdErr()));
   }
-  RI->rm(SAVED_DATA_ENV, named("envir", R_GlobalEnv));
+  try {
+    RI->rm(SAVED_DATA_ENV, named("envir", R_GlobalEnv));
+    RI->setwd(oldWD);
+  } catch (RError const&) {
+  }
 }
 
 void SessionManager::loadWorkspace(std::string const& path) {
@@ -69,17 +75,24 @@ void SessionManager::loadWorkspace(std::string const& path) {
     }
     return;
   }
+  ShieldSEXP oldWD = RI->getwd();
   try {
     if (!asBool(RI->fileExists(path))) return;
-    RI->sysLoadImage(path, true);
+    std::string directory = asStringUTF8(RI->dirName(path));
+    RI->setwd(directory);
+    RI->sysLoadImage(RI->baseName(path), true);
     ShieldSEXP savedDataEnv = RI->globalEnv[SAVED_DATA_ENV];
     if (savedDataEnv.type() == ENVSXP) {
       sourceFileManager.loadState(savedDataEnv["SourceFileManager"]);
       RI->rm(SAVED_DATA_ENV, named("envir", R_GlobalEnv));
     }
-    REprintf("Workspace restored from %s\n", path.c_str());
+    RI->cat("Workspace restored from", path, "\n", named("file", RI->stdErr()));
   } catch (RError const& e) {
-    REprintf("Failed to restore workspace: %s\n", e.what());
+    RI->cat("Failed to restore workspace:", e.what(), "\n", named("file", RI->stdErr()));
+  }
+  try {
+    RI->setwd(oldWD);
+  } catch (RError const&) {
   }
 }
 

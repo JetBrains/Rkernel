@@ -39,7 +39,9 @@ struct RObjects2 {
   PrSEXP asPOSIXct = baseEnv.getVar("as.POSIXct");
   PrSEXP assign = baseEnv.getVar("assign");
   PrSEXP assignOperator = baseEnv.getVar("<-");
+  PrSEXP baseName = baseEnv.getVar("basename");
   PrSEXP begin = baseEnv.getVar("{");
+  PrSEXP cat = baseEnv.getVar("cat");
   PrSEXP classes = baseEnv.getVar("class");
   PrSEXP colon = baseEnv.getVar(":");
   PrSEXP conditionCall = baseEnv.getVar("conditionCall");
@@ -95,6 +97,7 @@ struct RObjects2 {
   PrSEXP setwd = baseEnv.getVar("setwd");
   PrSEXP srcfilecopy = baseEnv.getVar("srcfilecopy");
   PrSEXP srcref = baseEnv.getVar("srcref");
+  PrSEXP stdErr = baseEnv.getVar("stderr");
   PrSEXP subscript = baseEnv.getVar("[");
   PrSEXP substring = baseEnv.getVar("substring");
   PrSEXP sysCalls = baseEnv.getVar("sys.calls");
