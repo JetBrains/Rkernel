@@ -171,10 +171,6 @@ Status RPIServiceImpl::clientRequestFinished(ServerContext* context, const Empty
 }
 
 Status RPIServiceImpl::getNextAsyncEvent(ServerContext*, const Empty*, AsyncEvent* response) {
-  if (terminate) {
-    response->mutable_termination();
-  } else {
-    response->CopyFrom(asyncEvents.pop());
-  }
+  response->CopyFrom(asyncEvents.pop());
   return Status::OK;
 }

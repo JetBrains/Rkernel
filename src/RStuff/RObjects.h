@@ -179,12 +179,9 @@ struct RObjects2 {
   PrSEXP linesSymbol = Rf_install("lines");
 
   PrSEXP myFilePath = evalCode(
-      "function(wd, path) tryCatch({\n"
-      "  oldWd <- getwd()\n"
-      "  on.exit(setwd(oldWd))\n"
-      "  setwd(wd)\n"
-      "  return(normalizePath(path))\n"
-      "}, error = function(e) NULL)\n",
+      "function(wd, path) tryCatch(\n"
+      "  normalizePath(paste0(wd, '/', path), winslash = '/')\n"
+      ", error = function(e) NULL)\n",
       baseEnv
   );
 
