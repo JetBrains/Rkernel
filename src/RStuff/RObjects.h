@@ -182,9 +182,18 @@ struct RObjects2 {
   PrSEXP linesSymbol = Rf_install("lines");
 
   PrSEXP myFilePath = evalCode(
-      "function(wd, path) tryCatch(\n"
-      "  normalizePath(paste0(wd, '/', path), winslash = '/')\n"
-      ", error = function(e) NULL)\n",
+      "function(wd, path) suppressWarnings(tryCatch({\n"
+      "  oldWd <- getwd()\n"
+      "  on.exit(setwd(oldWd))\n"
+      "  setwd(wd)\n"
+      // Handling non-ascii paths in R is glitchy, so here's a workaround
+      "  if (.Platform$OS.type == 'windows') {\n"
+      "    path <- paste0(path, '\\u0080')\n"
+      "    path <- normalizePath(path, winslash = '/')\n"
+      "    return(substr(path, 1, nchar(path) - 1))\n"
+      "  }\n"
+      "  normalizePath(path, winslash = '/')\n"
+      "}, error = function(e) NULL))\n",
       baseEnv
   );
 
