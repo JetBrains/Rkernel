@@ -103,7 +103,7 @@ Status RPIServiceImpl::disposePersistentRefs(ServerContext*, const PersistentRef
   return Status::OK;
 }
 
-Status RPIServiceImpl::evaluateAsText(ServerContext* context, const RRef* request, StringValue* response) {
+Status RPIServiceImpl::evaluateAsText(ServerContext* context, const RRef* request, StringOrError* response) {
   executeOnMainThread([&] {
     try {
       PrSEXP value = dereference(*request);
@@ -112,7 +112,9 @@ Status RPIServiceImpl::evaluateAsText(ServerContext* context, const RRef* reques
       }
       response->set_value(getPrintedValueWithLimit(value, EVALUATE_AS_TEXT_MAX_LENGTH));
     } catch (RExceptionBase const& e) {
-      response->set_value(e.what());
+      response->set_error(e.what());
+    } catch (...) {
+      response->set_error("");
     }
   }, context, true);
   return Status::OK;

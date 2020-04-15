@@ -70,7 +70,7 @@ public:
   Status loaderGetVariables(ServerContext* context, const GetVariablesRequest* request, VariablesResponse* response) override;
   Status loaderGetLoadedNamespaces(ServerContext* context, const Empty*, StringList* response) override;
   Status loaderGetValueInfo(ServerContext* context, const RRef* request, ValueInfo* response) override;
-  Status evaluateAsText(ServerContext* context, const RRef* request, StringValue* response) override;
+  Status evaluateAsText(ServerContext* context, const RRef* request, StringOrError* response) override;
   Status evaluateAsBoolean(ServerContext* context, const RRef* request, BoolValue* response) override;
   Status getDistinctStrings(ServerContext* context, const RRef* request, StringList* response) override;
   Status getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) override;
