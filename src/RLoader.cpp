@@ -71,13 +71,14 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
     } else if (type == S4SXP) {
       result->mutable_value()->set_iss4(true);
     } else {
-      ShieldSEXP dim = Rf_getAttrib(var, R_DimSymbol);
-      if ((dim.type() == INTSXP || dim.type() == REALSXP) &&
-          dim.length() >= 2) {
-        for (int i = 0; i < dim.length(); ++i) {
-          result->mutable_matrix()->add_dim(asInt(dim[i]));
+      if (Rf_isVector(var)) {
+        ShieldSEXP dim = Rf_getAttrib(var, R_DimSymbol);
+        if (dim.type() == INTSXP && dim.length() >= 2) {
+          for (int i = 0; i < dim.length(); ++i) {
+            result->mutable_matrix()->add_dim(asInt(dim[i]));
+          }
+          return;
         }
-        return;
       }
       if (type == VECSXP || type == LISTSXP || type == EXPRSXP) {
         result->mutable_list()->set_length(var.length());
