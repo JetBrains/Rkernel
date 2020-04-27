@@ -51,7 +51,8 @@ for pkg in ./*.pkg; do
   #base="$(xmllint --xpath 'string(//@install-location)' "$pkg/PackageInfo")"
   base="$(grep -o 'install-location="[^".]*"' "$pkg/PackageInfo" | head -n1 | sed 's/install-location="\([^".]*\)"/\1/')"
   mkdir -p "$result$base"
-  cp -r "$pkg/Payload"/* "$result$base"
+  # use -R because R 4.0.0 uses absolute symlinks for X11 fonts, just ignore them
+  cp -R "$pkg/Payload"/* "$result$base"
   rm -rf "$pkg"
 done
 #chown -Rh root:admin "$result/Library/Frameworks/R.framework" || true
