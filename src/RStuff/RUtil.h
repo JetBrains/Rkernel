@@ -69,13 +69,15 @@ inline std::string getPrintedValue(SEXP a) {
   return result;
 }
 
-inline std::string getPrintedValueWithLimit(SEXP a, int maxLength) {
+inline std::string getPrintedValueWithLimit(SEXP a, int maxLength, bool &trimmed) {
   SHIELD(a);
   std::string result;
+  trimmed = false;
   try {
     WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
       if (type == STDOUT) {
         if (result.size() + c > maxLength) {
+          trimmed = true;
           result.insert(result.end(), s, s + (maxLength - result.size()));
           R_interrupts_pending = 1;
         } else {
@@ -88,7 +90,13 @@ inline std::string getPrintedValueWithLimit(SEXP a, int maxLength) {
   } catch (RInterruptedException const&) {
   }
   R_interrupts_pending = 0;
+  fixUTF8Tail(result);
   return result;
+}
+
+inline std::string getPrintedValueWithLimit(SEXP a, int maxLength) {
+  bool trimmed;
+  return getPrintedValueWithLimit(a, maxLength, trimmed);
 }
 
 inline const char* translateToNative(const char* s) {
@@ -135,6 +143,30 @@ inline std::string getFunctionHeader(SEXP func) {
   TextBuilder builder;
   builder.buildFunction(func, false);
   return builder.getText();
+}
+
+inline std::string getFunctionHeaderShort(SEXP func) {
+  SHIELD(func);
+  if (TYPEOF(func) == BUILTINSXP || TYPEOF(func) == SPECIALSXP) {
+    return getFunctionHeader(func);
+  }
+  if (TYPEOF(func) != CLOSXP) return "";
+  SEXP args = FORMALS(func);
+  std::string s = "function(";
+  SEXP names = Rf_getAttrib(args, R_NamesSymbol);
+  int i = 0;
+  while (TYPEOF(args) == LISTSXP) {
+    if (i > 0) s += ", ";
+    const char* name = TYPEOF(names) == STRSXP && Rf_xlength(names) > i ? asStringUTF8(STRING_ELT(names, i)) : ".";
+    s += quoteIfNeeded(name);
+    if (TYPEOF(CAR(args)) != SYMSXP || strlen(CHAR(PRINTNAME(CAR(args)))) > 0) {
+      s += " = NULL";
+    }
+    args = CDR(args);
+    ++i;
+  }
+  s += ")";
+  return s;
 }
 
 inline SEXP invokeFunction(SEXP func, std::vector<PrSEXP> const& args) {

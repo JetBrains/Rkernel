@@ -132,4 +132,23 @@ inline std::string quoteIfNeeded(std::string const& s) {
   return s;
 }
 
+// Call this after removing suffix of the string in order to fix
+// possibly broken UTF-8 encoding
+inline void fixUTF8Tail(std::string &s) {
+  if (s.empty()) return;
+  size_t size = s.size();
+  if (!(s.back() & 128)) return; // 0xxxxxxx
+  size_t cnt10 = 0;
+  while (((uint8_t)s[size - 1 - cnt10] >> 6) == 2) {
+    ++cnt10;
+    if (cnt10 == 4 || cnt10 >= size) return;
+  }
+  size_t pos = size - 1 - cnt10;
+  // cnt10 = 1 : 110xxxxx 10xxxxxx
+  // cnt10 = 2 : 1110xxxx 10xxxxxx 10xxxxxx
+  // cnt10 = 3 : 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+  if (!(s[pos] & (1 << (6 - cnt10)))) return;
+   s.erase(s.begin() + pos, s.end());
+}
+
 #endif //RWRAPPER_STRING_UTIL_H

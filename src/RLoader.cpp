@@ -21,8 +21,16 @@
 #include <grpcpp/server_builder.h>
 #include <limits>
 
-const int MAX_PREVIEW_STRING_LENGTH = 200;
-const int MAX_PREVIEW_PRINTED_COUNT = 20;
+static const int MAX_PREVIEW_STRING_LENGTH = 400;
+static const int MAX_PREVIEW_CLS_LENGTH = 200;
+static const int MAX_PREVIEW_PRINTED_COUNT = 20;
+
+static bool trim(std::string &s, int len = MAX_PREVIEW_STRING_LENGTH) {
+  if (s.length() <= len) return true;
+  s.erase(s.begin() + len, s.end());
+  fixUTF8Tail(s);
+  return false;
+}
 
 void getValueInfo(SEXP _var, ValueInfo* result) {
   ShieldSEXP var = _var;
@@ -32,7 +40,9 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
       if (PRVALUE(var) == R_UnboundValue) {
         TextBuilder builder;
         builder.build(PRCODE(var));
-        result->mutable_unevaluated()->set_code(builder.getText());
+        std::string code = builder.getText();
+        trim(code);
+        result->mutable_unevaluated()->set_code(code);
         return;
       }
       getValueInfo(PRVALUE(var), result);
@@ -40,26 +50,46 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
     }
     ShieldSEXP classes = RI->classes(Rf_lang2(RI->quote, var));
     if (classes.type() == STRSXP) {
+      int length = 0;
       for (int i = 0; i < classes.length(); ++i) {
-        result->add_cls(stringEltUTF8(classes, i));
+        std::string s = stringEltUTF8(classes, i);
+        if (s.empty()) continue;
+        length += s.size();
+        if (s.size() > MAX_PREVIEW_CLS_LENGTH) break;
+        result->add_cls(s);
       }
     }
     if (type == LANGSXP || type == SYMSXP) {
-      result->mutable_value()->set_iscomplete(true);
       result->mutable_value()->set_isvector(false);
       TextBuilder builder;
       builder.build(var);
-      result->mutable_value()->set_textvalue(builder.getText());
+      std::string s = builder.getText();
+      result->mutable_value()->set_iscomplete(trim(s));
+      result->mutable_value()->set_textvalue(s);
     } else if (type == DOTSXP) {
-      result->mutable_list()->set_length(Rf_xlength(var));
+      result->mutable_list()->set_length(var.length());
     } else if (type == CLOSXP || type == SPECIALSXP || type == BUILTINSXP) {
-      result->mutable_function()->set_header(getFunctionHeader(var));
+      std::string header = getFunctionHeader(var);
+      if (header.size() <= MAX_PREVIEW_STRING_LENGTH) {
+        result->mutable_function()->set_header(header);
+      } else {
+        header = getFunctionHeaderShort(var);
+        if (header.size() <= MAX_PREVIEW_STRING_LENGTH) {
+          result->mutable_function()->set_header(header);
+        } else {
+          result->mutable_function()->set_header("function(...)");
+        }
+      }
     } else if (type == ENVSXP) {
-      result->mutable_environment()->set_name(asStringUTF8(RI->environmentName(var)));
+      std::string name = asStringUTF8(RI->environmentName(var));
+      trim(name);
+      result->mutable_environment()->set_name(name);
     } else if (type == BCODESXP || type == WEAKREFSXP || type == EXTPTRSXP) {
-      result->mutable_value()->set_iscomplete(true);
       result->mutable_value()->set_isvector(false);
-      result->mutable_value()->set_textvalue(getPrintedValue(RI->unclass(Rf_lang2(RI->quote, var))));
+      bool trimmed;
+      std::string value = getPrintedValueWithLimit(RI->unclass(Rf_lang2(RI->quote, var)), MAX_PREVIEW_STRING_LENGTH, trimmed);
+      result->mutable_value()->set_textvalue(value);
+      result->mutable_value()->set_iscomplete(!trimmed);
     } else if (type == CHARSXP) {
       getValueInfo(Rf_ScalarString(var), result);
     } else if (Rf_inherits(var, "ggplot")) {
@@ -74,7 +104,8 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
       if (Rf_isVector(var)) {
         ShieldSEXP dim = Rf_getAttrib(var, R_DimSymbol);
         if (dim.type() == INTSXP && dim.length() >= 2) {
-          for (int i = 0; i < dim.length(); ++i) {
+          int length = std::min<int>(dim.length(), MAX_PREVIEW_PRINTED_COUNT);
+          for (int i = 0; i < length; ++i) {
             result->mutable_matrix()->add_dim(asInt(dim[i]));
           }
           return;
@@ -91,11 +122,12 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
           ShieldSEXP unclassed =
               Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
           if (length <= MAX_PREVIEW_PRINTED_COUNT) {
-            value->set_textvalue(getPrintedValue(unclassed));
-            value->set_iscomplete(true);
+            bool trimmed;
+            value->set_textvalue(getPrintedValueWithLimit(unclassed, MAX_PREVIEW_STRING_LENGTH, trimmed));
+            value->set_iscomplete(!trimmed);
           } else {
-            value->set_textvalue(getPrintedValue(RI->subscript(
-                unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT))));
+            value->set_textvalue(getPrintedValueWithLimit(RI->subscript(
+                unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT)), MAX_PREVIEW_STRING_LENGTH));
             value->set_iscomplete(false);
           }
         } else if (type == STRSXP) {
@@ -107,8 +139,7 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
           ShieldSEXP vector =
               isComplete
                   ? (SEXP)unclassed
-                  : RI->subscript(unclassed,
-                                  RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
+                  : RI->subscript(unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
           ShieldSEXP vectorPrefix =
               RI->substring(vector, 1, MAX_PREVIEW_STRING_LENGTH);
           ShieldSEXP nchar = RI->nchar(vectorPrefix);
@@ -118,8 +149,9 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
               isComplete = false;
             }
           }
-          value->set_textvalue(getPrintedValue(vectorPrefix));
-          value->set_iscomplete(isComplete);
+          bool trimmed;
+          value->set_textvalue(getPrintedValueWithLimit(vectorPrefix, MAX_PREVIEW_STRING_LENGTH, trimmed));
+          value->set_iscomplete(isComplete && !trimmed);
         } else {
           value->set_isvector(false);
           value->set_textvalue("");
@@ -140,7 +172,9 @@ Status RPIServiceImpl::loaderGetParentEnvs(ServerContext* context, const RRef* r
     while (environment != R_EmptyEnv) {
       environment = environment.parentEnv();
       ParentEnvsResponse::EnvInfo* envInfo = response->add_envs();
-      envInfo->set_name(asStringUTF8(RI->environmentName(environment)));
+      std::string name = asStringUTF8(RI->environmentName(environment));
+      trim(name);
+      envInfo->set_name(name);
     }
   }, context, true);
   return Status::OK;
@@ -154,13 +188,36 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
     if (reqEnd == -1) reqEnd = std::numeric_limits<R_xlen_t>::max();
     if (obj.type() == ENVSXP) {
       response->set_isenv(true);
-      ShieldSEXP ls = RI->ls(named("envir", obj), named("all.names", true));
+      if (request->onlyfunctions() && request->nofunctions()) return;
+      ShieldSEXP ls = RI->ls(named("envir", obj), named("all.names", !request->nohidden()));
       if (ls.type() != STRSXP) return;
-      response->set_totalcount(ls.length());
-      for (int i = std::max<R_xlen_t>(0, reqStart); i < std::min(ls.length(), reqEnd); ++i) {
-        VariablesResponse::Variable* var = response->add_vars();
-        var->set_name(stringEltUTF8(ls, i));
-        getValueInfo(obj.getVar(stringEltNative(ls, i), false), var->mutable_value());
+      R_xlen_t length = ls.length();
+      if (request->onlyfunctions() || request->nofunctions()) {
+        R_xlen_t j = 0;
+        for (R_xlen_t i = 0; i < length; ++i) {
+          ShieldSEXP x = obj.getVar(stringEltNative(ls, i), false);
+          bool isFunc = x.type() == CLOSXP || x.type() == BUILTINSXP || x.type() == SPECIALSXP;
+          if (isFunc == request->onlyfunctions()) {
+            if (reqStart <= j && j < reqEnd) {
+              VariablesResponse::Variable *var = response->add_vars();
+              std::string name = stringEltUTF8(ls, i);
+              trim(name);
+              var->set_name(name);
+              getValueInfo(x, var->mutable_value());
+            }
+            ++j;
+          }
+        }
+        response->set_totalcount(j);
+      } else {
+        response->set_totalcount(ls.length());
+        for (int i = std::max<R_xlen_t>(0, reqStart); i < std::min(length, reqEnd); ++i) {
+          VariablesResponse::Variable *var = response->add_vars();
+          std::string name = stringEltUTF8(ls, i);
+          trim(name);
+          var->set_name(name);
+          getValueInfo(obj.getVar(stringEltNative(ls, i), false), var->mutable_value());
+        }
       }
       return;
     }
@@ -173,7 +230,9 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
         if (i >= reqStart) {
           VariablesResponse::Variable* var = response->add_vars();
           if (TAG(x) != R_NilValue) {
-            var->set_name(asStringUTF8(PRINTNAME(TAG(x))));
+            std::string name = asStringUTF8(PRINTNAME(TAG(x)));
+            trim(name);
+            var->set_name(name);
           }
           getValueInfo(CAR(x), var->mutable_value());
         }
@@ -193,7 +252,9 @@ Status RPIServiceImpl::loaderGetVariables(ServerContext* context, const GetVaria
     ShieldSEXP names = Rf_getAttrib(filtered, R_NamesSymbol);
     for (int i = 0; i < filtered.length(); ++i) {
       VariablesResponse::Variable* var = response->add_vars();
-      var->set_name(stringEltUTF8(names, i));
+      std::string name = stringEltUTF8(names, i);
+      trim(name);
+      var->set_name(name);
       getValueInfo(RI->doubleSubscript(filtered, i + 1), var->mutable_value());
     }
   }, context, true);
