@@ -690,7 +690,7 @@
    )
 })
 
-.rs.addJsonRpcHandler("preview_data_import", function(dataImportOptions, maxCols = 100, maxFactors = 64)
+.rs.addFunction("previewDataImport", function(dataImportOptions, maxCols = 100, maxFactors = 64)
 {
    dataImportOptions$importLocation <- .rs.pathRelativeToWorkingDir(dataImportOptions$importLocation)
    dataImportOptions$modelLocation <- .rs.pathRelativeToWorkingDir(dataImportOptions$modelLocation)
@@ -793,25 +793,15 @@
       data <- suppressWarnings(
          eval(parse(text=importInfo$previewCode))
       )
+      data <- head(data, dataImportOptions$maxPreviewRows)
 
       parsingErrors <- parsingErrorsFromMode(dataImportOptions$mode, data)
 
-      preparedData <- .rs.prepareViewerData(
-         data,
-         maxFactors = maxFactors,
-         maxCols = maxCols,
-         maxRows = dataImportOptions$maxRows
-      )
-
       options <- optionsInfoFromOptions[[dataImportOptions$mode]]()
 
-      return(list(data = preparedData$data,
-                  columns = preparedData$columns,
-                  options = options,
-                  parsingErrors = parsingErrors,
-                  localFiles = importInfo$localFiles))
+      return(list(data = data, previewCode = importInfo$previewCode, parsingErrors = parsingErrors))
    }, error = function(e) {
-      return(list(error = e))
+      return(NULL)
    })
 })
 

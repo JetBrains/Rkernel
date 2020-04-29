@@ -191,6 +191,29 @@ Status RPIServiceImpl::repoRemovePackage(ServerContext* context, const RepoRemov
   return replExecuteCommand(context, command);
 }
 
+Status RPIServiceImpl::previewDataImport(ServerContext* context, const PreviewDataImportRequest* request, ServerWriter<CommandOutput>* writer) {
+  auto sout = std::ostringstream();
+  sout << "list(";
+  auto& options = request->options();
+  auto isFirst = true;
+  for (auto& pair : options) {
+    if (!isFirst) {
+      sout << ", ";
+    }
+    isFirst = false;
+    sout << pair.first << " = " << pair.second;
+  }
+  sout << ")";
+  auto command = buildCallCommand(".jetbrains$previewDataImport", sout.str());
+  return executeCommand(context, command, writer);
+}
+
+Status RPIServiceImpl::commitDataImport(ServerContext* context, const StringValue* request, Empty*) {
+  auto sout = std::ostringstream();
+  sout << "eval(parse(text = paste(" << quote(request->value()) << ", '<-', .jetbrains$previewDataImportResult$previewCode)))";
+  return replExecuteCommand(context, sout.str());
+}
+
 Status RPIServiceImpl::convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request, ServerWriter<CommandOutput>* writer) {
   auto sout = std::ostringstream();
   switch (request->rdSource_case()) {

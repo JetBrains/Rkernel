@@ -103,6 +103,9 @@ public:
   Status repoCheckPackageInstalled(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status repoRemovePackage(ServerContext* context, const RepoRemovePackageRequest* request, Empty*) override;
 
+  Status previewDataImport(ServerContext* context, const PreviewDataImportRequest* request, ServerWriter<CommandOutput>* writer) override;
+  Status commitDataImport(ServerContext* context, const StringValue* request, Empty*) override;
+
   Status dataFrameRegister(ServerContext* context, const RRef* request, Int32Value* response) override;
   Status dataFrameGetInfo(ServerContext* context, const RRef* request, DataFrameInfoResponse* response) override;
   Status dataFrameGetData(ServerContext* context, const DataFrameGetDataRequest* request, DataFrameGetDataResponse* response) override;

@@ -255,6 +255,17 @@ options(install.packages.compile.from.source = "always")
   FALSE
 }
 
+.jetbrains$previewDataImportResult <- NULL
+
+.jetbrains$previewDataImport <- function(dataImportOptions) {
+  result <- .rs.previewDataImport(dataImportOptions)
+  .jetbrains$previewDataImportResult <- result
+  if (is.null(result)) {
+    return(NULL)
+  }
+  result$parsingErrors
+}
+
 local({
   env <- as.environment("package:utils")
   unlockBinding("View", env)
