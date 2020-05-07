@@ -20,6 +20,7 @@
 #include "debugger/RDebugger.h"
 #include <windows.h>
 #include "RStuff/RUtil.h"
+#include "RStuff/Export.h"
 
 static HWND dummyWindow;
 static BlockingQueue<std::function<void()>> queue;
@@ -31,7 +32,9 @@ static volatile bool _isEventHandlerRunning = false;
 bool executeWithLater(std::function<void()> const& f);
 
 static LRESULT CALLBACK dummyWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+  CPP_BEGIN
   runImmediateTasks();
+  CPP_END_VOID
   return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
@@ -81,10 +84,7 @@ std::string runEventLoop(bool disableOutput) {
       doBreakEventLoop = false;
       do {
         runImmediateTasks();
-        try {
-          f();
-        } catch (...) {
-        }
+        f();
         if (doBreakEventLoop) {
           doBreakEventLoop = false;
           return breakEventLoopValue;
@@ -109,10 +109,7 @@ void runImmediateTasks() {
     WithOutputHandler withOutputHandler(emptyOutputHandler);
     WithDebuggerEnabled withDebugger(false);
     do {
-      try {
-        f();
-      } catch (...) {
-      }
+      f();
     } while (immediateQueue.poll(f));
   }
 }

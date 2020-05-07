@@ -35,7 +35,7 @@ struct Named {
 template <typename T>
 inline Named<T> named(const char* name, T const& value) { return Named<T>(name, value); }
 
-SEXP safeEval(SEXP expr, SEXP env);
+SEXP safeEval(SEXP expr, SEXP env, bool toplevel = false);
 
 class BaseSEXP {
 protected:
@@ -188,6 +188,7 @@ extern "C" {
 extern int R_PPStackTop;
 extern SEXP* R_PPStack;
 }
+extern int unprotectCheckDisabled;
 #endif
 
 class ShieldSEXP : public BaseSEXP {
@@ -204,7 +205,7 @@ public:
 
   ~ShieldSEXP() {
 #ifdef RWRAPPER_DEBUG
-    assert(R_PPStack[R_PPStackTop - 1] == x);
+    assert(unprotectCheckDisabled || R_PPStack[R_PPStackTop - 1] == x);
 #endif
     UNPROTECT(1);
   }

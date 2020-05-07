@@ -98,6 +98,7 @@ struct RObjects2 {
   PrSEXP srcfilecopy = baseEnv.getVar("srcfilecopy");
   PrSEXP srcref = baseEnv.getVar("srcref");
   PrSEXP stdErr = baseEnv.getVar("stderr");
+  PrSEXP stop = baseEnv.getVar("stop");
   PrSEXP subscript = baseEnv.getVar("[");
   PrSEXP substring = baseEnv.getVar("substring");
   PrSEXP sysCalls = baseEnv.getVar("sys.calls");

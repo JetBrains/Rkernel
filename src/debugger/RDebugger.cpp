@@ -261,6 +261,7 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
   SEXP functionSrcref;
   int currentEvalDepth = 0;
   {
+    CPP_BEGIN
     std::string suggestedFunctionName;
     if (ctx != nullptr) {
       function = getFunction(ctx);
@@ -269,6 +270,7 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
       currentEvalDepth = getEvalDepth(ctx);
     }
     functionSrcref = sourceFileManager.getFunctionSrcref(function, suggestedFunctionName);
+    CPP_END_VOID
   }
   if (Rf_getAttrib(functionSrcref, RI->doNotStopRecursiveFlag) != R_NilValue) {
     disable();

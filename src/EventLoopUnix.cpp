@@ -15,12 +15,13 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "EventLoop.h"
-#include "util/BlockingQueue.h"
 #include "IO.h"
-#include "debugger/RDebugger.h"
-#include <unistd.h>
+#include "RStuff/Export.h"
 #include "RStuff/RInclude.h"
 #include "RStuff/RUtil.h"
+#include "debugger/RDebugger.h"
+#include "util/BlockingQueue.h"
+#include <unistd.h>
 
 static const int ACTIVITY = 27;
 static int eventLoopPipe[2];
@@ -41,7 +42,8 @@ void initEventLoop() {
     exit(1);
   }
   addInputHandler(R_InputHandlers, eventLoopPipe[0], [](void*) {
-    {
+    CPP_BEGIN
+      {
       std::unique_lock<std::mutex> lock(pipeMutex);
       if (pipeFilled) {
         char c;
@@ -50,6 +52,7 @@ void initEventLoop() {
       }
     }
     runImmediateTasks();
+    CPP_END_VOID
   }, ACTIVITY);
 }
 
@@ -87,10 +90,7 @@ std::string runEventLoop(bool disableOutput) {
       doBreakEventLoop = false;
       do {
         runImmediateTasks();
-        try {
-          f();
-        } catch (...) {
-        }
+        f();
         if (doBreakEventLoop) {
           doBreakEventLoop = false;
           return breakEventLoopValue;
@@ -115,10 +115,7 @@ void runImmediateTasks() {
     WithOutputHandler withOutputHandler(emptyOutputHandler);
     WithDebuggerEnabled withDebugger(false);
     do {
-      try {
-        f();
-      } catch (...) {
-      }
+      f();
     } while (immediateQueue.poll(f));
   }
 }

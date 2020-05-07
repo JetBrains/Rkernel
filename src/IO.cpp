@@ -14,14 +14,14 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 #include "IO.h"
-#include <iostream>
-#include <grpcpp/grpcpp.h>
-#include "RPIServiceImpl.h"
 #include "CppExports.h"
-#include "RStuff/RUtil.h"
 #include "Init.h"
+#include "RPIServiceImpl.h"
+#include "RStuff/Export.h"
+#include "RStuff/RUtil.h"
+#include <grpcpp/grpcpp.h>
+#include <iostream>
 
 using namespace grpc;
 
@@ -65,10 +65,10 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   if (!inited) {
     inited = true;
     initRWrapper();
-    rpiService->mainLoop(); // Does not return
-    return 0;
+    rpiService->mainLoop();
   }
 
+  CPP_BEGIN
   if (rpiService == nullptr) {
     // Read console happened during termination
     abort();
@@ -95,6 +95,8 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   }
   strcpy((char*)buf, s.c_str());
   return s.size();
+  CPP_END_VOID
+  return 0;
 }
 
 static const int OUTPUT_MESSAGE_MAX_SIZE = 65536;

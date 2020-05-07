@@ -34,11 +34,11 @@ static void initDynLoad();
 static void initDfltWarn();
 
 void initRWrapper() {
-  initRInternals();
-  initBytecodeHandling();
-
   DllInfo *dll = R_getEmbeddingDllInfo();
   initCppExports(dll);
+
+  initRInternals();
+  initBytecodeHandling();
 
   RI = std::make_unique<RObjects2>();
 

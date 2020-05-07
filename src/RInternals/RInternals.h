@@ -44,4 +44,11 @@ int getFunTabArity(int offset);
 FunTabFunction getFunTabFunction(int offset);
 void setFunTabFunction(int offset, FunTabFunction func);
 
+extern bool isUnwindAvailable;
+extern SEXP (*ptr_R_UnwindProtect)(SEXP (*fun)(void *data), void *data,
+                                   void (*cleanfun)(void *data, Rboolean jump),
+                                   void *cleandata, SEXP cont);
+extern void (*ptr_R_ContinueUnwind)(SEXP cont);
+extern SEXP (*ptr_R_MakeUnwindCont)();
+
 #endif //RWRAPPER_RINTERNALS_H

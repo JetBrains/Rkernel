@@ -15,10 +15,14 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "MySEXP.h"
+#include "../RInternals/RInternals.h"
 #include "Exceptions.h"
 #include "RObjects.h"
 #include <cstring>
 
+#ifdef RWRAPPER_DEBUG
+int unprotectCheckDisabled = 0;
+#endif
 std::unique_ptr<RObjects2> RI;
 
 static SEXP createErrorHandler() {
@@ -33,14 +37,42 @@ static SEXP createErrorHandler() {
   return Rf_eval(expr[0], R_BaseEnv);
 }
 
-SEXP safeEval(SEXP expr, SEXP env) {
+static SEXP evalImpl(SEXP x, SEXP env, bool toplevel) {
+  if (toplevel) {
+    SEXP data[3] = {x, env, R_NilValue};
+    Rboolean success = R_ToplevelExec([] (void* ptr) {
+      auto data = (SEXP*)ptr;
+      data[2] = Rf_eval(data[0], data[1]);
+    }, (void*)data);
+    if (success) {
+      return data[2];
+    } else {
+      throw RJumpToToplevelException();
+    }
+  }
+  if (!isUnwindAvailable) {
+    return Rf_eval(x, env);
+  }
+  std::pair<SEXP, SEXP> data = {x, env};
+  ShieldSEXP token = ptr_R_MakeUnwindCont();
+  return ptr_R_UnwindProtect([] (void* ptr) {
+    auto pair = (std::pair<SEXP, SEXP>*)ptr;
+    return Rf_eval(pair->first, pair->second);
+  }, (void*)&data, [] (void* token, Rboolean jump) {
+    if (jump) {
+      throw RUnwindException((SEXP)token);
+    }
+  }, (void*)token, token);
+}
+
+SEXP safeEval(SEXP expr, SEXP env, bool toplevel) {
   ShieldSEXP shieldExpr = expr, shieldEnv = env;
   ShieldSEXP call1 = Rf_lang3(Rf_install("evalq"), expr, env);
   static PrSEXP handler = createErrorHandler();
   ShieldSEXP call2 = Rf_lang4(Rf_install("tryCatch"), call1, handler, handler);
   SET_TAG(CDDR(call2), Rf_install("error"));
   SET_TAG(CDDDR(call2), Rf_install("interrupt"));
-  ShieldSEXP value = Rf_eval(call2, R_BaseEnv);
+  ShieldSEXP value = evalImpl(call2, R_BaseEnv, toplevel);
   if (Rf_inherits(value, "condition")) {
     ShieldSEXP returnErrorAttr = Rf_install("rwr_return_error");
     if (Rf_getAttrib(value, returnErrorAttr) != R_NilValue) {

@@ -45,11 +45,30 @@ public:
   const char* what() const throw() override { return "Interrupted"; }
 };
 
+class RJumpToToplevelException : public RExceptionBase {
+public:
+  const char* what() const throw() override { return "Jump to toplevel occurred"; }
+};
+
 class RInvalidArgument : public RExceptionBase {
   std::string message;
 public:
   RInvalidArgument(const char* msg = "Invalid argument") : message(msg) {}
   const char* what() const throw() override { return message.c_str(); }
+};
+
+struct RUnwindException {
+  PrSEXP token;
+  RUnwindException(SEXP x) : token(x) {
+#ifdef RWRAPPER_DEBUG
+    unprotectCheckDisabled++;
+#endif
+  }
+  ~RUnwindException() {
+#ifdef RWRAPPER_DEBUG
+    unprotectCheckDisabled--;
+#endif
+  }
 };
 
 #endif //RWRAPPER_R_STUFF_EXCEPTIONS_H

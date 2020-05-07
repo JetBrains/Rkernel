@@ -18,20 +18,36 @@
 #define RWRAPPER_R_STUFF_EXPORT_H
 
 #include "Exceptions.h"
+#include "RObjects.h"
 
 extern "C" {
 LibExtern int R_interrupts_pending;
 }
 
-#define CPP_BEGIN try {
+#define CPP_BEGIN int rwrOutType = 0; \
+  SEXP rwrOutValue = R_NilValue; \
+  try {
 
 #define CPP_END_VOID                       \
   } catch (RInterruptedException const&) { \
     R_interrupts_pending = 1;              \
+  } catch (RError const& e) {              \
+    rwrOutType = 1;                        \
+    rwrOutValue = e.getRError();           \
+  } catch (RUnwindException const& e) {    \
+    rwrOutType = 2;                        \
+    rwrOutValue = e.token;                 \
   } catch (std::exception const& e) {      \
-    Rf_error(e.what());                    \
+    rwrOutType = 1;                        \
+    rwrOutValue = toSEXP(e.what());        \
   } catch (...) {                          \
-    Rf_error("c++ exception");             \
+    rwrOutType = 1;                        \
+    rwrOutValue = toSEXP("c++ exception"); \
+  }                                        \
+  if (rwrOutType == 1) {                   \
+    Rf_eval(Rf_lang2(RI->stop, rwrOutValue), R_BaseEnv); \
+  } else if (rwrOutType == 2) {            \
+    ptr_R_ContinueUnwind(rwrOutValue);     \
   }                                        \
   R_CheckUserInterrupt();
 

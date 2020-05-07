@@ -14,21 +14,22 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
 #include "RPIServiceImpl.h"
-#include <condition_variable>
-#include <memory>
-#include <grpcpp/server_builder.h>
-#include "IO.h"
-#include <sstream>
-#include <cstdlib>
-#include <thread>
-#include "util/ScopedAssign.h"
-#include "HTMLViewer.h"
-#include "util/StringUtil.h"
 #include "EventLoop.h"
+#include "HTMLViewer.h"
+#include "IO.h"
+#include "RStuff/Export.h"
 #include "RStuff/RObjects.h"
 #include "RStuff/RUtil.h"
+#include "util/ScopedAssign.h"
+#include "util/StringUtil.h"
+#include <condition_variable>
+#include <cstdlib>
+#include <grpcpp/server_builder.h>
+#include <memory>
+#include <sstream>
+#include <thread>
+#include "util/Finally.h"
 
 using namespace grpc;
 
@@ -266,7 +267,24 @@ void RPIServiceImpl::mainLoop() {
   asyncEvents.push(event);
   ScopedAssign<ReplState> withState(replState, PROMPT);
   WithOutputHandler withOutputHandler(replOutputHandler);
-  runEventLoop(); // Does not return
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "EndlessLoop"
+  while (true) {
+    R_ToplevelExec([] (void*) {
+      CPP_BEGIN
+      runEventLoop();
+      CPP_END_VOID
+    }, nullptr);
+    RDebugger::setBytecodeEnabled(true);
+    rDebugger.disable();
+    rDebugger.clearStack();
+    if (replState != PROMPT) {
+      event.mutable_prompt();
+      asyncEvents.push(event);
+      replState = PROMPT;
+    }
+  }
+#pragma clang diagnostic pop
 }
 
 void RPIServiceImpl::setChildProcessState() {
@@ -288,18 +306,22 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
     R_interrupts_pending = 0;
     started = true;
     if (!cancelled) {
+      auto finally = Finally{[&] {
+        std::unique_lock<std::mutex> lock1(mutex);
+        done = true;
+        doneVar.notify_one();
+        R_interrupts_pending = 0;
+      }};
       try {
         f();
+      } catch (RUnwindException const&) {
+        throw;
       } catch (std::exception const& e) {
         std::cerr << "Exception: " << e.what() << "\n";
       } catch (...) {
         std::cerr << "Exception: unknown\n";
       }
     }
-    std::unique_lock<std::mutex> lock1(mutex);
-    done = true;
-    doneVar.notify_one();
-    R_interrupts_pending = 0;
   }, immediate);
   if (context == nullptr) {
     while (!done) {

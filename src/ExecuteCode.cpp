@@ -14,14 +14,14 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
-#include "RPIServiceImpl.h"
-#include <grpcpp/server_builder.h>
-#include "IO.h"
-#include "util/ScopedAssign.h"
-#include "debugger/SourceFileManager.h"
-#include "RStuff/RUtil.h"
 #include "EventLoop.h"
+#include "IO.h"
+#include "RPIServiceImpl.h"
+#include "RStuff/RUtil.h"
+#include "debugger/SourceFileManager.h"
+#include "util/ScopedAssign.h"
+#include <grpcpp/server_builder.h>
+#include "util/Finally.h"
 
 static void executeCodeImpl(SEXP exprs, SEXP env, bool withEcho = true, bool isDebug = false,
                             bool withExceptionHandler = false, bool setLasValue = false,
@@ -79,6 +79,19 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
           }
         });
 
+    auto finally = Finally {[&] {
+      if (isRepl) {
+        AsyncEvent event;
+        if (replState == DEBUG_PROMPT) {
+          event.mutable_debugprompt()->set_changed(false);
+        } else {
+          event.mutable_prompt();
+          rDebugger.clearStack();
+        }
+        asyncEvents.push(event);
+      }
+    }};
+
     bool disableBytecode = RDebugger::isBytecodeEnabled() && isDebug;
     try {
       if (disableBytecode) RDebugger::setBytecodeEnabled(false);
@@ -118,7 +131,8 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
     } catch (RInterruptedException const& e) {
       if (isRepl) {
         AsyncEvent event;
-        event.mutable_exception()->mutable_exception()->set_message("Interrupted");
+        event.mutable_exception()->mutable_exception()->set_message(
+            "Interrupted");
         event.mutable_exception()->mutable_exception()->mutable_interrupted();
         rpiService->sendAsyncEvent(event);
       }
@@ -127,20 +141,9 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         response.set_exception(e.what());
         writer->Write(response);
       }
-    } catch (...) {
+    } catch (RJumpToToplevelException const&) {
     }
     if (disableBytecode) RDebugger::setBytecodeEnabled(true);
-
-    if (isRepl) {
-      AsyncEvent event;
-      if (replState == DEBUG_PROMPT) {
-        event.mutable_debugprompt()->set_changed(false);
-      } else {
-        event.mutable_prompt();
-        rDebugger.clearStack();
-      }
-      asyncEvents.push(event);
-    }
   }, context);
   return Status::OK;
 }
@@ -170,6 +173,7 @@ void RPIServiceImpl::debugPromptHandler() {
 
 Status RPIServiceImpl::executeCommand(ServerContext* context, const std::string& command, ServerWriter<CommandOutput>* writer) {
   executeOnMainThread([&] {
+    std::cerr << "Executing " << command << "\n";
     WithOutputHandler withOutputHandler([&](const char* buf, int len, OutputType type) {
       CommandOutput response;
       response.set_type(type == STDOUT ? CommandOutput::STDOUT : CommandOutput::STDERR);
@@ -293,7 +297,7 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     if (withEcho) {
       forEval = Rf_lang2(RI->withVisible, forEval);
     }
-    ShieldSEXP result = safeEval(forEval, R_BaseEnv);
+    ShieldSEXP result = safeEval(forEval, R_BaseEnv, true);
     ShieldSEXP value = result["value"];
     bool visible = false;
     if (withEcho && asBool(result["visible"])) {
@@ -306,7 +310,7 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
       if (withExceptionHandler) {
         forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
       }
-      safeEval(forEval, R_BaseEnv);
+      safeEval(forEval, R_BaseEnv, true);
     }
     if (setLastValue) {
       SET_SYMVALUE(R_LastvalueSymbol, value);

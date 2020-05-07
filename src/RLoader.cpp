@@ -163,6 +163,7 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
     result->mutable_error()->set_text(e.what());
   } catch (...) {
     result->mutable_error()->set_text("Error");
+    throw;
   }
 }
 
@@ -284,6 +285,7 @@ Status RPIServiceImpl::loaderGetValueInfo(ServerContext* context, const RRef* re
       response->mutable_error()->set_text(e.what());
     } catch (...) {
       response->mutable_error()->set_text("Error");
+      throw;
     }
   }, context, true);
   return Status::OK;

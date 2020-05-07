@@ -115,6 +115,7 @@ Status RPIServiceImpl::evaluateAsText(ServerContext* context, const RRef* reques
       response->set_error(e.what());
     } catch (...) {
       response->set_error("");
+      throw;
     }
   }, context, true);
   return Status::OK;
@@ -286,6 +287,7 @@ Status RPIServiceImpl::setValue(ServerContext* context, const SetValueRequest* r
       response->set_error(e.what());
     } catch (...) {
       response->set_error("Error");
+      throw;
     }
   }, context, true);
   return Status::OK;
