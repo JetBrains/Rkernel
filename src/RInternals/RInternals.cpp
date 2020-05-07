@@ -37,15 +37,15 @@ bool isOldR() {
 }
 
 static DL_FUNC findSymbol(const char* name) {
-  return R_FindSymbol(name, "", nullptr);
+return R_FindSymbol(name, "", nullptr);
 }
 
 void initRInternals() {
   DllInfo *dll = R_getEmbeddingDllInfo();
   R_useDynamicSymbols(dll, TRUE);
-  ptr_R_UnwindProtect = (typeof(ptr_R_UnwindProtect))findSymbol("R_UnwindProtect");
-  ptr_R_ContinueUnwind = (typeof(ptr_R_ContinueUnwind))findSymbol("R_ContinueUnwind");
-  ptr_R_MakeUnwindCont = (typeof(ptr_R_MakeUnwindCont))findSymbol("R_MakeUnwindCont");
+  ptr_R_UnwindProtect = (R_UnwindProtect_t)findSymbol("R_UnwindProtect");
+  ptr_R_ContinueUnwind = (R_ContinueUnwind_t)findSymbol("R_ContinueUnwind");
+  ptr_R_MakeUnwindCont = (R_MakeUnwindCont_t)findSymbol("R_MakeUnwindCont");
   isUnwindAvailable = ptr_R_MakeUnwindCont != nullptr && ptr_R_ContinueUnwind != nullptr && ptr_R_UnwindProtect != nullptr;
   R_useDynamicSymbols(dll, FALSE);
 
@@ -133,10 +133,8 @@ void setFunTabFunction(int offset, FunTabFunction func) {
 }
 
 bool isUnwindAvailable = false;
-SEXP (*ptr_R_UnwindProtect)(SEXP (*fun)(void *data), void *data,
-                            void (*cleanfun)(void *data, Rboolean jump),
-                            void *cleandata, SEXP cont) = nullptr;
-void (*ptr_R_ContinueUnwind)(SEXP cont) = nullptr;
-SEXP (*ptr_R_MakeUnwindCont)() = nullptr;
+R_UnwindProtect_t ptr_R_UnwindProtect = nullptr;
+R_ContinueUnwind_t ptr_R_ContinueUnwind = nullptr;
+R_MakeUnwindCont_t ptr_R_MakeUnwindCont = nullptr;
 
 #pragma clang diagnostic pop
