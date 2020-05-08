@@ -83,7 +83,6 @@ typedef struct {
   PPinfo gram;
 } FUNTAB;
 
-LibExtern FUNTAB R_FunTab[];
 };
 
 #endif //RWRAPPER_INTERNALFUNTAB_H

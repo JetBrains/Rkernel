@@ -15,6 +15,11 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+#ifdef Win32
+# include <windows.h>
+#else
+# include <dlfcn.h>
+#endif
 #include <iostream>
 #include "InternalContext.h"
 #include "InternalFunTab.h"
@@ -36,18 +41,26 @@ bool isOldR() {
   return rVersion <= 33;
 }
 
-static DL_FUNC findSymbol(const char* name) {
-return R_FindSymbol(name, "", nullptr);
+#ifdef Win32
+static void* findSymbol(const char* name) {
+  return (void*)GetProcAddress(GetModuleHandleA("R.dll"), name);
 }
+#else
+static void* findSymbol(const char* name) {
+  return dlsym(RTLD_NEXT, name);
+}
+#endif
+
+static FUNTAB* R_FunTab;
 
 void initRInternals() {
-  DllInfo *dll = R_getEmbeddingDllInfo();
-  R_useDynamicSymbols(dll, TRUE);
   ptr_R_UnwindProtect = (R_UnwindProtect_t)findSymbol("R_UnwindProtect");
   ptr_R_ContinueUnwind = (R_ContinueUnwind_t)findSymbol("R_ContinueUnwind");
   ptr_R_MakeUnwindCont = (R_MakeUnwindCont_t)findSymbol("R_MakeUnwindCont");
   isUnwindAvailable = ptr_R_MakeUnwindCont != nullptr && ptr_R_ContinueUnwind != nullptr && ptr_R_UnwindProtect != nullptr;
-  R_useDynamicSymbols(dll, FALSE);
+
+  R_FunTab = (FUNTAB*)findSymbol("R_FunTab");
+  assert(R_FunTab != nullptr);
 
   ShieldSEXP v = Rf_eval(Rf_install("version"), R_BaseEnv);
   if (v.type() != VECSXP) return;
