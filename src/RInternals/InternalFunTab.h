@@ -82,8 +82,6 @@ typedef struct {
   int arity;
   PPinfo gram;
 } FUNTAB;
-
-LibExtern FUNTAB R_FunTab[];
 };
 
 #endif //RWRAPPER_INTERNALFUNTAB_H

@@ -36,9 +36,11 @@ bool isOldR() {
   return rVersion <= 33;
 }
 
-static DL_FUNC findSymbol(const char* name) {
-return R_FindSymbol(name, "", nullptr);
+static void* findSymbol(const char* name) {
+  return (void*)R_FindSymbol(name, "", nullptr);
 }
+
+static FUNTAB* R_FunTab;
 
 void initRInternals() {
   DllInfo *dll = R_getEmbeddingDllInfo();
@@ -46,6 +48,8 @@ void initRInternals() {
   ptr_R_UnwindProtect = (R_UnwindProtect_t)findSymbol("R_UnwindProtect");
   ptr_R_ContinueUnwind = (R_ContinueUnwind_t)findSymbol("R_ContinueUnwind");
   ptr_R_MakeUnwindCont = (R_MakeUnwindCont_t)findSymbol("R_MakeUnwindCont");
+  R_FunTab = (FUNTAB*)findSymbol("R_FunTab");
+  assert(R_FunTab != nullptr);
   isUnwindAvailable = ptr_R_MakeUnwindCont != nullptr && ptr_R_ContinueUnwind != nullptr && ptr_R_UnwindProtect != nullptr;
   R_useDynamicSymbols(dll, FALSE);
 
