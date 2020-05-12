@@ -69,9 +69,9 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
 
   CPP_BEGIN
     std::string command = cmd;
-    if (fin[0] != '\0') command = "(" + command + ") < \"" + escapeStringCharacters(fin) + "\"";
-    if (fout != nullptr && fout[0] != '\0') command = "(" + command + ") > \"" + escapeStringCharacters(fout) + "\"";
-    if (ferr != nullptr && ferr[0] != '\0') command = "(" + command + ") 2> \"" + escapeStringCharacters(ferr) + "\"";
+    if (fin[0] != '\0') command += " < \"" + escapeStringCharacters(fin) + "\"";
+    if (fout != nullptr && fout[0] != '\0') command += " > \"" + escapeStringCharacters(fout) + "\"";
+    if (ferr != nullptr && ferr[0] != '\0') command += " 2> \"" + escapeStringCharacters(ferr) + "\"";
     bool intern = flag == 3;
     DoSystemResult res = myDoSystemImpl(command.c_str(), intern, timeout, fin[0] == '\0', fout == nullptr, ferr == nullptr, flag == 0);
     if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
