@@ -257,13 +257,64 @@ options(install.packages.compile.from.source = "always")
 
 .jetbrains$previewDataImportResult <- NULL
 
-.jetbrains$previewDataImport <- function(dataImportOptions) {
-  result <- .rs.previewDataImport(dataImportOptions)
+.jetbrains$previewDataImport <- function(path, mode, row.count, importOptions) {
+  result <- if (mode != "base") {
+    .jetbrains$previewAdvancedDataImport(path, mode, row.count, importOptions)
+  } else {
+    .jetbrains$previewBaseDataImport(path, row.count, importOptions)
+  }
   .jetbrains$previewDataImportResult <- result
   if (is.null(result)) {
     return(NULL)
   }
   result$parsingErrors
+}
+
+.jetbrains$commitDataImport <- function(path, mode, importOptions) {
+  .jetbrains$previewDataImport(path, mode, NULL, importOptions)
+  result <- .jetbrains$previewDataImportResult
+  .jetbrains$previewDataImportResult <- NULL
+  if (is.null(result)) {
+    return(NULL)
+  }
+  result$data
+}
+
+.jetbrains$previewAdvancedDataImport <- function(path, mode, row.count, importOptions) {
+  importOptions$openDataViewer <- FALSE
+  importOptions$importLocation <- path
+  importOptions$modelLocation <- NULL
+  importOptions$mode <- mode
+  if (!is.null(row.count)) {
+    importOptions$maxRows <- row.count
+  }
+  .rs.previewDataImport(importOptions)
+}
+
+.jetbrains$previewBaseDataImport <- function(path, row.count, importOptions) {
+  if (!is.null(row.count)) {
+    importOptions$nrows <- row.count
+  }
+  importOptions$file <- path
+  tryCatch({
+    # try to use read.csv directly if possible (since this is a common case
+    # and since LibreOffice spreadsheet exports produce files unparsable
+    # by read.table). check Workspace.makeCommand if we want to deduce
+    # other more concrete read calls.
+    data <- if (identical(importOptions$sep, ",") && identical(importOptions$dec, ".") && identical(importOptions$quote, "\"")) {
+      importOptions$sep <- NULL
+      importOptions$dec <- NULL
+      importOptions$quote <- NULL
+      do.call(read.csv, importOptions)
+    } else {
+      do.call(read.table, importOptions)
+    }
+    return(list(data = data, parsingErrors = 0))
+  }, error=function(e) {
+    data <- data.frame(Error = e$message)
+    parsingErrors <- if (!is.null(row.count)) row.count else 0
+    return(list(data = data, parsingErrors = parsingErrors))
+  })
 }
 
 local({

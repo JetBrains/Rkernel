@@ -60,6 +60,12 @@ namespace {
     return sout.str();
   }
 
+  std::string buildList(const google::protobuf::Map<std::string, std::string>& options) {
+    auto mapper = [](const std::pair<std::string, std::string>& pair) {
+      return pair.first + " = " + pair.second;
+    };
+    return joinToString(options, mapper, "list(", ")");
+  }
 }
 
 RPIServiceImpl::RPIServiceImpl() :
@@ -194,24 +200,20 @@ Status RPIServiceImpl::repoRemovePackage(ServerContext* context, const RepoRemov
 
 Status RPIServiceImpl::previewDataImport(ServerContext* context, const PreviewDataImportRequest* request, ServerWriter<CommandOutput>* writer) {
   auto sout = std::ostringstream();
-  sout << "list(";
-  auto& options = request->options();
-  auto isFirst = true;
-  for (auto& pair : options) {
-    if (!isFirst) {
-      sout << ", ";
-    }
-    isFirst = false;
-    sout << pair.first << " = " << pair.second;
-  }
-  sout << ")";
+  sout << quote(escapeStringCharacters(request->path())) << ", ";
+  sout << quote(request->mode()) << ", ";
+  sout << request->rowcount() << ", ";
+  sout << buildList(request->options());
   auto command = buildCallCommand(".jetbrains$previewDataImport", sout.str());
   return executeCommand(context, command, writer);
 }
 
-Status RPIServiceImpl::commitDataImport(ServerContext* context, const StringValue* request, Empty*) {
+Status RPIServiceImpl::commitDataImport(ServerContext* context, const CommitDataImportRequest* request, Empty*) {
   auto sout = std::ostringstream();
-  sout << "eval(parse(text = paste(" << quote(request->value()) << ", '<-', .jetbrains$previewDataImportResult$previewCode)))";
+  sout << request->name() << " <- .jetbrains$commitDataImport(";
+  sout << quote(escapeStringCharacters(request->path())) << ", ";
+  sout << quote(request->mode()) << ", ";
+  sout << buildList(request->options()) << ")";
   return replExecuteCommand(context, sout.str());
 }
 

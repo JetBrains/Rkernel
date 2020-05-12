@@ -104,7 +104,7 @@ public:
   Status repoRemovePackage(ServerContext* context, const RepoRemovePackageRequest* request, Empty*) override;
 
   Status previewDataImport(ServerContext* context, const PreviewDataImportRequest* request, ServerWriter<CommandOutput>* writer) override;
-  Status commitDataImport(ServerContext* context, const StringValue* request, Empty*) override;
+  Status commitDataImport(ServerContext* context, const CommitDataImportRequest* request, Empty*) override;
 
   Status dataFrameRegister(ServerContext* context, const RRef* request, Int32Value* response) override;
   Status dataFrameGetInfo(ServerContext* context, const RRef* request, DataFrameInfoResponse* response) override;

@@ -793,13 +793,12 @@
       data <- suppressWarnings(
          eval(parse(text=importInfo$previewCode))
       )
-      data <- head(data, dataImportOptions$maxPreviewRows)
 
       parsingErrors <- parsingErrorsFromMode(dataImportOptions$mode, data)
 
       options <- optionsInfoFromOptions[[dataImportOptions$mode]]()
 
-      return(list(data = data, previewCode = importInfo$previewCode, parsingErrors = parsingErrors))
+      return(list(data = data, parsingErrors = parsingErrors))
    }, error = function(e) {
       return(NULL)
    })
