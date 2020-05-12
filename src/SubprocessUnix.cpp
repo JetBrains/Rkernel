@@ -53,31 +53,29 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   timeout = argsCount == 3 ? Rf_asInteger(CADDR(args)) : 0;
   if (timeout == NA_INTEGER || timeout < 0)
     Rf_error("invalid 'timeout' argument");
-  const char *cmd = Rf_translateChar(STRING_ELT(CAR(args), 0));
-  if (timeout > 0) {
-    /* command ending with & is not supported by timeout */
-    const void *vmax = vmaxget();
-    const char *c = Rf_translateCharUTF8(STRING_ELT(CAR(args), 0));
-    int last_is_amp = 0;
-    int len = 0;
-    for(;*c; c += len) {
-      len = utf8clen(*c);
-      if (len == 1) {
-        if (*c == '&')
-          last_is_amp = 1;
-        else if (*c != ' ' && *c != '\t' && *c != '\r' && *c != '\n')
-          last_is_amp = 0;
-      } else
+  const void *vmax = vmaxget();
+  const char *cmd = Rf_translateCharUTF8(STRING_ELT(CAR(args), 0));
+  const char *c = cmd;
+  int last_is_amp = 0;
+  int len = 0;
+  for(;*c; c += len) {
+    len = utf8clen(*c);
+    if (len == 1) {
+      if (*c == '&')
+        last_is_amp = 1;
+      else if (*c != ' ' && *c != '\t' && *c != '\r' && *c != '\n')
         last_is_amp = 0;
-    }
-    if (last_is_amp) {
-      Rf_error("Timeout with background running processes is not supported.");
-    }
-    vmaxset(vmax);
+    } else
+      last_is_amp = 0;
   }
+  /* command ending with & is not supported by timeout */
+  if (timeout > 0 && last_is_amp) {
+    Rf_error("Timeout with background running processes is not supported.");
+  }
+  vmaxset(vmax);
 
   CPP_BEGIN
-    DoSystemResult res = myDoSystemImpl(cmd, intern, timeout);
+    DoSystemResult res = myDoSystemImpl(cmd, intern, timeout, true, false, false, last_is_amp);
     if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
     if (intern) {
       std::vector<std::string> lines;

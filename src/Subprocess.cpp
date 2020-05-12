@@ -56,7 +56,33 @@ private:
   volatile bool finished = false;
 };
 
-DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout, bool replInput, bool ignoreStdout, bool ignoreStderr) {
+DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout, bool replInput, bool ignoreStdout, bool ignoreStderr, bool background) {
+  if (background) {
+      auto process = std::make_unique<TinyProcessLib::Process>(
+        cmd, "",
+        [&] (const char* s, size_t len) {
+          if (!ignoreStdout) {
+            rpiService->executeOnMainThread([&] {
+              WithOutputHandler with(rpiService->replOutputHandler);
+              Rprintf("%s", std::string(s, s + len).c_str());
+            });
+          }
+        },
+        [&] (const char* s, size_t len) {
+          if (!ignoreStderr) {
+            rpiService->executeOnMainThread([&] {
+              WithOutputHandler with(rpiService->replOutputHandler);
+              REprintf("%s", std::string(s, s + len).c_str());
+            });
+          }
+        },
+        false
+    );
+    std::thread([process = std::move(process)] {
+      process->get_exit_status();
+    }).detach();
+    return {"", 0, false};
+  }
   std::string stdoutBuf = "";
   TinyProcessLib::Process process(
       cmd, "",
@@ -100,7 +126,7 @@ DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout, 
     [&] { process.kill(); }
   );
   terminationThread.join();
-  return { stdoutBuf, exitCode, timedOut };
+  return { stdoutBuf, timedOut ? 124 : exitCode, timedOut };
 }
 
 void initDoSystem() {

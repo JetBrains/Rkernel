@@ -31,6 +31,7 @@ struct DoSystemResult {
   bool timedOut = false;
 };
 DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout,
-                    bool replInput = true, bool ignoreStdout = false, bool ignoreStderr = false);
+                              bool replInput = true, bool ignoreStdout = false, bool ignoreStderr = false,
+                              bool background = false);
 
 #endif //RWRAPPER_SUBPROCESS_H

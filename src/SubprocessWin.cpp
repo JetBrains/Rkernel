@@ -37,15 +37,10 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   args = CDR(args);
   int flag = Rf_asInteger(CAR(args));
   args = CDR(args);
-  int vis;
   if (flag >= 20) {
-    vis = -1;
     flag -= 20;
   } else if (flag >= 10) {
-    vis = 0;
     flag -= 10;
-  } else {
-    vis = 1;
   }
 
   SEXP Stdin = CAR(args);
@@ -78,7 +73,7 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
     if (fout != nullptr && fout[0] != '\0') command = "(" + command + ") > \"" + escapeStringCharacters(fout) + "\"";
     if (ferr != nullptr && ferr[0] != '\0') command = "(" + command + ") 2> \"" + escapeStringCharacters(ferr) + "\"";
     bool intern = flag == 3;
-    DoSystemResult res = myDoSystemImpl(command.c_str(), intern, timeout, fin[0] == '\0', fout == nullptr, ferr == nullptr);
+    DoSystemResult res = myDoSystemImpl(command.c_str(), intern, timeout, fin[0] == '\0', fout == nullptr, ferr == nullptr, flag == 0);
     if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
     if (intern) {
       std::vector<std::string> lines;
