@@ -32,6 +32,8 @@ public:
   void setSrcrefs(SEXP srcfile);
   SEXP getWholeSrcref(SEXP srcfile);
 
+  std::unordered_map<SEXP, std::string> functionReplacement;
+
 private:
   std::ostringstream text;
   int indent = 0;

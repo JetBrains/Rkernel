@@ -14,18 +14,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#ifndef RWRAPPER_OPTIONS_H
-#define RWRAPPER_OPTIONS_H
 
-#include "cxxopts.hpp"
+#ifndef RWRAPPER_CRASH_REPORT_H
+#define RWRAPPER_CRASH_REPORT_H
 
-struct CommandLineOptions {
-  bool withTimeout = false;
-  std::string crashReportFile;
+#include <string>
 
-  void parse(int argc, char* argv[]);
-};
+void saveRWrapperCrashReport(std::string const& crashReportFile);
 
-extern CommandLineOptions commandLineOptions;
-
-#endif //RWRAPPER_OPTIONS_H
+#endif // RWRAPPER_CRASH_REPORT_H

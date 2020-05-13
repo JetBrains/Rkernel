@@ -23,6 +23,7 @@
 #include "util/StringUtil.h"
 #include "EventLoop.h"
 #include "Session.h"
+#include <signal.h>
 
 static std::string getRVersion() {
   return (std::string)asStringUTF8(RI->doubleSubscript(RI->version, "major")) + "." +
@@ -173,5 +174,10 @@ Status RPIServiceImpl::clientRequestFinished(ServerContext* context, const Empty
 
 Status RPIServiceImpl::getNextAsyncEvent(ServerContext*, const Empty*, AsyncEvent* response) {
   response->CopyFrom(asyncEvents.pop());
+  return Status::OK;
+}
+
+Status RPIServiceImpl::raiseSigsegv(ServerContext* context, const Empty*, Empty*) {
+  raise(SIGSEGV);
   return Status::OK;
 }

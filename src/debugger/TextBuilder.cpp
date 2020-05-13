@@ -381,6 +381,10 @@ void TextBuilder::buildFunctionHeader(SEXP args) {
 }
 
 void TextBuilder::buildFunction(SEXP func, bool withBody) {
+  if (functionReplacement.count(func)) {
+    text << functionReplacement[func];
+    return;
+  }
   SHIELD(func);
   switch (TYPEOF(func)) {
     case CLOSXP: {

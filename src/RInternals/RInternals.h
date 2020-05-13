@@ -29,6 +29,7 @@ bool isOldR();
 RContext* getGlobalContext();
 RContext* getNextContext(RContext* ctx);
 bool isCallContext(RContext* ctx);
+bool isToplevelContext(RContext* ctx);
 SEXP getFunction(RContext* ctx);
 SEXP getCall(RContext* ctx);
 SEXP getSrcref(RContext* ctx);

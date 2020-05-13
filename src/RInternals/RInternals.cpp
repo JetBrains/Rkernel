@@ -79,6 +79,11 @@ static bool _isCallContext(RContext* ctx) {
 }
 
 template<typename S>
+static bool _isToplevelContext(RContext* ctx) {
+  return ((typename S::RCNTXT*)ctx)->callflag == CTXT_TOPLEVEL;
+}
+
+template<typename S>
 static RContext* _getNextContext(RContext* ctx) {
   return (RContext*) ((typename S::RCNTXT*) ctx)->nextcontext;
 }
@@ -110,6 +115,7 @@ static int _getEvalDepth(RContext* ctx) {
 
 RContext* getNextContext(RContext* ctx) { SELECT(_getNextContext, ctx); }
 bool isCallContext(RContext* ctx) { SELECT(_isCallContext, ctx); }
+bool isToplevelContext(RContext* ctx) { SELECT(_isToplevelContext, ctx); }
 SEXP getFunction(RContext* ctx) { SELECT(_getFunction, ctx); }
 SEXP getCall(RContext* ctx) { SELECT(_getCall, ctx); }
 SEXP getSrcref(RContext* ctx) { SELECT(_getSrcref, ctx); }

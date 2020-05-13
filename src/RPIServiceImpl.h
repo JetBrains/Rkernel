@@ -126,6 +126,7 @@ public:
   Status findPackagePathByTopic(ServerContext* context, const FindPackagePathByTopicRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status findPackagePathByPackageName(ServerContext* context, const FindPackagePathByPackageNameRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status setSaveOnExit(ServerContext* context, const BoolValue* request, Empty*) override;
+  Status raiseSigsegv(ServerContext* context, const Empty*, Empty*) override;
 
   void mainLoop();
   std::string readLineHandler(std::string const& prompt);
@@ -176,6 +177,7 @@ private:
   Status replExecuteCommand(ServerContext* context, const std::string& command);
 
   friend void quitRPIService();
+  friend void saveRWrapperCrashReport(std::string const&);
 };
 
 const int CLIENT_RPC_TIMEOUT_MILLIS = 60000;

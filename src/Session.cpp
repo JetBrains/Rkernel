@@ -23,6 +23,7 @@
 #include <Rinternals.h>
 #include <signal.h>
 #include <R_ext/RStartup.h>
+#include "CrashReport.h"
 
 static const char* SAVED_DATA_ENV = ".jetbrains_saved_data_env";
 
@@ -110,6 +111,11 @@ static void sigsegvHandler(int signum) {
   R_CStackLimit = (uintptr_t) -1;
   /* Do not translate these messages */
   REprintf("\n *** caught %s ***\n", signum == SIGILL ? "illegal operation" : "segfault");
+
+  if (!commandLineOptions.crashReportFile.empty()) {
+    saveRWrapperCrashReport(commandLineOptions.crashReportFile);
+  }
+
   sessionManager.quit();
   R_CleanTempDir();
   signal(signum, SIG_DFL);
@@ -219,6 +225,10 @@ static void sigsegvHandler(int signum, siginfo_t* ip, void*) {
           break;
       }
     REprintf("address %p, cause '%s'\n", ip->si_addr, s);
+  }
+
+  if (!commandLineOptions.crashReportFile.empty()) {
+    saveRWrapperCrashReport(commandLineOptions.crashReportFile);
   }
 
   sessionManager.quit();

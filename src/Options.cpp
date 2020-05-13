@@ -23,9 +23,7 @@ void CommandLineOptions::parse(int argc, char* argv[]) {
   options.add_options()
       ("h,help", "Show help and exit")
       ("with-timeout", "Terminate RWrapper if no RPCs were received for a minute")
-      ("workspace-file", "File for saving and loading R workspace", cxxopts::value<std::string>())
-      ("no-restore", "Don't restore workspace from 'workspace-file'")
-      ("no-save", "Don't automatically save workspace at the end");
+      ("crash-report-file", "File for saving crash report", cxxopts::value<std::string>());
   try {
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -33,6 +31,9 @@ void CommandLineOptions::parse(int argc, char* argv[]) {
       exit(0);
     }
     withTimeout = result["with-timeout"].as<bool>();
+    if (result.count("crash-report-file")) {
+      crashReportFile = result["crash-report-file"].as<std::string>();
+    }
   } catch (cxxopts::OptionParseException const& e) {
     std::cerr << e.what() << "\n";
     exit(1);
