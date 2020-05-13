@@ -122,9 +122,20 @@ static void sigsegvHandler(int signum) {
   raise(signum);
 }
 
+static void winSigintHandler(int signum) {
+  if (!commandLineOptions.crashReportFile.empty()) {
+    R_CStackLimit = (uintptr_t) -1;
+    saveRWrapperCrashReport(commandLineOptions.crashReportFile);
+  }
+  sessionManager.quit();
+  R_CleanTempDir();
+  abort();
+}
+
 static void initSegvHandler() {
   signal(SIGSEGV, sigsegvHandler);
   signal(SIGILL, sigsegvHandler);
+  signal(SIGINT, winSigintHandler);
 }
 #else
 // This is mostly copy-paste from R source code
