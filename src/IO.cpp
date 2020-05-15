@@ -145,14 +145,18 @@ inline void myWriteConsoleExImpl(const char* buf, int len, int type) {
 }
 
 void myWriteConsoleEx(const char* buf, int len, int type) {
+  CPP_BEGIN
   std::unique_lock<std::mutex> lock(outputMutex);
   myWriteConsoleExImpl(buf, len, type);
+  CPP_END_VOID
 }
 
 void myWriteConsoleExToSpecificHandler(const char* buf, int len, int type, int id) {
+  CPP_BEGIN
   std::unique_lock<std::mutex> lock(outputMutex);
   if (id != currentHandlerId) return;
   myWriteConsoleExImpl(buf, len, type);
+  CPP_END_VOID
 }
 
 void mySuicide(const char* message) {

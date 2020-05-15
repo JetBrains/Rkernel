@@ -119,23 +119,28 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
             type == CPLXSXP || type == NILSXP) {
           R_xlen_t length = var.length();
           value->set_isvector(length > 1);
-          ShieldSEXP unclassed =
-              Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
-          if (length <= MAX_PREVIEW_PRINTED_COUNT) {
-            bool trimmed;
-            value->set_textvalue(getPrintedValueWithLimit(unclassed, MAX_PREVIEW_STRING_LENGTH, trimmed));
-            value->set_iscomplete(!trimmed);
-          } else {
-            value->set_textvalue(getPrintedValueWithLimit(RI->subscript(
-                unclassed, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT)), MAX_PREVIEW_STRING_LENGTH));
-            value->set_iscomplete(false);
+          PrSEXP x = Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
+          bool isComplete = true;
+          if (length > MAX_PREVIEW_PRINTED_COUNT) {
+            isComplete = false;
+            x = RI->subscript(x, RI->colon(1, MAX_PREVIEW_PRINTED_COUNT));
           }
+          bool trimmed;
+          std::string s;
+          if (Rf_inherits(x, "factor")) {
+            s = evalAndGetPrintedValueWithLimit(
+                RI->printFactorSimple.lang(x),
+                MAX_PREVIEW_STRING_LENGTH, trimmed);
+          } else {
+            s = getPrintedValueWithLimit(x, MAX_PREVIEW_STRING_LENGTH, trimmed);
+          }
+          value->set_textvalue(s);
+          value->set_iscomplete(isComplete && !trimmed);
         } else if (type == STRSXP) {
           int length = var.length();
           value->set_isvector(length > 1);
           bool isComplete = length <= MAX_PREVIEW_PRINTED_COUNT;
-          ShieldSEXP unclassed =
-              Rf_inherits(var, "factor") ? (SEXP)var : RI->unclass(var);
+          ShieldSEXP unclassed = RI->unclass(var);
           ShieldSEXP vector =
               isComplete
                   ? (SEXP)unclassed
@@ -159,6 +164,9 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
         }
       }
     }
+  } catch (RInterruptedException const& e) {
+    result->mutable_error()->set_text(e.what());
+    throw;
   } catch (RExceptionBase const& e) {
     result->mutable_error()->set_text(e.what());
   } catch (...) {
@@ -297,6 +305,8 @@ Status RPIServiceImpl::getObjectSizes(ServerContext* context, const RRefList* re
       long long size;
       try {
         size = asInt64OrError(RI->objectSize(Rf_lang2(RI->quote, dereference(ref))));
+      } catch (RInterruptedException const&) {
+        throw;
       } catch (RExceptionBase const&) {
         size = -1;
       }

@@ -48,6 +48,8 @@ public:
   ~WithOption() {
     try {
       RI->options(named(name.c_str(), oldValue));
+    } catch (RInterruptedException const&) {
+      R_interrupts_pending = 1;
     } catch (RExceptionBase const&) {
     }
   }
@@ -69,8 +71,8 @@ inline std::string getPrintedValue(SEXP a) {
   return result;
 }
 
-inline std::string getPrintedValueWithLimit(SEXP a, int maxLength, bool &trimmed) {
-  SHIELD(a);
+inline std::string evalAndGetPrintedValueWithLimit(SEXP expr, int maxLength, bool &trimmed) {
+  SHIELD(expr);
   std::string result;
   trimmed = false;
   try {
@@ -79,19 +81,31 @@ inline std::string getPrintedValueWithLimit(SEXP a, int maxLength, bool &trimmed
         if (result.size() + c > maxLength) {
           trimmed = true;
           result.insert(result.end(), s, s + (maxLength - result.size()));
-          R_interrupts_pending = 1;
+          RI->stop(RI->errorCondition("", named("class", "printedValueWithLimitOverflow")));
         } else {
           result.insert(result.end(), s, s + c);
         }
       }
     });
     WithOption option("width", DEFAULT_WIDTH);
-    RI->print(Rf_lang2(RI->quote, a));
-  } catch (RInterruptedException const&) {
+    safeEval(expr, R_GlobalEnv);
+  } catch (RError const& e) {
+    if (!Rf_inherits(e.getRError(), "printedValueWithLimitOverflow")) {
+      throw;
+    }
   }
-  R_interrupts_pending = 0;
   fixUTF8Tail(result);
   return result;
+}
+
+inline std::string getPrintedValueWithLimit(SEXP a, int maxLength, bool &trimmed) {
+  SHIELD(a);
+  return evalAndGetPrintedValueWithLimit(RI->print.lang(RI->quote.lang(a)), maxLength, trimmed);
+}
+
+inline std::string evalAndGetPrintedValueWithLimit(SEXP expr, int maxLength) {
+  bool trimmed;
+  return evalAndGetPrintedValueWithLimit(expr, maxLength, trimmed);
 }
 
 inline std::string getPrintedValueWithLimit(SEXP a, int maxLength) {

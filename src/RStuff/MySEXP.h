@@ -120,6 +120,11 @@ public:
     return safeEval(Rf_lcons(x, buildArgList(std::forward<Args>(args)...)), R_GlobalEnv);
   }
 
+  template <typename ...Args>
+  SEXP lang(Args&& ...args) {
+    return Rf_lcons(x, buildArgList(std::forward<Args>(args)...));
+  }
+
 private:
   template <typename T, typename ...Args>
   static SEXP buildArgList(T&& a, Args&& ...args) {

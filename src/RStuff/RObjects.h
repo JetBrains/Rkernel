@@ -54,6 +54,7 @@ struct RObjects2 {
   PrSEXP doubleSubscriptAssign = baseEnv.getVar("[[<-");
   PrSEXP environmentName = baseEnv.getVar("environmentName");
   PrSEXP eq = baseEnv.getVar("==");
+  PrSEXP errorCondition = baseEnv.getVar("errorCondition");
   PrSEXP eval = baseEnv.getVar("eval");
   PrSEXP evalq = baseEnv.getVar("evalq");
   PrSEXP expression = baseEnv.getVar("expression");
@@ -242,6 +243,16 @@ struct RObjects2 {
 
   PrSEXP jetbrainsRunFunction = evalCode(
       "function(f) .Call(\".jetbrains_runFunction\", f)", baseEnv);
+
+  PrSEXP printFactorSimple = evalCode(
+      "function(x) {\n"
+      "  ord <- is.ordered(x)\n"
+      "  if (length(x) == 0) cat(if (ord) 'ordered' else 'factor', '(0)\\n', sep = '') else {\n"
+      "    xx <- character(length(x))\n"
+      "    xx[] <- as.character(x)\n"
+      "    print(xx, quote = FALSE)\n"
+      "  }\n"
+      "}", baseEnv);
 };
 
 extern std::unique_ptr<RObjects2> RI;
