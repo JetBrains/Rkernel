@@ -37,6 +37,7 @@ const int R_MAX_WIDTH_OPT = 10000;
 
 extern "C" {
 LibExtern int R_interrupts_pending;
+LibExtern Rboolean R_interrupts_suspended;
 }
 
 class WithOption {
