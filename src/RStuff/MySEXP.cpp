@@ -68,7 +68,7 @@ static SEXP evalImpl(SEXP x, SEXP env, bool toplevel) {
 
 SEXP safeEval(SEXP expr, SEXP env, bool toplevel) {
   Rboolean oldInterruptsSuspended = R_interrupts_suspended;
-  ScopedAssign<Rboolean> suspendInterrupts(R_interrupts_suspended, TRUE);
+  ScopedAssign<Rboolean> suspendInterrupts(R_interrupts_suspended, (Rboolean)TRUE);
   ShieldSEXP shieldExpr = expr, shieldEnv = env;
   ShieldSEXP safeEvalHelper = toSEXP(".jetbrains_safeEvalHelper");
   ShieldSEXP quoted = Rf_lang2(Rf_install("quote"), expr);
