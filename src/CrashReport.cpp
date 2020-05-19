@@ -106,6 +106,10 @@ static void writePackages(std::ofstream &out) {
 }
 
 void saveRWrapperCrashReport(std::string const& crashReportFile) {
+  static bool reportSaved = false;
+  if (reportSaved) return;
+  reportSaved = true;
+
   std::ofstream out(crashReportFile);
   out << LINE;
   out << "RWrapper crash report\n";

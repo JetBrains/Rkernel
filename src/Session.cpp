@@ -30,10 +30,10 @@ static const char* SAVED_DATA_ENV = ".jetbrains_saved_data_env";
 SessionManager sessionManager;
 
 static void loadWorkspace(std::string const& path);
-static void initSegvHandler();
+static void initHandlers();
 
 void SessionManager::init() {
-  initSegvHandler();
+  initHandlers();
 }
 
 void SessionManager::quit() {
@@ -123,6 +123,7 @@ static void sigsegvHandler(int signum) {
 }
 
 static void winSigintHandler(int signum) {
+  signal(SIGABRT, SIG_DFL);
   if (!commandLineOptions.crashReportFile.empty()) {
     R_CStackLimit = (uintptr_t) -1;
     saveRWrapperCrashReport(commandLineOptions.crashReportFile);
@@ -132,10 +133,21 @@ static void winSigintHandler(int signum) {
   abort();
 }
 
-static void initSegvHandler() {
+static void sigabrtHandler(int signum) {
+  signal(signum, SIG_DFL);
+  if (!commandLineOptions.crashReportFile.empty()) {
+    R_CStackLimit = (uintptr_t) -1;
+    saveRWrapperCrashReport(commandLineOptions.crashReportFile);
+  }
+  raise(signum);
+}
+
+static void initHandlers() {
   signal(SIGSEGV, sigsegvHandler);
   signal(SIGILL, sigsegvHandler);
   signal(SIGINT, winSigintHandler);
+  signal(SIGABRT, sigabrtHandler);
+  signal(SIGFPE, sigabrtHandler);
 }
 #else
 // This is mostly copy-paste from R source code
@@ -248,7 +260,16 @@ static void sigsegvHandler(int signum, siginfo_t* ip, void*) {
   raise(signum);
 }
 
-static void initSegvHandler() {
+static void sigabrtHandler(int signum) {
+  signal(signum, SIG_DFL);
+  if (!commandLineOptions.crashReportFile.empty()) {
+    R_CStackLimit = (uintptr_t) -1;
+    saveRWrapperCrashReport(commandLineOptions.crashReportFile);
+  }
+  raise(signum);
+}
+
+static void initHandlers() {
   struct sigaction sa;
   sa.sa_sigaction = sigsegvHandler;
   sigemptyset(&sa.sa_mask);
@@ -258,6 +279,8 @@ static void initSegvHandler() {
 #ifdef SIGBUS
   sigaction(SIGBUS, &sa, nullptr);
 #endif
+  signal(SIGABRT, sigabrtHandler);
+  signal(SIGFPE, sigabrtHandler);
 }
 #endif
 
