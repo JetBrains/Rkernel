@@ -301,8 +301,10 @@ void SourceFileManager::loadState(SEXP _list) {
   for (int i = 0; i < list.length(); ++i) {
     ShieldSEXP entry = list[i];
     if (entry.type() != VECSXP) continue;
+    std::string fileId = asStringUTF8(entry["fileId"]);
+    if (sourceFiles.count(fileId)) continue;
     std::unique_ptr<SourceFile> file = std::make_unique<SourceFile>();
-    file->fileId = asStringUTF8(entry["fileId"]);
+    file->fileId = fileId;
     file->name = asStringUTF8(entry["name"]);
     file->lines = entry["lines"];
     file->extPtr = entry["extPtr"];

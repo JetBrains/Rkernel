@@ -110,7 +110,11 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         }
       }
       PrSEXP expressions;
-      expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
+      if (isRepl) {
+        expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
+      } else {
+        expressions = parseCode(code, asBool(RI->getOption("keep.source")));
+      }
       executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl, setLastValue, isRepl);
     } catch (RError const& e) {
       if (writer != nullptr) {
@@ -304,7 +308,10 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
       visible = true;
       ShieldSEXP quoted = Rf_lang2(RI->quote, value);
       ShieldSEXP xSymbol = Rf_install("x");
-      forEval = Rf_lang2(Rf_install("print"), xSymbol);
+      ShieldSEXP baseSym = Rf_install("base");
+      ShieldSEXP namespaceAccessSym = Rf_install("::");
+      ShieldSEXP printSym = Rf_install(Rf_isFunction(value) && IS_S4_OBJECT(value) ? "print.default" : "print");
+      forEval = Rf_lang2(Rf_lang3(namespaceAccessSym, baseSym, printSym), xSymbol);
       forEval = wrapWithSrcref(forEval, srcref, true);
       forEval = Rf_lang5(RI->printWrapper, forEval, quoted, env, toSEXP(isDebug));
       if (withExceptionHandler) {

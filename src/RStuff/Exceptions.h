@@ -27,7 +27,7 @@ class RError : public RExceptionBase {
   PrSEXP e;
   std::string message;
 public:
-  RError(SEXP e) : e(e), message((std::string)"Evaluation error: " + getErrorMessage(e)) {}
+  RError(SEXP e) : e(e), message((std::string)"Error: " + getErrorMessage(e)) {}
   const char* what() const throw() override {
     return message.c_str();
   }
