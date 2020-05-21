@@ -122,6 +122,31 @@ Status RPIServiceImpl::unloadLibrary(ServerContext* context, const UnloadLibrary
   return replExecuteCommand(context, builder.str());
 }
 
+Status RPIServiceImpl::saveGlobalEnvironment(ServerContext *context,
+                                             const StringValue *request,
+                                             Empty *response) {
+    executeOnMainThread([&] {
+        RI->saveImage(mkStringUTF8(request->value()));
+    }, context);
+    return Status::OK;
+}
+
+Status RPIServiceImpl::loadEnvironment(ServerContext *context,
+                                       const LoadEnvironmentRequest *request,
+                                       Empty *response) {
+    executeOnMainThread([&] {
+        const string &variableName = request->variable();
+        if (variableName.empty()) {
+            RI->sysLoadImage(mkStringUTF8(request->file()));
+        } else {
+            ShieldSEXP environment = RI->newEnv();
+            RI->load(mkStringUTF8(request->file()), environment);
+            RI->assign(mkStringUTF8(variableName), environment, named("envir", RI->globalEnv));
+        }
+    }, context);
+    return Status::OK;
+}
+
 Status RPIServiceImpl::setOutputWidth(ServerContext* context, const Int32Value* request, Empty*) {
   executeOnMainThread([&] {
     int width = request->value();

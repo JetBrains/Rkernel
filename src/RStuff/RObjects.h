@@ -108,6 +108,7 @@ struct RObjects2 {
   PrSEXP sysFunction = baseEnv.getVar("sys.function");
   PrSEXP sysFrames = baseEnv.getVar("sys.frames");
   PrSEXP sysLoadImage = baseEnv.getVar("sys.load.image");
+  PrSEXP load = baseEnv.getVar("load");
   PrSEXP textConnection = baseEnv.getVar("textConnection");
   PrSEXP unclass = baseEnv.getVar("unclass");
   PrSEXP unique = baseEnv.getVar("unique");

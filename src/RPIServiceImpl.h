@@ -118,6 +118,8 @@ public:
   Status clearEnvironment(ServerContext* context, const RRef* request, Empty*) override;
   Status loadLibrary(ServerContext* context, const StringValue* request, Empty*) override;
   Status unloadLibrary(ServerContext* context, const UnloadLibraryRequest* request, Empty*) override;
+  Status saveGlobalEnvironment(ServerContext *context, const StringValue *request, Empty*) override;
+  Status loadEnvironment(ServerContext *context, const LoadEnvironmentRequest *request, Empty*) override;
   Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty* response) override;
   Status clientRequestFinished(ServerContext* context, const Empty*, Empty*) override;
 
