@@ -15,8 +15,8 @@
 
 emitProgress <- function(kind, arg, con) {
   if (!is.null(con)) {
-    cat(paste0("__rs_progress_0__ ", kind, " __ ", arg,
-               " __rs_progress_1__\n"), file = con)
+    cat(paste0(">__jb_rplugin_progress__", kind, " __ ", arg,
+               "\n"), file = con)
   }
 }
 
@@ -105,3 +105,5 @@ sourceWithProgress <- function(script,               # path to R script
 
   emitProgress("completed", 1, con)
 }
+
+sourceWithProgress(<file-path>, con = stderr(), importRdata = <rdata-import>, exportRdata = <rdata-export>)
