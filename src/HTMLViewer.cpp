@@ -122,7 +122,7 @@ static GetContentResult getURLContent(std::string request, int maxRedirects = 5)
 
   ShieldSEXP file = response["file"];
   if (isScalarString(file)) {
-    result.content = readWholeFile(asStringUTF8(file));
+    result.content = asStringUTF8(RI->paste(RI->readLines(file), named("collapse", "\n")));
     result.success = true;
   }
   return result;

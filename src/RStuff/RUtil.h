@@ -30,6 +30,7 @@
 #include "RObjects.h"
 #include <unordered_set>
 #include "../util/StringUtil.h"
+#include "../util/Finally.h"
 
 const int DEFAULT_WIDTH = 80;
 const int R_MIN_WIDTH_OPT = 10;
@@ -125,6 +126,7 @@ inline const char* translateToNative(std::string const& s) {
 inline SEXP parseCode(std::string const& code, bool keepSource = false) {
 #ifdef Win32
   ShieldSEXP connection = RI->textConnection(code, named("encoding", "UTF-8"));
+  auto close = Finally([&] { RI->close(connection); });
   return RI->parse(connection,
                     named("encoding", "UTF-8"),
                     named("keep.source", keepSource),

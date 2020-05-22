@@ -43,6 +43,7 @@ struct RObjects2 {
   PrSEXP begin = baseEnv.getVar("{");
   PrSEXP cat = baseEnv.getVar("cat");
   PrSEXP classes = baseEnv.getVar("class");
+  PrSEXP close = baseEnv.getVar("close");
   PrSEXP colon = baseEnv.getVar(":");
   PrSEXP conditionCall = baseEnv.getVar("conditionCall");
   PrSEXP conditionMessage = baseEnv.getVar("conditionMessage");
@@ -91,6 +92,7 @@ struct RObjects2 {
   PrSEXP print = baseEnv.getVar("print");
   PrSEXP q = baseEnv.getVar("q");
   PrSEXP quote = baseEnv.getVar("quote");
+  PrSEXP readLines = baseEnv.getVar("readLines");
   PrSEXP rep = baseEnv.getVar("rep");
   PrSEXP rm = baseEnv.getVar("rm");
   PrSEXP saveImage = baseEnv.getVar("save.image");
