@@ -30,6 +30,7 @@
 #include <sstream>
 #include <thread>
 #include "util/Finally.h"
+#include <atomic>
 
 using namespace grpc;
 
@@ -298,51 +299,54 @@ void RPIServiceImpl::sendAsyncEvent(AsyncEvent const& e) {
 }
 
 void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerContext* context, bool immediate) {
+  static const int STATE_PENDING = 0;
+  static const int STATE_RUNNING = 1;
+  static const int STATE_INTERRUPTING = 2;
+  static const int STATE_INTERRUPTED = 3;
+  static const int STATE_DONE = 4;
+  std::atomic_int state(STATE_PENDING);
   std::mutex mutex;
   std::unique_lock<std::mutex> lock(mutex);
-  std::condition_variable doneVar;
-  volatile bool done = false;
-  volatile bool cancelled = false;
-  volatile bool started = false;
+  std::condition_variable condVar;
+
   eventLoopExecute([&] {
     R_interrupts_pending = 0;
-    started = true;
-    if (!cancelled) {
-      auto finally = Finally{[&] {
-        std::unique_lock<std::mutex> lock1(mutex);
-        done = true;
-        doneVar.notify_one();
-        R_interrupts_pending = 0;
-      }};
-      try {
-        f();
-      } catch (RUnwindException const&) {
-        throw;
-      } catch (std::exception const& e) {
-        std::cerr << "Exception: " << e.what() << "\n";
-      } catch (...) {
-        std::cerr << "Exception: unknown\n";
+    int expected = STATE_PENDING;
+    if (!state.compare_exchange_strong(expected, STATE_RUNNING)) return;
+    auto finally = Finally{[&] {
+      std::unique_lock<std::mutex> lock1(mutex);
+      int value = STATE_RUNNING;
+      if (!state.compare_exchange_strong(value, STATE_DONE) && value == STATE_INTERRUPTING) {
+        condVar.wait(lock1, [&] { return state.load() == STATE_INTERRUPTED; });
       }
+      state.store(STATE_DONE);
+      condVar.notify_one();
+      R_interrupts_pending = 0;
+    }};
+    try {
+      f();
+    } catch (RUnwindException const&) {
+      throw;
+    } catch (std::exception const& e) {
+      std::cerr << "Exception: " << e.what() << "\n";
+    } catch (...) {
+      std::cerr << "Exception: unknown\n";
     }
   }, immediate);
-  if (context == nullptr) {
-    while (!done) {
-      doneVar.wait(lock);
-    }
-    return;
-  }
-  while (!done) {
-    doneVar.wait_for(lock, std::chrono::milliseconds(25));
-    if (context->IsCancelled()) {
-      if (!cancelled) {
+  bool cancelled = false;
+  while (true) {
+    int currentState = state.load();
+    if (currentState == STATE_DONE) break;
+    if (currentState == STATE_RUNNING && !cancelled && context != nullptr && context->IsCancelled()) {
+      int expected = STATE_RUNNING;
+      if (state.compare_exchange_strong(expected, STATE_INTERRUPTING)) {
         cancelled = true;
-        if (started) R_interrupts_pending = 1;
-        eventLoopExecute([] {});
-      }
-      if (terminate) {
-        return;
+        R_interrupts_pending = true;
+        state.store(STATE_INTERRUPTED);
+        condVar.notify_one();
       }
     }
+    condVar.wait_for(lock, std::chrono::milliseconds(25));
   }
 }
 
