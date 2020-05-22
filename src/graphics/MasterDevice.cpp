@@ -45,6 +45,10 @@ Ptr<REagerGraphicsDevice> deviceOf(pDevDesc descriptor) {
   return masterOf(descriptor)->getCurrentDevice();
 }
 
+bool checkParameters(ScreenParameters parameters) {
+  return !(parameters.size.width < 0.0 || parameters.size.height < 0.0 || parameters.resolution == 0);
+}
+
 void circle(double x, double y, double r, pGEcontext context, pDevDesc descriptor) {
   DEVICE_TRACE;
   deviceOf(descriptor)->drawCircle(Point{x, y}, r, context);
@@ -181,15 +185,22 @@ double strWidthUTF8(const char *str, pGEcontext context, pDevDesc descriptor) {
   return deviceOf(descriptor)->widthOfStringUtf8(str, context);
 }
 
-void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
-  masterDevDesc->left = slaveDevDesc->left;
-  masterDevDesc->right = slaveDevDesc->right;
-  masterDevDesc->bottom = slaveDevDesc->bottom;
-  masterDevDesc->top = slaveDevDesc->top;
+void setMasterDeviceSize(pDevDesc masterDevDesc, Rectangle area) {
+  masterDevDesc->left = area.from.x;
+  masterDevDesc->right = area.to.x;
+  masterDevDesc->bottom = area.to.y;
+  masterDevDesc->top = area.from.y;
   masterDevDesc->clipLeft = masterDevDesc->left;
   masterDevDesc->clipRight = masterDevDesc->right;
   masterDevDesc->clipBottom = masterDevDesc->bottom;
   masterDevDesc->clipTop = masterDevDesc->top;
+}
+
+void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
+  auto from = Point{slaveDevDesc->left, slaveDevDesc->top};
+  auto to = Point{slaveDevDesc->right, slaveDevDesc->bottom};
+  auto area = Rectangle::make(from, to);
+  setMasterDeviceSize(masterDevDesc, area);
 }
 
 } // anonymous
@@ -210,6 +221,7 @@ Ptr<REagerGraphicsDevice> MasterDevice::getCurrentDevice() {
   if (!hasCurrentDevice()) {
     auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDirectory, deviceNumber, currentSnapshotNumber, 0, currentScreenParameters);
     currentDeviceInfos[currentSnapshotNumber].device = newDevice;
+    setMasterDeviceSize(masterDeviceDescriptor->dev, newDevice->drawingArea());
   }
   return currentDeviceInfos[currentSnapshotNumber].device;
 }
@@ -271,7 +283,7 @@ bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
     return false;
   }
 
-  if (newParameters.size.width < 0.0 || newParameters.size.height < 0.0 || newParameters.resolution == 0) {
+  if (!checkParameters(newParameters)) {
     std::cerr << "Invalid rescale parameters were provided: " << newParameters << "\n";
     return false;
   }
@@ -281,7 +293,7 @@ bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
   // that's why we should re-enable it manually here
   masterDeviceDescriptor->recordGraphics = TRUE;
 
-  currentScreenParameters.resolution = newParameters.resolution;
+  currentScreenParameters = newParameters;
   auto& deviceInfo = currentDeviceInfos[number];
   auto device = deviceInfo.device;
   if (!device) {
@@ -302,7 +314,7 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
     return false;
   }
 
-  if (newParameters.size.width < 0.0 || newParameters.size.height < 0.0 || newParameters.resolution == 0) {
+  if (!checkParameters(newParameters)) {
     std::cerr << "Invalid rescale parameters were provided: " << newParameters << "\n";
     return false;
   }

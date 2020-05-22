@@ -85,6 +85,7 @@ public:
                   double rotation,
                   Rboolean interpolate,
                   pGEcontext context);
+  Rectangle drawingArea();
   ScreenParameters screenParameters();
   ScreenParameters logicScreenParameters();
   double widthOfStringUtf8(const char* text, pGEcontext context);

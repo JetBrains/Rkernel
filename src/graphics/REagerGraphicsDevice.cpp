@@ -168,7 +168,7 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
   }
 }
 
-ScreenParameters REagerGraphicsDevice::screenParameters() {
+Rectangle REagerGraphicsDevice::drawingArea() {
   auto left = 0.0;
   auto right = 0.0;
   auto bottom = 0.0;
@@ -177,7 +177,12 @@ ScreenParameters REagerGraphicsDevice::screenParameters() {
   if (slave != nullptr) {
     slave->size(&left, &right, &bottom, &top, slave);
   }
-  auto size = Size{right - left, bottom - top};
+  return Rectangle::make(Point{left, top}, Point{right, bottom});
+}
+
+ScreenParameters REagerGraphicsDevice::screenParameters() {
+  auto area = drawingArea();
+  auto size = Size{area.width(), area.height()};
   return ScreenParameters{size, parameters.resolution};
 }
 
