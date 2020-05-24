@@ -15,7 +15,7 @@
 
 emitProgress <- function(kind, arg, con) {
   if (!is.null(con)) {
-    cat(paste0(">__jb_rplugin_progress__", kind, " __ ", arg,
+    cat(paste0(">__jb_rplugin_progress__", kind, " ", arg,
                "\n"), file = con)
   }
 }
@@ -75,7 +75,7 @@ sourceWithProgress <- function(script,               # path to R script
         line <- sectLines[[length(candidates)]]
 
         # emit indicator that we've started this section
-        emitProgress("section", sections[[line]][[2]], con)
+        #emitProgress("section", sections[[line]][[2]], con)
 
         # remove this from the set of sections so we don't emit again
         sectLines <- sectLines[sectLines != line]
