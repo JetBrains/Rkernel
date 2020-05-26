@@ -126,11 +126,17 @@ inline const char* translateToNative(std::string const& s) {
 inline SEXP parseCode(std::string const& code, bool keepSource = false) {
 #ifdef Win32
   ShieldSEXP connection = RI->textConnection(code, named("encoding", "UTF-8"));
-  auto close = Finally([&] { RI->close(connection); });
-  return RI->parse(connection,
-                    named("encoding", "UTF-8"),
-                    named("keep.source", keepSource),
-                    named("srcfile", keepSource ? RI->srcfilecopy("<text>", code) : R_NilValue));
+  try {
+    ShieldSEXP result = RI->parse(connection,
+                                  named("encoding", "UTF-8"),
+                                  named("keep.source", keepSource),
+                                  named("srcfile", keepSource ? RI->srcfilecopy("<text>", code) : R_NilValue));
+    RI->close(connection);
+    return result;
+  } catch (...) {
+    RI->close(connection);
+    throw;
+  }
 #else
   return RI->parse(named("text", code),
                    named("encoding", "UTF-8"),
