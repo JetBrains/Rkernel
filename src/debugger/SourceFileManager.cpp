@@ -56,10 +56,10 @@ const char* SourceFileManager::getSrcfileId(SEXP srcfile, bool alwaysRegister) {
 
 SourceFileManager::SourceFile *SourceFileManager::registerSourceFile(SEXP _srcfile, std::string const& suggestedFileName) {
   ShieldSEXP srcfile = _srcfile;
-  WithDebuggerEnabled with(false);
   bool isFileValue = false;
   std::string fileId;
   if (srcfile.type() == ENVSXP) {
+    WithDebuggerEnabled with(false);
     if (asBool(srcfile.getVar("isFile"))) {
       ShieldSEXP wd = srcfile.getVar("wd");
       ShieldSEXP filename = srcfile.getVar("filename");
