@@ -253,7 +253,7 @@ template<class Func>
 inline SEXP createFinalizer(Func fin) {
   ShieldSEXP e = R_MakeExternalPtr(new Func(std::move(fin)), R_NilValue, R_NilValue);
   R_RegisterCFinalizer(e, [](SEXP e) {
-    auto ptr = (Func*)EXTPTR_PTR(e);
+    auto ptr = (Func*)R_ExternalPtrAddr(e);
     if (ptr == nullptr) return;
     (*ptr)();
     delete ptr;
@@ -338,10 +338,6 @@ inline void walkObjectsImpl(Func const& f, std::unordered_set<SEXP> &visited, SE
     case WEAKREFSXP: {
       walkObjectsImpl(f, visited, R_WeakRefKey(x));
       walkObjectsImpl(f, visited, R_WeakRefValue(x));
-      break;
-    }
-    case S4SXP: {
-      walkObjectsImpl(f, visited, TAG(x));
       break;
     }
   }

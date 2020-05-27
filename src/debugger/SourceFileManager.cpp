@@ -31,7 +31,7 @@ SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(std::string 
   sourceFile->fileId = fileId;
   ShieldSEXP extPtr = sourceFile->extPtr = R_MakeExternalPtr(sourceFile, R_NilValue, R_NilValue);
   R_RegisterCFinalizer(extPtr, [] (SEXP e) {
-    auto *sourceFile = (SourceFile*)EXTPTR_PTR(e);
+    auto *sourceFile = (SourceFile*)R_ExternalPtrAddr(e);
     if (sourceFile == nullptr) return;
     sourceFileManager.sourceFiles.erase(sourceFile->fileId);
     R_ClearExternalPtr(e);
@@ -42,7 +42,7 @@ SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(std::string 
 SourceFileManager::SourceFile *SourceFileManager::getSourceFileInfo(SEXP srcfile) {
   SHIELD(srcfile);
   ShieldSEXP ptr = Rf_getAttrib(srcfile, RI->srcfilePtrAttr);
-  return TYPEOF(ptr) == EXTPTRSXP ? (SourceFile*)EXTPTR_PTR(ptr) : nullptr;
+  return TYPEOF(ptr) == EXTPTRSXP ? (SourceFile*)R_ExternalPtrAddr(ptr) : nullptr;
 }
 
 const char* SourceFileManager::getSrcfileId(SEXP srcfile, bool alwaysRegister) {
@@ -92,7 +92,7 @@ SourceFileManager::SourceFile *SourceFileManager::registerSourceFile(SEXP _srcfi
 
 static bool isSrcrefProcessed(SEXP srcref) {
   SEXP flag = Rf_getAttrib(srcref, RI->srcrefProcessedFlag);
-  return TYPEOF(flag) == EXTPTRSXP && EXTPTR_PTR(flag) != nullptr;
+  return TYPEOF(flag) == EXTPTRSXP && R_ExternalPtrAddr(flag) != nullptr;
 }
 
 void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, SEXP srcref) {
@@ -116,7 +116,7 @@ void SourceFileManager::putStep(std::string const& fileId, std::unordered_map<in
 static void markProcessed(SEXP srcref) {
   SHIELD(srcref);
   if (isSrcrefProcessed(srcref)) return;
-  Rf_setAttrib(srcref, RI->srcrefProcessedFlag, R_MakeExternalPtr((void*)1, R_NilValue, R_NilValue));
+  Rf_setAttrib(srcref, RI->srcrefProcessedFlag, R_MakeExternalPtr(R_NilValue, R_NilValue, R_NilValue));
 }
 
 void SourceFileManager::setSteps(SEXP _expr, std::string const& fileId, SEXP srcfile,
@@ -312,7 +312,7 @@ void SourceFileManager::loadState(SEXP _list) {
     if (TYPEOF(extPtr) != EXTPTRSXP) continue;
     R_SetExternalPtrAddr(extPtr, file.get());
     R_RegisterCFinalizer(extPtr, [] (SEXP e) {
-      SourceFile *sourceFile = (SourceFile*)EXTPTR_PTR(e);
+      SourceFile *sourceFile = (SourceFile*)R_ExternalPtrAddr(e);
       if (sourceFile == nullptr) return;
       sourceFileManager.sourceFiles.erase(sourceFile->fileId);
       R_ClearExternalPtr(e);

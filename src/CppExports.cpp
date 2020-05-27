@@ -156,7 +156,7 @@ CppExport SEXP _jetbrains_raiseSigsegv() {
 CppExport SEXP _jetbrains_runFunction(SEXP f) {
   PROTECT(f);
   if (TYPEOF(f) == EXTPTRSXP) {
-    void (*func)() = (void(*)())EXTPTR_PTR(f);
+    void (*func)() = (void(*)())R_ExternalPtrAddr(f);
     if (func != nullptr) func();
   }
   UNPROTECT(1);

@@ -78,7 +78,7 @@ static BreakpointInfo* getBreakpointInfoAttrib(SEXP srcref) {
   if (TYPEOF(attr) != EXTPTRSXP) {
     return nullptr;
   }
-  return (BreakpointInfo*)EXTPTR_PTR(attr);
+  return (BreakpointInfo*)R_ExternalPtrAddr(attr);
 }
 
 BreakpointInfo& RDebugger::addBreakpoint(std::string const& file, int line) {
