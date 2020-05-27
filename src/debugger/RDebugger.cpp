@@ -274,7 +274,7 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
   }
   if (Rf_getAttrib(functionSrcref, RI->doNotStopRecursiveFlag) != R_NilValue) {
     disable();
-    Rf_eval(Rf_lang2(RI->onExit, Rf_lang1(RI->jetbrainsDebuggerEnable)), rho);
+    RI->onExit.invokeUnsafeInEnv(rho, RI->jetbrainsDebuggerEnable.lang());
     return rDebugger.defaultDoBegin(call, op, args, rho);
   }
   if (Rf_getAttrib(functionSrcref, RI->doNotStopFlag) != R_NilValue) {
@@ -348,8 +348,8 @@ std::vector<RDebugger::ContextDump> RDebugger::getContextDumpErr() {
     }
     ctx = getNextContext(ctx);
   }
-  ShieldSEXP calls = Rf_eval(Rf_lang1(RI->sysCalls), rho);
-  ShieldSEXP frames = Rf_eval(Rf_lang1(RI->sysFrames), rho);
+  ShieldSEXP calls = RI->sysCalls.invokeUnsafeInEnv(rho);
+  ShieldSEXP frames = RI->sysFrames.invokeUnsafeInEnv(rho);
   std::vector<ContextDump> dump;
   for (int i = 0; i < frames.length(); ++i) {
     SEXP func;

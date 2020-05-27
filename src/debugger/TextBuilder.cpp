@@ -64,7 +64,7 @@ void TextBuilder::build(SEXP expr) {
     }
     case LISTSXP: {
       text << "pairlist(";
-      SEXP names = Rf_getAttrib(expr, R_NamesSymbol);
+      ShieldSEXP names = Rf_getAttrib(expr, R_NamesSymbol);
       int i = 0;
       while (expr != R_NilValue) {
         if (i > 0) text << ", ";
@@ -146,7 +146,7 @@ void TextBuilder::build(SEXP expr) {
         build(CAR(args));
         text << functionName;
         args = CDR(args);
-        SEXP names = Rf_getAttrib(expr, R_NamesSymbol);
+        ShieldSEXP names = Rf_getAttrib(expr, R_NamesSymbol);
         int i = 1;
         while (args != R_NilValue) {
           if (i > 1) text << ", ";
@@ -175,7 +175,7 @@ void TextBuilder::build(SEXP expr) {
         text << "repeat ";
         build(CAR(args));
       } else {
-        SEXP names = Rf_getAttrib(expr, R_NamesSymbol);
+        ShieldSEXP names = Rf_getAttrib(expr, R_NamesSymbol);
         build(function);
         text << "(";
         int i = 0;
@@ -315,7 +315,7 @@ void TextBuilder::build(SEXP expr) {
       } else {
         text << "expression(";
       }
-      SEXP names = Rf_getAttrib(expr, R_NamesSymbol);
+      ShieldSEXP names = Rf_getAttrib(expr, R_NamesSymbol);
       int length = Rf_xlength(expr);
       for (int i = 0; i < length; ++i) {
         if (i > 0) text << ", ";
@@ -364,7 +364,7 @@ void TextBuilder::build(SEXP expr) {
 void TextBuilder::buildFunctionHeader(SEXP args) {
   SHIELD(args);
   text << "function(";
-  SEXP names = Rf_getAttrib(args, R_NamesSymbol);
+  ShieldSEXP names = Rf_getAttrib(args, R_NamesSymbol);
   int i = 0;
   while (TYPEOF(args) == LISTSXP) {
     if (i > 0) text << ", ";

@@ -176,7 +176,7 @@ inline std::string getFunctionHeaderShort(SEXP func) {
   if (TYPEOF(func) != CLOSXP) return "";
   SEXP args = FORMALS(func);
   std::string s = "function(";
-  SEXP names = Rf_getAttrib(args, R_NamesSymbol);
+  ShieldSEXP names = Rf_getAttrib(args, R_NamesSymbol);
   int i = 0;
   while (TYPEOF(args) == LISTSXP) {
     if (i > 0) s += ", ";

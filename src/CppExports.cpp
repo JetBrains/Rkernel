@@ -164,8 +164,12 @@ CppExport SEXP _jetbrains_runFunction(SEXP f) {
 }
 
 CppExport SEXP _jetbrains_safeEvalHelper(SEXP x, SEXP env, SEXP oldSuspendInterrupts) {
+  PROTECT(x);
+  PROTECT(env);
   R_interrupts_suspended = (Rboolean)LOGICAL(oldSuspendInterrupts)[0];
-  return Rf_eval(x, env);
+  SEXP result = Rf_eval(x, env);
+  UNPROTECT(2);
+  return result;
 }
 
 static const R_CallMethodDef CallEntries[] = {

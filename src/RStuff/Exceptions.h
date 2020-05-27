@@ -36,7 +36,8 @@ public:
   }
 private:
   static const char* getErrorMessage(SEXP e) {
-    return asStringUTF8(Rf_eval(Rf_lang2(Rf_install("conditionMessage"), e), R_GlobalEnv));
+    ShieldSEXP expr = Rf_lang2(Rf_install("conditionMessage"), e);
+    return asStringUTF8(Rf_eval(expr, R_GlobalEnv));
   }
 };
 

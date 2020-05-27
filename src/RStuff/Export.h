@@ -45,7 +45,8 @@ LibExtern int R_interrupts_pending;
     rwrOutValue = toSEXP("c++ exception"); \
   }                                        \
   if (rwrOutType == 1) {                   \
-    Rf_eval(Rf_lang2(RI->stop, rwrOutValue), R_BaseEnv); \
+    ShieldSEXP expr = Rf_lang2(RI->stop, rwrOutValue); \
+    Rf_eval(expr, R_BaseEnv);              \
   } else if (rwrOutType == 2) {            \
     ptr_R_ContinueUnwind(rwrOutValue);     \
   }                                        \

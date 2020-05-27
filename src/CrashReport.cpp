@@ -96,7 +96,8 @@ static void writePackages(std::ofstream &out) {
   }
   out << "\n";
   out << "Loaded:";
-  ShieldSEXP loaded = Rf_eval(Rf_lang1(Rf_install("loadedNamespaces")), R_BaseEnv);
+  ShieldSEXP loadedCall = Rf_lang1(Rf_install("loadedNamespaces"));
+  ShieldSEXP loaded = Rf_eval(loadedCall, R_BaseEnv);
   if (TYPEOF(loaded) == STRSXP) {
     for (R_xlen_t i = 0; i < loaded.length(); ++i) {
       out << " " << stringEltUTF8(loaded, i);

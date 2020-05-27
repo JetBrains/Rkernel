@@ -125,6 +125,25 @@ public:
     return Rf_lcons(x, buildArgList(std::forward<Args>(args)...));
   }
 
+  template <typename ...Args>
+  SEXP invokeUnsafeInEnv(SEXP env, Args&& ...args) {
+    PROTECT(env);
+    SEXP call = lang(std::forward<Args>(args)...);
+    PROTECT(call);
+    SEXP result = Rf_eval(call, env);
+    UNPROTECT(2);
+    return result;
+  }
+
+  template <typename ...Args>
+  SEXP invokeInEnv(SEXP env, Args&& ...args) {
+    PROTECT(env);
+    SEXP call = lang(std::forward<Args>(args)...);
+    SEXP result = safeEval(call, env);
+    UNPROTECT(1);
+    return result;
+  }
+
 private:
   template <typename T, typename ...Args>
   static SEXP buildArgList(T&& a, Args&& ...args) {
