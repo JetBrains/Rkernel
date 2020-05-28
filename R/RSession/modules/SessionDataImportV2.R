@@ -794,11 +794,15 @@
          eval(parse(text=importInfo$previewCode))
       )
 
+      if (!is.null(dataImportOptions$maxRows) && nrow(data) > dataImportOptions$maxRows) {
+         data <- head(data, dataImportOptions$maxRows)
+      }
+
       parsingErrors <- parsingErrorsFromMode(dataImportOptions$mode, data)
 
       options <- optionsInfoFromOptions[[dataImportOptions$mode]]()
 
-      return(list(data = data, parsingErrors = parsingErrors))
+      return(list(data = data, parsingErrors = parsingErrors, options = options))
    }, error = function(e) {
       return(NULL)
    })

@@ -287,6 +287,11 @@ options(install.packages.compile.from.source = "always")
   importOptions$mode <- mode
   if (!is.null(row.count)) {
     importOptions$maxRows <- row.count
+
+    # Excel's special
+    if (is.null(importOptions$nMax) || importOptions$nMax > row.count) {
+      importOptions$nMax <- row.count
+    }
   }
   .rs.previewDataImport(importOptions)
 }
