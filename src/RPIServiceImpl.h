@@ -77,7 +77,7 @@ public:
   Status getSourceFileText(ServerContext* context, const StringValue* request, StringValue* response) override;
   Status getSourceFileName(ServerContext* context, const StringValue* request, StringValue* response) override;
   Status loadObjectNames(ServerContext* context, const RRef* request, StringList* response) override;
-  Status findAllNamedArguments(ServerContext* context, const RRef* request, StringList* response) override;
+  Status findInheritorNamedArguments(ServerContext* context, const RRef* request, StringList* response) override;
   Status getTableColumnsInfo(ServerContext* context, const TableColumnsInfoRequest* request, TableColumnsInfo* response) override;
   Status getFormalArguments(ServerContext* context, const RRef* request, StringList* response) override;
   Status getEqualityObject(ServerContext* context, const RRef* request, Int64Value* response) override;

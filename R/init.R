@@ -118,7 +118,7 @@ options(install.packages.compile.from.source = "always")
   .rs.releaseDataCapture()
 }
 
-.jetbrains$findAllNamedArguments <<- function(x) {
+.jetbrains$findInheritorNamedArguments <<- function(x) {
   ignoreErrors <- function(expr) {
     as.list(tryCatch(expr, error = function(e) { }))
   }

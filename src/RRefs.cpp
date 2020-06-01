@@ -164,10 +164,10 @@ Status RPIServiceImpl::loadObjectNames(ServerContext* context, const RRef* reque
   return Status::OK;
 }
 
-Status RPIServiceImpl::findAllNamedArguments(ServerContext* context, const RRef* request, StringList* response) {
+Status RPIServiceImpl::findInheritorNamedArguments(ServerContext* context, const RRef* request, StringList* response) {
   executeOnMainThread([&] {
     ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
-    ShieldSEXP func = jetbrainsEnv.getVar("findAllNamedArguments");
+    ShieldSEXP func = jetbrainsEnv.getVar("findInheritorNamedArguments");
     ShieldSEXP result = func(dereference(*request));
     if (TYPEOF(result) != STRSXP) return;
     for (int i = 0; i < result.length(); ++i) {
