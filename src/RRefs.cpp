@@ -177,6 +177,26 @@ Status RPIServiceImpl::findInheritorNamedArguments(ServerContext* context, const
   return Status::OK;
 }
 
+Status RPIServiceImpl::findDotsNamedArguments(ServerContext* context, const RRef* request, DotsNamedArguments* response) {
+  executeOnMainThread([&] {
+      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP func = jetbrainsEnv.getVar("findDotsNamedArgs");
+      ShieldSEXP result = func(dereference(*request), named("depth", 2));
+      if (TYPEOF(result) != VECSXP) return;
+      for (int i = 0; i < result.length(); ++i) {
+        ShieldSEXP elem = VECTOR_ELT(result, i);
+        ShieldSEXP name = VECTOR_ELT(elem, 0);
+        if (asBool(VECTOR_ELT(elem, 1))) {
+          response->add_funargnames(stringEltUTF8(name, 0));
+        }
+        else {
+          response->add_argnames(stringEltUTF8(name, 0));
+        }
+      }
+  }, context, true);
+  return Status::OK;
+}
+
 Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableColumnsInfoRequest* request, TableColumnsInfo* response) {
   executeOnMainThread([&] {
     ShieldSEXP table = dereference(request->ref());

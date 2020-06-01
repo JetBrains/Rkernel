@@ -55,7 +55,8 @@ Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerW
   }
 
   auto sourceInterop = std::ostringstream();
-  sourceInterop << "source(\"" << escapeStringCharacters(request->rscriptspath()) << "/init.R\")";
+  sourceInterop << "source(\"" << escapeStringCharacters(request->rscriptspath()) << "/init.R\");";
+  sourceInterop << "source(\"" << escapeStringCharacters(request->rscriptspath()) << "/dotsNamedArguments.R\");";
   const Status &status = executeCommand(context, sourceInterop.str(), response);
   if (!status.ok()) {
     return status;
