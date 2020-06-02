@@ -182,6 +182,7 @@
   if (depth <= 0) return()
   params <- NULL
   body <- NULL
+  str2lang <- function(s) parse(text = s, keep.source = FALSE)[[1]]
   tryCatch({ body <- body(x); params <- formalArgs(x) }, error = function(e) {
     node <- tryCatch(str2lang(x), error = function(e) { }, warning = function(w) { })
     if (.jetbrains$isFunctionNode(node)) {
