@@ -15,7 +15,9 @@
 #  along with this program.  If not, see <https:#www.gnu.org/licenses/>.
 
 
-assign(".jetbrains", new.env(), envir = baseenv())
+if (".jetbrains" %in% ls(globalenv(), all.names = TRUE)) {
+  rm(".jetbrains", envir = globalenv())
+}
 
 # Set hook to record previous plot before new vanilla graphics are created
 setHook(hookName = "before.plot.new",
@@ -43,14 +45,16 @@ options(device = function() {
 # **when necessary** without user permission
 options(install.packages.compile.from.source = "always")
 
-.jetbrains$init <- function(rsession.path, project.dir) {
+.jetbrains$init <<- function(rsession.path, project.dir) {
   current.wd <- getwd()
   tryCatch({
     tools.path <- file.path(rsession.path, "Tools.R")
     modules.path <- file.path(rsession.path, "modules")
     setwd(modules.path)
-    source(tools.path)
-    sapply(Filter(function(s) s != "SessionCompileAttributes.R" & s != "SessionPlots.R", list.files(modules.path, pattern = ".*\\.r$", ignore.case = TRUE)), function(x) { source(file.path(modules.path, x)) } )
+    source(tools.path, local = TRUE)
+    sapply(Filter(function(s) s != "SessionCompileAttributes.R" & s != "SessionPlots.R",
+                  list.files(modules.path, pattern = ".*\\.r$", ignore.case = TRUE)),
+                  function(x) { source(file.path(modules.path, x), local = TRUE) } )
     .rs.getProjectDirectory <<- function() project.dir
     options(BuildTools.Check = NULL)
   }, finally = {
@@ -58,7 +62,7 @@ options(install.packages.compile.from.source = "always")
   })
 }
 
-.jetbrains$updatePackageEvents <- function() {
+.jetbrains$updatePackageEvents <<- function() {
   packageNames <- base::list.dirs(.libPaths(), full.names = FALSE, recursive = FALSE)
   sapply(packageNames, function(name) {
     if (!(name %in% .rs.jbHookedPackages)) {
@@ -73,20 +77,20 @@ options(install.packages.compile.from.source = "always")
 }
 
 # Fallback values
-.jetbrains$externalImageDir <- "."
-.jetbrains$externalImageCounter <- 0
+.jetbrains$externalImageDir <<- "."
+.jetbrains$externalImageCounter <<- 0
 
-.jetbrains$getNextExternalImagePath <- function(path) {
+.jetbrains$getNextExternalImagePath <<- function(path) {
   snapshot.count <- .Call(".jetbrains_ther_device_snapshot_count")
   if (is.null(snapshot.count)) {
     snapshot.count <- 0
   }
-  .jetbrains$externalImageCounter <- .jetbrains$externalImageCounter + 1  # Also ensure it's > 0
+  .jetbrains$externalImageCounter <<- .jetbrains$externalImageCounter + 1  # Also ensure it's > 0
   base.name <- paste0("image_", snapshot.count - 1, "_", .jetbrains$externalImageCounter, ".", tools::file_ext(path))
   file.path(.jetbrains$externalImageDir, base.name)
 }
 
-.jetbrains$runBeforeChunk <- function(report.text, chunk.text, cache.dir, width, height, resolution) {
+.jetbrains$runBeforeChunk <<- function(report.text, chunk.text, cache.dir, width, height, resolution) {
   .rs.evaluateRmdParams(report.text)
   opts <- .rs.evaluateChunkOptions(chunk.text)
   data.dir <- file.path(cache.dir, "data")
@@ -99,8 +103,8 @@ options(install.packages.compile.from.source = "always")
   dir.create(html.lib.dir, showWarnings = FALSE)
   dir.create(data.dir, showWarnings = FALSE)
 
-  .jetbrains$externalImageDir <- external.image.dir
-  .jetbrains$externalImageCounter <- 0
+  .jetbrains$externalImageDir <<- external.image.dir
+  .jetbrains$externalImageCounter <<- 0
   .rs.initHtmlCapture(cache.dir, html.lib.dir, opts)
   .rs.initDataCapture(data.dir, opts)
   if (!.rs.hasVar("jbHookedPackages")) {
@@ -109,12 +113,12 @@ options(install.packages.compile.from.source = "always")
   .jetbrains$updatePackageEvents()  # Note: supposed to be useless when packages are getting installed within chunk but for my machine it's OK
 }
 
-.jetbrains$runAfterChunk <- function() {
+.jetbrains$runAfterChunk <<- function() {
   .rs.releaseHtmlCapture()
   .rs.releaseDataCapture()
 }
 
-.jetbrains$findAllNamedArguments <- function(x) {
+.jetbrains$findAllNamedArguments <<- function(x) {
   ignoreErrors <- function(expr) {
     as.list(tryCatch(expr, error = function(e) { }))
   }
@@ -151,7 +155,7 @@ options(install.packages.compile.from.source = "always")
   unique(unlist(c(s4, s3, names(formals(x)))))
 }
 
-.jetbrains$printAllPackagesToFile <- function(repo.urls, output.path) {
+.jetbrains$printAllPackagesToFile <<- function(repo.urls, output.path) {
   remove.newlines <- function(s) {
     gsub("\r?\n|\r", " ", s)
   }
@@ -167,7 +171,7 @@ options(install.packages.compile.from.source = "always")
   options(repos = old.repos)
 }
 
-.jetbrains$getDefaultRepositories <- function() {
+.jetbrains$getDefaultRepositories <<- function() {
   p <- file.path(Sys.getenv("HOME"), ".R", "repositories")
   if (!file.exists(p))
     p <- file.path(R.home("etc"), "repositories")
@@ -175,26 +179,26 @@ options(install.packages.compile.from.source = "always")
   a[, "URL"]
 }
 
-.jetbrains$printCranMirrorsToFile <- function(output.path) {
+.jetbrains$printCranMirrorsToFile <<- function(output.path) {
   sink(output.path)
   mirrors <- getCRANmirrors()[, c('Name', 'URL')]
   with(mirrors, cat(paste(Name, URL, sep = "\t"), sep = "\n"))
   sink()
 }
 
-.jetbrains$printInstalledPackagesToFile <- function(output.path) {
+.jetbrains$printInstalledPackagesToFile <<- function(output.path) {
   sink(output.path)
   versions <- as.data.frame(installed.packages()[, c("Package", "Version", "Priority", "LibPath")])
   with(versions, cat(paste(LibPath, Package, Version, Priority, sep = "\t"), sep = "\n"))
   sink()
 }
 
-.jetbrains$saveRecordedPlotToFile <- function(snapshot, output.path) {
+.jetbrains$saveRecordedPlotToFile <<- function(snapshot, output.path) {
   .jetbrains.recorded.snapshot <- snapshot
   save(.jetbrains.recorded.snapshot, file = output.path)
 }
 
-.jetbrains$replayPlotFromFile <- function(input.path) {
+.jetbrains$replayPlotFromFile <<- function(input.path) {
   load(input.path)
   plot <- .jetbrains.recorded.snapshot
 
@@ -220,7 +224,7 @@ options(install.packages.compile.from.source = "always")
   suppressWarnings(grDevices::replayPlot(plot, reloadPkgs=TRUE))
 }
 
-.jetbrains$dropRecordedSnapshots <- function(device.number, from, to) {
+.jetbrains$dropRecordedSnapshots <<- function(device.number, from, to) {
   for (i in from:to) {
     name <- paste0("recordedSnapshot_", device.number, "_", i)
     if (exists(name, envir = .jetbrains)) {
@@ -229,7 +233,7 @@ options(install.packages.compile.from.source = "always")
   }
 }
 
-.jetbrains$unloadLibrary <- function(package.name, with.dynamic.library) {
+.jetbrains$unloadLibrary <<- function(package.name, with.dynamic.library) {
   resource.name <- paste0("package:", package.name)
   detach(resource.name, unload = TRUE, character.only = TRUE)
   if (with.dynamic.library) {
@@ -237,7 +241,7 @@ options(install.packages.compile.from.source = "always")
   }
 }
 
-.jetbrains$unloadDynamicLibrary <- function(package.name) {
+.jetbrains$unloadDynamicLibrary <<- function(package.name) {
   if (.jetbrains$isDynamicLibraryLoaded(package.name)) {
     pd.file <- attr(packageDescription(package.name), "file")
     lib.path <- sub("/Meta.*", "", pd.file)
@@ -245,7 +249,7 @@ options(install.packages.compile.from.source = "always")
   }
 }
 
-.jetbrains$isDynamicLibraryLoaded <- function(package.name) {
+.jetbrains$isDynamicLibraryLoaded <<- function(package.name) {
   for (lib in .dynLibs()) {
     name <- lib[[1]]
     if (name == package.name) {
@@ -255,32 +259,32 @@ options(install.packages.compile.from.source = "always")
   FALSE
 }
 
-.jetbrains$previewDataImportResult <- NULL
+.jetbrains$previewDataImportResult <<- NULL
 
-.jetbrains$previewDataImport <- function(path, mode, row.count, importOptions) {
+.jetbrains$previewDataImport <<- function(path, mode, row.count, importOptions) {
   result <- if (mode != "base") {
     .jetbrains$previewAdvancedDataImport(path, mode, row.count, importOptions)
   } else {
     .jetbrains$previewBaseDataImport(path, row.count, importOptions)
   }
-  .jetbrains$previewDataImportResult <- result
+  .jetbrains$previewDataImportResult <<- result
   if (is.null(result)) {
     return(NULL)
   }
   result$parsingErrors
 }
 
-.jetbrains$commitDataImport <- function(path, mode, importOptions) {
+.jetbrains$commitDataImport <<- function(path, mode, importOptions) {
   .jetbrains$previewDataImport(path, mode, NULL, importOptions)
   result <- .jetbrains$previewDataImportResult
-  .jetbrains$previewDataImportResult <- NULL
+  .jetbrains$previewDataImportResult <<- NULL
   if (is.null(result)) {
     return(NULL)
   }
   result$data
 }
 
-.jetbrains$previewAdvancedDataImport <- function(path, mode, row.count, importOptions) {
+.jetbrains$previewAdvancedDataImport <<- function(path, mode, row.count, importOptions) {
   importOptions$openDataViewer <- FALSE
   importOptions$importLocation <- path
   importOptions$modelLocation <- NULL
@@ -296,7 +300,7 @@ options(install.packages.compile.from.source = "always")
   .rs.previewDataImport(importOptions)
 }
 
-.jetbrains$previewBaseDataImport <- function(path, row.count, importOptions) {
+.jetbrains$previewBaseDataImport <<- function(path, row.count, importOptions) {
   if (!is.null(row.count)) {
     importOptions$nrows <- row.count
   }

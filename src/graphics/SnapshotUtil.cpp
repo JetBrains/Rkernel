@@ -31,7 +31,7 @@ const auto REPLAY_COMMAND_NAME = "grDevices::replayPlot";
 std::string makeRecordCommand(const std::string& receiverName, bool hasGgPlot) {
   auto sout = std::ostringstream();
   auto arguments = hasGgPlot ? "(load='ggplot2')" : "()";
-  sout << receiverName << " <- " << RECORD_COMMAND_NAME << arguments;
+  sout << receiverName << " <<- " << RECORD_COMMAND_NAME << arguments;
   return sout.str();
 }
 

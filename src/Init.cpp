@@ -41,6 +41,7 @@ void initRWrapper() {
   initBytecodeHandling();
 
   RI = std::make_unique<RObjects2>();
+  RI->assign(".jetbrains", RI->newEnv(), named("envir", RI->baseEnv));
 
   // Init colored output
   setFunTabFunction(getFunTabOffset("isatty"), [](SEXP call, SEXP op, SEXP args, SEXP env) {

@@ -22,11 +22,11 @@
 
 void htmlViewerInit() {
   RI->evalCode(
-    ".jetbrains_ther_old_browser <- getOption('browser')\n"
+    ".jetbrains$ther_old_browser <<- getOption('browser')\n"
     "options(browser = function(url) {\n"
     "  if (grepl('^https?:', url)) {\n"
     "    if (!.Call('.jetbrains_processBrowseURL', url)) {\n"
-    "      browseURL(url, .jetbrains_ther_old_browser)\n"
+    "      browseURL(url, .jetbrains$ther_old_browser)\n"
     "    }\n"
     "  } else {\n"
     "    .Call('.jetbrains_showFile', url, url)\n"
