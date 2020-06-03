@@ -22,10 +22,20 @@
 
 const char* ROW_NAMES_COL = "rwr_rownames_column";
 
+static bool initDplyr() {
+  try {
+    RI->loadNamespace("dplyr");
+    return true;
+  } catch (RError const& e) {
+    std::cerr << "Failed to load dplyr: " << e.what() << "\n";
+    return false;
+  }
+}
+
 Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* request, Int32Value* response) {
   response->set_value(-1);
   executeOnMainThread([&] {
-    if (!RI->initDplyr()) return;
+    if (!initDplyr()) return;
     PrSEXP dataFrame = dereference(*request);
     if (Rf_isMatrix(dataFrame)) {
       dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
@@ -45,15 +55,15 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
       if (names[i].empty()) names[i] = "Column " + std::to_string(i + 1);
     }
     dataFrame = RI->namesAssign(dataFrame, names);
-    if (asBool(RI->dplyr->isTbl(dataFrame))) {
-      dataFrame = RI->dplyr->ungroup(dataFrame);
+    if (asBool(RI->dplyrIsTbl(dataFrame))) {
+      dataFrame = RI->dplyrUngroup(dataFrame);
     } else {
       if (!asBool(RI->isDataFrame(dataFrame))) {
         dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
       }
-      dataFrame = RI->dplyr->asTbl(dataFrame);
+      dataFrame = RI->dplyrAsTbl(dataFrame);
     }
-    dataFrame = RI->dplyr->addRowNames(dataFrame, ROW_NAMES_COL);
+    dataFrame = RI->dplyrAddRowNames(dataFrame, ROW_NAMES_COL);
     ShieldSEXP rowNamesAsInt = RI->asInteger(RI->doubleSubscript(dataFrame, ROW_NAMES_COL));
     if (!asBool(RI->any(RI->isNa(rowNamesAsInt)))) {
       dataFrame = RI->doubleSubscriptAssign(dataFrame, ROW_NAMES_COL, named("value", rowNamesAsInt));
@@ -77,7 +87,7 @@ static std::string getClasses(SEXP obj) {
 
 Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* request, DataFrameInfoResponse* response) {
   executeOnMainThread([&] {
-    if (!RI->initDplyr()) return;
+    if (!initDplyr()) return;
     ShieldSEXP dataFrame = dereference(*request);
     response->set_nrows(asInt(RI->nrow(dataFrame)));
     ShieldSEXP names = RI->names(dataFrame);
@@ -113,7 +123,7 @@ Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* requ
 
 Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameGetDataRequest* request, DataFrameGetDataResponse* response) {
   executeOnMainThread([&] {
-    if (!RI->initDplyr()) return;
+    if (!initDplyr()) return;
     ShieldSEXP dataFrame = dereference(request->ref());
     int start = request->start();
     int end = request->end();
@@ -165,17 +175,17 @@ Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameG
 Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSortRequest* request, Int32Value* response) {
   response->set_value(-1);
   executeOnMainThread([&] {
-    if (!RI->initDplyr()) return;
+    if (!initDplyr()) return;
     ShieldSEXP dataFrame = dereference(request->ref());
     std::vector<PrSEXP> arrangeArgs = {dataFrame};
     for (auto const& key : request->keys()) {
       if (key.descending()) {
-        arrangeArgs.emplace_back(RI->dplyr->desc(RI->doubleSubscript(dataFrame, key.columnindex() + 1)));
+        arrangeArgs.emplace_back(RI->dplyrDesc(RI->doubleSubscript(dataFrame, key.columnindex() + 1)));
       } else {
         arrangeArgs.emplace_back(RI->doubleSubscript(dataFrame, key.columnindex() + 1));
       }
     }
-    response->set_value(persistentRefStorage.add(invokeFunction(RI->dplyr->arrange, arrangeArgs)));
+    response->set_value(persistentRefStorage.add(invokeFunction(RI->dplyrArrange, arrangeArgs)));
   }, context, true);
   return Status::OK;
 }
@@ -263,9 +273,9 @@ static SEXP applyFilter(SEXP df, DataFrameFilterRequest::Filter const& filter) {
 Status RPIServiceImpl::dataFrameFilter(ServerContext* context, const DataFrameFilterRequest* request, Int32Value* response) {
   response->set_value(-1);
   executeOnMainThread([&] {
-    if (!RI->initDplyr()) return;
+    if (!initDplyr()) return;
     ShieldSEXP dataFrame = dereference(request->ref());
-    int index = persistentRefStorage.add(RI->dplyr->filter(dataFrame, applyFilter(dataFrame, request->filter())));
+    int index = persistentRefStorage.add(RI->dplyrFilter(dataFrame, applyFilter(dataFrame, request->filter())));
     response->set_value(index);
   }, context, true);
   return Status::OK;

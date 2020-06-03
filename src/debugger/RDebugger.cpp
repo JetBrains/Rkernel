@@ -127,6 +127,7 @@ void RDebugger::refreshBreakpoint(std::string const& file, int line) {
 
 void RDebugger::setCommand(DebuggerCommand c) {
   currentCommand = c;
+  if (c == PAUSE) return;
   resetRunToPositionTarget();
   runToPositionTarget = R_NilValue;
   std::vector<RContext*> contexts;

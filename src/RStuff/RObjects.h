@@ -139,34 +139,19 @@ struct RObjects2 {
     return symbol;
   }
 
-  struct DplyrObjects {
-  private:
-    PrSEXP baseEnv = R_BaseEnv;
-    PrSEXP loadNamespace = baseEnv.getVar("loadNamespace");
-  public:
-    PrSEXP dplyr = loadNamespace("dplyr");
-    PrSEXP addRowNames = dplyr.getVar("add_rownames");
-    PrSEXP arrange = dplyr.getVar("arrange");
-    PrSEXP asTbl = dplyr.getVar("as.tbl");
-    PrSEXP desc = dplyr.getVar("desc");
-    PrSEXP filter = dplyr.getVar("filter");
-    PrSEXP isTbl = dplyr.getVar("is.tbl");
-    PrSEXP ungroup = dplyr.getVar("ungroup");
-  };
-
-  std::unique_ptr<DplyrObjects> dplyr;
-  bool initDplyr() {
-    if (dplyr == nullptr) {
-      try {
-        dplyr = std::make_unique<DplyrObjects>();
-        std::cerr << "Loaded dplyr\n";
-      } catch (RExceptionBase const& e) {
-        std::cerr << "Error loading dplyr: " << e.what() << "\n";
-        return false;
-      }
-    }
-    return true;
+  SEXP mkLang(const char* code) {
+    ShieldSEXP x = parse(named("text", code));
+    assert(x.type() == EXPRSXP && x.length() > 0);
+    return VECTOR_ELT(x, 0);
   }
+
+  PrSEXP dplyrAddRowNames = mkLang("dplyr::add_rownames");
+  PrSEXP dplyrArrange = mkLang("dplyr::arrange");
+  PrSEXP dplyrAsTbl = mkLang("dplyr::as.tbl");
+  PrSEXP dplyrDesc = mkLang("dplyr::desc");
+  PrSEXP dplyrFilter = mkLang("dplyr::filter");
+  PrSEXP dplyrIsTbl = mkLang("dplyr::is.tbl");
+  PrSEXP dplyrUngroup = mkLang("dplyr::ungroup");
 
   PrSEXP srcrefAttr = Rf_install("srcref");
   PrSEXP srcfileAttr = Rf_install("srcfile");
