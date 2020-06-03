@@ -63,7 +63,7 @@ void initRInternals() {
   assert(R_FunTab != nullptr);
 
   ShieldSEXP versionSymbol = Rf_install("version");
-  ShieldSEXP v = Rf_eval(versionSymbol, R_BaseEnv);
+  ShieldSEXP v = Rf_findVarInFrame(R_BaseEnv, versionSymbol);
   if (v.type() != VECSXP) return;
   ShieldSEXP major = v["major"];
   ShieldSEXP minor = v["minor"];

@@ -30,35 +30,21 @@
 #endif
 
 static void initDoQuit();
+static void initColoredOutput();
 static void initDynLoad();
 static void initDfltWarn();
 
 void initRWrapper() {
   DllInfo *dll = R_getEmbeddingDllInfo();
   initCppExports(dll);
-
   initRInternals();
+
   initBytecodeHandling();
 
   RI = std::make_unique<RObjects2>();
   RI->assign(".jetbrains", RI->newEnv(), named("envir", RI->baseEnv));
 
-  // Init colored output
-  setFunTabFunction(getFunTabOffset("isatty"), [](SEXP call, SEXP op, SEXP args, SEXP env) {
-    int con;
-    if (Rf_length(args) != 1) {
-      Rf_error("%d arguments passed to .Internal(isatty) which requires 1", Rf_length(args));
-    }
-    con = Rf_asInteger(CAR(args));
-    if (con == NA_LOGICAL) return Rf_ScalarLogical(FALSE);
-    return Rf_ScalarLogical(con == 1 || con == 2 || isatty(con));
-  });
-#ifdef Win32
-  RI->setenv(named("ConEmuANSI", "ON"));
-#else
-  RI->setenv(named("COLORTERM", "1"));
-#endif
-
+  initColoredOutput();
   initDoSystem();
   initDoQuit();
   initDynLoad();
@@ -84,6 +70,23 @@ extern "C" {
 typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);
 void SET_PRIMFUN(SEXP x, CCODE f);
 void R_CleanUp(SA_TYPE, int, int);
+}
+
+static void initColoredOutput() {
+  setFunTabFunction(getFunTabOffset("isatty"), [](SEXP call, SEXP op, SEXP args, SEXP env) {
+    int con;
+    if (Rf_length(args) != 1) {
+      Rf_error("%d arguments passed to .Internal(isatty) which requires 1", Rf_length(args));
+    }
+    con = Rf_asInteger(CAR(args));
+    if (con == NA_LOGICAL) return Rf_ScalarLogical(FALSE);
+    return Rf_ScalarLogical(con == 1 || con == 2 || isatty(con));
+  });
+#ifdef Win32
+  RI->setenv(named("ConEmuANSI", "ON"));
+#else
+  RI->setenv(named("COLORTERM", "1"));
+#endif
 }
 
 static void initDoQuit() {

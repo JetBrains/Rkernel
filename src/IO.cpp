@@ -22,6 +22,7 @@
 #include "RStuff/RUtil.h"
 #include <grpcpp/grpcpp.h>
 #include <iostream>
+#include <signal.h>
 
 using namespace grpc;
 
@@ -64,13 +65,20 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   static bool inited = false;
   if (!inited) {
     inited = true;
-    initRWrapper();
+    try {
+      initRWrapper();
+    } catch (std::exception const& e) {
+      std::cerr << "Error during RWrapper startup: " << e.what() << "\n";
+      signal(SIGABRT, SIG_DFL);
+      abort();
+    }
     rpiService->mainLoop();
   }
 
   CPP_BEGIN
   if (rpiService == nullptr) {
     // Read console happened during termination
+    signal(SIGABRT, SIG_DFL);
     abort();
   }
 
