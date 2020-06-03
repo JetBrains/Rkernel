@@ -178,12 +178,17 @@ void getValueInfo(SEXP _var, ValueInfo* result) {
 Status RPIServiceImpl::loaderGetParentEnvs(ServerContext* context, const RRef* request, ParentEnvsResponse* response) {
   executeOnMainThread([&] {
     PrSEXP environment = dereference(*request);
+    if (environment.type() != ENVSXP) return;
+    PrSEXP cycleDetector = environment;
     while (environment != R_EmptyEnv) {
       environment = environment.parentEnv();
+      cycleDetector = cycleDetector.parentEnv();
+      cycleDetector = cycleDetector.parentEnv();
       ParentEnvsResponse::EnvInfo* envInfo = response->add_envs();
       std::string name = asStringUTF8(RI->environmentName(environment));
       trim(name);
       envInfo->set_name(name);
+      if (environment == cycleDetector) break;
     }
   }, context, true);
   return Status::OK;
