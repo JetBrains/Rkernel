@@ -221,6 +221,12 @@ Status RPIServiceImpl::commitDataImport(ServerContext* context, const CommitData
 
 Status RPIServiceImpl::convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request, ServerWriter<CommandOutput>* writer) {
   auto sout = std::ostringstream();
+  sout << "(function(x) if (length(x) > 0) tools::Rd2HTML(x, out = " << quote(request->outputfilepath())
+       << ", Links = tools::findHTMLlinks(";
+  if (!request->topicpackage().empty()) {
+    sout << "find.package(" << quote(request->topicpackage()) << ")";
+  }
+  sout << ")))(";
   switch (request->rdSource_case()) {
     case ConvertRd2HTMLRequest::RdSourceCase::kRdFilePath: {
       sout << buildCallCommand("tools:::parse_Rd", quote(request->rdfilepath()));
@@ -228,19 +234,16 @@ Status RPIServiceImpl::convertRd2HTML(ServerContext* context, const ConvertRd2HT
     }
     case ConvertRd2HTMLRequest::RdSourceCase::kDbRequest: {
       const auto& dbRequest = request->dbrequest();
+      sout << "tryCatch(";
       sout << "tools:::fetchRdDB(" << quote(dbRequest.dbpath()) << ", " << quote(dbRequest.dbpage()) << ")";
+      sout << ", error = function(e) if (!startsWith(geterrmessage(), 'No help on')) stop(e))";
       break;
     }
     default: ;
         // Ignore
   }
-  sout << ", out = " << quote(request->outputfilepath()) << ", Links = tools::findHTMLlinks(";
-  if (!request->topicpackage().empty()) {
-    sout << "find.package(" << quote(request->topicpackage()) << ")";
-  }
   sout << ")";
-  auto command = buildCallCommand("tools::Rd2HTML", sout.str());
-  return executeCommand(context, command, writer);
+  return executeCommand(context, sout.str(), writer);
 }
 
 Status RPIServiceImpl::makeRdFromRoxygen(ServerContext* context, const MakeRdFromRoxygenRequest* request, ServerWriter <CommandOutput>* writer) {
