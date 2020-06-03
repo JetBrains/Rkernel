@@ -73,6 +73,7 @@ struct RObjects2 {
   PrSEXP leq = baseEnv.getVar("<=");
   PrSEXP less = baseEnv.getVar("<");
   PrSEXP list = baseEnv.getVar("list");
+  PrSEXP load = baseEnv.getVar("load");
   PrSEXP loadedNamespaces = baseEnv.getVar("loadedNamespaces");
   PrSEXP loadNamespace = baseEnv.getVar("loadNamespace");
   PrSEXP local = baseEnv.getVar("local");
@@ -108,7 +109,6 @@ struct RObjects2 {
   PrSEXP sysFunction = baseEnv.getVar("sys.function");
   PrSEXP sysFrames = baseEnv.getVar("sys.frames");
   PrSEXP sysLoadImage = baseEnv.getVar("sys.load.image");
-  PrSEXP load = baseEnv.getVar("load");
   PrSEXP textConnection = baseEnv.getVar("textConnection");
   PrSEXP unclass = baseEnv.getVar("unclass");
   PrSEXP unique = baseEnv.getVar("unique");

@@ -39,7 +39,7 @@ public:
   RPIServiceImpl();
   ~RPIServiceImpl() override;
 
-  Status getInfo(ServerContext* context, const Empty* request, GetInfoResponse* response) override;
+  Status getInfo(ServerContext* context, const Empty*, GetInfoResponse* response) override;
   Status isBusy(ServerContext* context, const Empty*, BoolValue* response) override;
   Status init(ServerContext* context, const Init* request, ServerWriter<CommandOutput>* response) override;
   Status quit(ServerContext* context, const Empty*, Empty*) override;
@@ -88,15 +88,15 @@ public:
   Status getRMarkdownChunkOptions(ServerContext* context, const Empty*, StringList* response) override;
 
   Status graphicsInit(ServerContext* context, const GraphicsInitRequest* request, ServerWriter<CommandOutput>* writer) override;
-  Status graphicsDump(ServerContext* context, const Empty* request, ServerWriter<CommandOutput>* writer) override;
+  Status graphicsDump(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) override;
   Status graphicsRescale(ServerContext* context, const GraphicsRescaleRequest* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsRescaleStored(ServerContext* context, const GraphicsRescaleStoredRequest* request, ServerWriter<CommandOutput>* writer) override;
-  Status graphicsShutdown(ServerContext* context, const Empty* request, ServerWriter<CommandOutput>* writer) override;
+  Status graphicsShutdown(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) override;
 
   Status httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
 
   Status beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) override;
-  Status afterChunkExecution(ServerContext *context, const ::google::protobuf::Empty *request, ServerWriter<CommandOutput> *writer) override;
+  Status afterChunkExecution(ServerContext *context, const Empty*, ServerWriter<CommandOutput> *writer) override;
 
   Status repoGetPackageVersion(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status repoInstallPackage(ServerContext* context, const RepoInstallPackageRequest* request, Empty*) override;
@@ -121,7 +121,7 @@ public:
   Status unloadLibrary(ServerContext* context, const UnloadLibraryRequest* request, Empty*) override;
   Status saveGlobalEnvironment(ServerContext *context, const StringValue *request, Empty*) override;
   Status loadEnvironment(ServerContext *context, const LoadEnvironmentRequest *request, Empty*) override;
-  Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty* response) override;
+  Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty*) override;
   Status clientRequestFinished(ServerContext* context, const Empty*, Empty*) override;
 
   Status convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request,  ServerWriter<CommandOutput> *writer) override;

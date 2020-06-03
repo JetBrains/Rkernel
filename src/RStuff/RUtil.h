@@ -49,7 +49,7 @@ public:
   }
   ~WithOption() {
     try {
-      RI->options(named(name.c_str(), oldValue));
+      safeEval(RI->options.lang(named(name.c_str(), oldValue)), R_BaseEnv, true);
     } catch (RInterruptedException const&) {
       R_interrupts_pending = 1;
     } catch (RExceptionBase const&) {

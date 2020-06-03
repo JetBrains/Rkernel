@@ -85,7 +85,8 @@ static void writePackages(std::ofstream &out) {
   out << "Packages\n";
   out << LINE;
   out << "Attached:";
-  SEXP env = RI->globalEnv.parentEnv();
+  SEXP env = ENCLOS(R_GlobalEnv);
+  SEXP cycleDetector = env;
   while (env != R_EmptyEnv && env != R_NilValue) {
     if (R_IsPackageEnv(env)) {
       out << " " << stringEltUTF8(R_PackageEnvName(env), 0);
@@ -93,6 +94,9 @@ static void writePackages(std::ofstream &out) {
       out << " " << stringEltUTF8(R_NamespaceEnvSpec(env), 0);
     }
     env = ENCLOS(env);
+    cycleDetector = ENCLOS(cycleDetector);
+    cycleDetector = ENCLOS(cycleDetector);
+    if (cycleDetector == env) break;
   }
   out << "\n";
   out << "Loaded:";
