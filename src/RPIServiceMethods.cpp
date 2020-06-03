@@ -202,8 +202,3 @@ Status RPIServiceImpl::getNextAsyncEvent(ServerContext*, const Empty*, AsyncEven
   response->CopyFrom(asyncEvents.pop());
   return Status::OK;
 }
-
-Status RPIServiceImpl::raiseSigsegv(ServerContext* context, const Empty*, Empty*) {
-  raise(SIGSEGV);
-  return Status::OK;
-}

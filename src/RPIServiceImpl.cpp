@@ -31,6 +31,7 @@
 #include <thread>
 #include "util/Finally.h"
 #include <atomic>
+#include <signal.h>
 
 using namespace grpc;
 
