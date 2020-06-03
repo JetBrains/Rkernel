@@ -385,6 +385,7 @@ public:
           time = std::chrono::steady_clock::now() + std::chrono::seconds(5);
           condVar.wait_until(lock, time, [&] { return termination || std::chrono::steady_clock::now() >= time; });
           if (!termination) {
+            signal(SIGABRT, SIG_DFL);
             abort();
           }
           break;
