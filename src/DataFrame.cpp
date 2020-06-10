@@ -275,7 +275,17 @@ Status RPIServiceImpl::dataFrameFilter(ServerContext* context, const DataFrameFi
   executeOnMainThread([&] {
     if (!initDplyr()) return;
     ShieldSEXP dataFrame = dereference(request->ref());
-    int index = persistentRefStorage.add(RI->dplyrFilter(dataFrame, applyFilter(dataFrame, request->filter())));
+    ShieldSEXP maskWithNa = applyFilter(dataFrame, request->filter());
+    ShieldSEXP mask = RI->replace(maskWithNa, RI->isNa(maskWithNa), false);
+    PrSEXP call = R_NilValue;
+    for (int i = (int)dataFrame.length() - 1; i >= 0; --i) {
+      call = Rf_lcons(RI->subscript(dataFrame[i], mask), call);
+      SET_TAG(call, Rf_install(std::to_string(i).c_str()));
+    }
+    ShieldSEXP names = RI->names(dataFrame);
+    ShieldSEXP newDataFrame = RI->namesAssign(safeEval(Rf_lcons(RI->dplyrTibble, call), R_GlobalEnv), names);
+
+    int index = persistentRefStorage.add(newDataFrame);
     response->set_value(index);
   }, context, true);
   return Status::OK;

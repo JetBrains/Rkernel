@@ -95,6 +95,7 @@ struct RObjects2 {
   PrSEXP quote = baseEnv.getVar("quote");
   PrSEXP readLines = baseEnv.getVar("readLines");
   PrSEXP rep = baseEnv.getVar("rep");
+  PrSEXP replace = baseEnv.getVar("replace");
   PrSEXP rm = baseEnv.getVar("rm");
   PrSEXP saveImage = baseEnv.getVar("save.image");
   PrSEXP setenv = baseEnv.getVar("Sys.setenv");
@@ -149,8 +150,8 @@ struct RObjects2 {
   PrSEXP dplyrArrange = mkLang("dplyr::arrange");
   PrSEXP dplyrAsTbl = mkLang("dplyr::as.tbl");
   PrSEXP dplyrDesc = mkLang("dplyr::desc");
-  PrSEXP dplyrFilter = mkLang("dplyr::filter");
   PrSEXP dplyrIsTbl = mkLang("dplyr::is.tbl");
+  PrSEXP dplyrTibble = mkLang("dplyr::tibble");
   PrSEXP dplyrUngroup = mkLang("dplyr::ungroup");
 
   PrSEXP srcrefAttr = Rf_install("srcref");
