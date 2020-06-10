@@ -21,7 +21,7 @@
 #include <fstream>
 
 inline std::string readWholeFile(std::string const& path) {
-  std::ifstream file(path);
+  std::ifstream file(path, std::ios_base::in | std::ios_base::binary);
   return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
 

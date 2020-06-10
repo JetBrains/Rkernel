@@ -66,7 +66,7 @@ SourceFileManager::SourceFile *SourceFileManager::registerSourceFile(SEXP _srcfi
       ShieldSEXP path = safeEval(Rf_lang3(RI->myFilePath, wd, filename), R_GlobalEnv);
       if (isScalarString(path)) {
         isFileValue = true;
-        fileId = CHAR(STRING_ELT(path, 0));
+        fileId = std::string("rlocal://") + CHAR(STRING_ELT(path, 0));
         Rf_setAttrib(srcfile, RI->isPhysicalFileFlag, Rf_ScalarLogical(true));
       }
     }
