@@ -24,6 +24,7 @@
 #include "EventLoop.h"
 #include "Session.h"
 #include <signal.h>
+#include "util/FileUtil.h"
 
 static std::string getRVersion() {
   return (std::string)asStringUTF8(RI->doubleSubscript(RI->version, "major")) + "." +
@@ -173,6 +174,7 @@ void RPIServiceImpl::showFileHandler(std::string const& filePath, std::string co
   AsyncEvent event;
   event.mutable_showfilerequest()->set_filepath(filePath);
   event.mutable_showfilerequest()->set_title(title);
+  event.mutable_showfilerequest()->set_content(readWholeFile(filePath));
   asyncEvents.push(event);
   ScopedAssign<bool> with(isInClientRequest, true);
   runEventLoop();
