@@ -1,5 +1,5 @@
 # If you have made significant changes here, it may be worth looking at
-# rplugin/test/dotsNamedArgsPerformanceTest.R to check performance
+# rplugin/test/extraNamedArgsPerformanceTest.R to check performance
 
 .jetbrains$funcArgsInternal <<- list2env(list(
   lapply = "FUN",
@@ -76,11 +76,11 @@
   res
 }
 
-.jetbrains$findNodeDotsNamedArgs <<- function(node, functionParams, depth, cache, recStack) {
+.jetbrains$findNodeExtraNamedArgs <<- function(node, functionParams, depth, cache, recStack) {
   if (!is.recursive(node) || depth <= 0) return()
   if (class(node) != "call" || length(node) < 2) {
     # Not a function/function call. Or argument list is empty.
-    Reduce(c, .jetbrains$safeLapply(node, .jetbrains$findNodeDotsNamedArgs, functionParams = functionParams,
+    Reduce(c, .jetbrains$safeLapply(node, .jetbrains$findNodeExtraNamedArgs, functionParams = functionParams,
                                     depth = depth, cache = cache, recStack = recStack, dropNull = FALSE))
   }
   else {
@@ -93,11 +93,11 @@
       }
       else {
         # Function definition without ... -> collect info from body
-        .jetbrains$findNodeDotsNamedArgs(node[[3]], paramsNames, depth - 1, cache = cache, recStack = recStack)
+        .jetbrains$findNodeExtraNamedArgs(node[[3]], paramsNames, depth - 1, cache = cache, recStack = recStack)
       }
     }
     else {
-      res <- Reduce(c, .jetbrains$safeLapply(node, .jetbrains$findNodeDotsNamedArgs, functionParams = functionParams,
+      res <- Reduce(c, .jetbrains$safeLapply(node, .jetbrains$findNodeExtraNamedArgs, functionParams = functionParams,
                                              depth = depth, cache = cache, recStack = recStack, dropNull = FALSE))
       if (is.symbol(node[[1]]) && .jetbrains$safePredicateAny(node, .jetbrains$safeEq, x = "...")) {
         # Function call with ... agrument
@@ -119,8 +119,8 @@
             })]
           }
 
-          externalArgs <- list()
-          funDotsArgs <- .jetbrains$safeLapply(.jetbrains$findDotsNamedArgs(callName, depth - 1, cache = cache, recStack = recStack), function(x) {
+          externalArgs <- NULL
+          funExtraArgs <- .jetbrains$safeLapply(.jetbrains$findExtraNamedArgs(callName, depth - 1, cache = cache, recStack = recStack), function(x) {
             name <- x[[1]]
             isFunForCompletion <- x[[2]]
             column <- list(name, isFunForCompletion)
@@ -146,7 +146,7 @@
                 || .jetbrains$safePredicateAny(functionParams, .jetbrains$safeEq, x = name)) NULL else column
             }
           })
-          res <- c(res, funDotsArgs, externalArgs, .jetbrains$safeLapply(filterArgs(args), function(x) list(x, F)))
+          res <- c(res, funExtraArgs, externalArgs, .jetbrains$safeLapply(filterArgs(args), function(x) list(x, F)))
         }
       }
       res
@@ -169,7 +169,11 @@
   result
 }
 
-.jetbrains$findDotsNamedArgs <<- function(x, depth, cache = new.env(), recStack = NULL) {
+#' @title Extra named arguments
+#' @returns List of pairs of type <character(1), logical(1)>. If second element of pair is FALSE, then
+#' first element is name of argument which can be passed directly to `...`. Otherwise
+#' first element is name of argument which is function whose arguments can also be passed to `...`.
+.jetbrains$findExtraNamedArgs <<- function(x, depth, cache = new.env(), recStack = NULL) {
   if (depth <= 0) return(NULL)
   if (is.character(x) && length(x) == 1) {
     if (.jetbrains$safePredicateAny(recStack, .jetbrains$safeEq, x = x)) return()
@@ -191,7 +195,7 @@
     }
   }, warning = function(w) { })
   if (!is.null(body) && .jetbrains$safePredicateAny(params, .jetbrains$safeEq, x = "...")) {
-    res <- unique(.jetbrains$addArgsFromInternal(x, .jetbrains$findNodeDotsNamedArgs(body, params, depth, cache, c(recStack, x))))
+    res <- unique(.jetbrains$addArgsFromInternal(x, .jetbrains$findNodeExtraNamedArgs(body, params, depth, cache, c(recStack, x))))
     if (is.character(x) && length(x) == 1) {
       if (!exists(x, envir = cache, inherits = FALSE)) assign(x, list(), cache)
       listRes <- list(res)
