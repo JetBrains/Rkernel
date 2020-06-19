@@ -23,7 +23,8 @@ void CommandLineOptions::parse(int argc, char* argv[]) {
   options.add_options()
       ("h,help", "Show help and exit")
       ("with-timeout", "Terminate RWrapper if no RPCs were received for a minute")
-      ("crash-report-file", "File for saving crash report", cxxopts::value<std::string>());
+      ("crash-report-file", "File for saving crash report", cxxopts::value<std::string>())
+      ("is-remote", "RWrapper is run on a remote host");
   try {
     auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
@@ -31,6 +32,7 @@ void CommandLineOptions::parse(int argc, char* argv[]) {
       exit(0);
     }
     withTimeout = result["with-timeout"].as<bool>();
+    isRemote = result["is-remote"].as<bool>();
     if (result.count("crash-report-file")) {
       crashReportFile = result["crash-report-file"].as<std::string>();
     }

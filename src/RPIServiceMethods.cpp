@@ -187,6 +187,12 @@ void RPIServiceImpl::showHelpHandler(std::string const& content, std::string con
   asyncEvents.push(event);
 }
 
+void RPIServiceImpl::browseURLHandler(const std::string &url) {
+  AsyncEvent event;
+  event.set_browseurlrequest(url);
+  asyncEvents.push(event);
+}
+
 Status RPIServiceImpl::clientRequestFinished(ServerContext* context, const Empty*, Empty*) {
   executeOnMainThread([&]{
     if (isInClientRequest) {

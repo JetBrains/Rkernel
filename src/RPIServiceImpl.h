@@ -147,6 +147,7 @@ public:
   void viewHandler(SEXP x, SEXP title);
   void showFileHandler(std::string const& filePath, std::string const& title);
   void showHelpHandler(std::string const& content, std::string const& url);
+  void browseURLHandler(std::string const& url);
 
   void sendAsyncEvent(AsyncEvent const& e);
   void setChildProcessState();
