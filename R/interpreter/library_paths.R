@@ -8,5 +8,8 @@ if (length(args) != 0) {
 }
 
 cat(">>>RPLUGIN>>>")
-writeLines(.libPaths())
+for (path in .libPaths()) {
+  cat(path, file.access(path, 2) == 0, sep = "!!!JETBRAINS_RPLUGIN!!!")
+  cat("\n")
+}
 cat("<<<RPLUGIN<<<")

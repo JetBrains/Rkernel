@@ -131,7 +131,13 @@ static GetContentResult getURLContent(std::string request, int maxRedirects = 5)
 bool processBrowseURL(std::string const& url) {
   int port = asInt(RI->httpdPort());
   std::string prefix = "http://127.0.0.1:" + std::to_string(port) + "/";
-  if (!startsWith(url, prefix)) return false;
+  if (!startsWith(url, prefix)) {
+    if (commandLineOptions.isRemote) {
+      rpiService->browseURLHandler(url);
+      return true;
+    }
+    return false;
+  }
   GetContentResult response = getURLContent(url);
   if (!response.success) return false;
   rpiService->showHelpHandler(response.content, response.url);
