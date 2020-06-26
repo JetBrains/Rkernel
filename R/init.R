@@ -193,6 +193,35 @@ options(install.packages.compile.from.source = "always")
   sink()
 }
 
+.jetbrains$initGraphicsDevice <<- function(width, height, resolution, in.memory) {
+  path <- .jetbrains$createSnapshotGroup()
+  .Call(".jetbrains_ther_device_init", path, width, height, resolution, in.memory)
+}
+
+.jetbrains$findStoredSnapshot <<- function(directory, number) {
+  pattern <- paste0("^snapshot_normal_", number, "_")  # Note: trailing underscore will cut off remaining digits if any
+  snapshots <- list.files(directory, pattern = pattern, full.names = FALSE)
+  if (length(snapshots) > 0) {
+    return(snapshots[1])
+  } else {
+    return(NULL)
+  }
+}
+
+.jetbrains$createSnapshotGroup <<- function() {
+  path <- tempfile(pattern = "jetbrains_ther_device")
+  dir.create(path)
+  path
+}
+
+.jetbrains$shutdownGraphicsDevice <<- function() {
+  path <- .Call(".jetbrains_ther_device_shutdown")
+  if (!is.null(path)) {
+    unlink(path, recursive = TRUE)
+  }
+  NULL
+}
+
 .jetbrains$saveRecordedPlotToFile <<- function(snapshot, output.path) {
   .jetbrains.recorded.snapshot <- snapshot
   save(.jetbrains.recorded.snapshot, file = output.path)

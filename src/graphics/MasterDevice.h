@@ -19,6 +19,7 @@
 #define MASTER_DEVICE_H
 
 #include <string>
+#include <unordered_set>
 
 #include "Ptr.h"
 #include "InitHelper.h"
@@ -39,6 +40,7 @@ class MasterDevice {
   std::string currentSnapshotDirectory;
   ScreenParameters currentScreenParameters;
   std::vector<DeviceInfo> currentDeviceInfos;
+  std::unordered_set<int> latestChangedNumbers;
   int currentSnapshotNumber;
   bool isNextGgPlot;
   int deviceNumber;
@@ -58,11 +60,14 @@ public:
 
   bool hasCurrentDevice();
   Ptr<REagerGraphicsDevice> getCurrentDevice();
+  Ptr<REagerGraphicsDevice> getDeviceAt(int number);
   void addNewDevice();
 
   int getSnapshotCount();
   void recordLast(bool isTriggeredByGgPlot);
   bool isOnlineRescalingEnabled();
+  const std::string& getSnapshotDirectory();
+  std::unordered_set<int> pullLatestChangedNumbers();
   bool rescaleAllLast(ScreenParameters newParameters);
   bool rescaleByNumber(int number, ScreenParameters newParameters);
   bool rescaleByPath(const std::string& parentDirectory, int number, int version, ScreenParameters newParameters);

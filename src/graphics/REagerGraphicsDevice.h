@@ -30,13 +30,9 @@
 #include "Point.h"
 #include "Rectangle.h"
 #include "SlaveDevice.h"
+#include "SnapshotType.h"
 
 namespace graphics {
-
-enum class SnapshotType {
-  SKETCH,
-  NORMAL,
-};
 
 struct MetricInfo {
   double ascent;
@@ -50,14 +46,14 @@ private:
   int deviceNumber;
   int snapshotNumber;
   int snapshotVersion;
+  std::string snapshotPath;
   SnapshotType snapshotType;
   std::string snapshotDirectory;
   ScreenParameters parameters;
   Ptr<SlaveDevice> slaveDevice;
 
   Ptr<SlaveDevice> initializeSlaveDevice();
-  const char* makeSnapshotTypeSuffix();
-  void shutdownSlaveDevice();
+  void shutdownSlaveDevice(bool deletePlot = true);
   pDevDesc getSlave();
   void replayWithCommand(const std::string& command);
 
@@ -88,6 +84,7 @@ public:
   Rectangle drawingArea();
   ScreenParameters screenParameters();
   ScreenParameters logicScreenParameters();
+  int currentVersion();
   double widthOfStringUtf8(const char* text, pGEcontext context);
   void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context);
   bool dump();

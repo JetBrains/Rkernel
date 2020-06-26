@@ -226,6 +226,14 @@ Ptr<REagerGraphicsDevice> MasterDevice::getCurrentDevice() {
   return currentDeviceInfos[currentSnapshotNumber].device;
 }
 
+Ptr<REagerGraphicsDevice> MasterDevice::getDeviceAt(int number) {
+  auto deviceCount = getSnapshotCount();
+  if (number < 0 || number >= deviceCount) {
+    return nullptr;
+  }
+  return currentDeviceInfos[number].device;
+}
+
 void MasterDevice::addNewDevice() {
   currentDeviceInfos.emplace_back(DeviceInfo());
   currentSnapshotNumber++;
@@ -263,14 +271,19 @@ void MasterDevice::recordLast(bool isTriggeredByGgPlot) {
   }
 }
 
+std::unordered_set<int> MasterDevice::pullLatestChangedNumbers() {
+  return std::move(latestChangedNumbers);
+}
+
 bool MasterDevice::rescaleAllLast(ScreenParameters newParameters) {
   auto hasRescaledAtLeastOne = false;
   for (auto number = currentSnapshotNumber; number >= 0; number--) {
     if (currentDeviceInfos[number].hasDumped) {
       break;
     }
-    auto hasRescaled = rescaleByNumber(number, newParameters);
-    hasRescaledAtLeastOne |= hasRescaled;
+    if (rescaleByNumber(number, newParameters)) {
+      hasRescaledAtLeastOne = true;
+    }
   }
   if (hasRescaledAtLeastOne) {
     addNewDevice();
@@ -303,6 +316,7 @@ bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
   if (!device->isBlank()) {
     recordAndDumpIfNecessary(deviceInfo, number);
     rescaleAndDumpIfNecessary(device, newParameters);
+    latestChangedNumbers.insert(number);
     return true;
   } else {
     return false;
@@ -319,7 +333,7 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
     return false;
   }
 
-  auto path = SnapshotUtil::makeFileName(parentDirectory, number);
+  auto path = SnapshotUtil::makeRecordedFilePath(parentDirectory, number);
   if (!std::ifstream(path)) {
     std::cerr << "No corresponding recorded file. Ignored\n";
     return false;
@@ -364,6 +378,7 @@ void MasterDevice::restart() {
   DEVICE_TRACE;
 
   shutdown();
+  latestChangedNumbers.clear();
   if (currentDeviceInfos.empty()) {
     addNewDevice();
   }
@@ -476,6 +491,10 @@ MasterDevice* MasterDevice::from(pDevDesc descriptor) {
 
 bool MasterDevice::isOnlineRescalingEnabled() {
   return inMemory;
+}
+
+const std::string& MasterDevice::getSnapshotDirectory() {
+  return currentSnapshotDirectory;
 }
 
 void MasterDevice::recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) {

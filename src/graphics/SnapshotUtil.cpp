@@ -49,6 +49,16 @@ std::string makeLoadAndReplayCommand(const std::string& filePath) {
 
 }  // anonymous
 
+std::string SnapshotUtil::makeSnapshotName(int number, int version, int resolution) {
+  return makeSnapshotName(SnapshotType::NORMAL, number, version, resolution);
+}
+
+std::string SnapshotUtil::makeSnapshotName(SnapshotType type, int number, int version, int resolution) {
+  auto sout = std::ostringstream();
+  sout << "snapshot_" << toString(type) << "_" << number << "_" << version << "_" << resolution << ".png";
+  return sout.str();
+}
+
 std::string SnapshotUtil::makeVariableName(int deviceNumber, int snapshotNumber) {
   auto sout = std::ostringstream();
   sout << ENVIRONMENT_NAME << "$" << RECORDED_SNAPSHOT_PREFIX
@@ -66,22 +76,22 @@ std::string SnapshotUtil::makeReplayVariableCommand(int deviceNumber, int snapsh
   return makeReplayCommand(name);
 }
 
-std::string SnapshotUtil::makeFileName(const std::string &directory, int snapshotNumber) {
+std::string SnapshotUtil::makeRecordedFilePath(const std::string &directory, int snapshotNumber) {
   auto sout = std::ostringstream();
   sout << directory << "/recorded_" << snapshotNumber << ".snapshot";
   return sout.str();
 }
 
 std::string SnapshotUtil::makeReplayFileCommand(const std::string &directory, int snapshotNumber) {
-  auto filePath = makeFileName(directory, snapshotNumber);
+  auto filePath = makeRecordedFilePath(directory, snapshotNumber);
   return makeLoadAndReplayCommand(filePath);
 }
 
 std::string SnapshotUtil::makeSaveVariableCommand(const std::string &directory, int deviceNumber, int snapshotNumber) {
-  auto sourceName = makeVariableName(deviceNumber, snapshotNumber);
-  auto fileName = makeFileName(directory, snapshotNumber);
+  auto variableName = makeVariableName(deviceNumber, snapshotNumber);
+  auto filePath = makeRecordedFilePath(directory, snapshotNumber);
   auto sout = std::ostringstream();
-  sout << ".jetbrains$saveRecordedPlotToFile(" << sourceName << ", '" << fileName << "')";
+  sout << ".jetbrains$saveRecordedPlotToFile(" << variableName << ", '" << filePath << "')";
   return sout.str();
 }
 

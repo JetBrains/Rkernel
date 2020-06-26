@@ -35,8 +35,16 @@ SEXP jetbrains_ther_device_restart() {
 }
 
 SEXP jetbrains_ther_device_shutdown() {
-  DeviceManager::getInstance()->shutdownLast();
-  return R_NilValue;
+  auto manager = DeviceManager::getInstance();
+  auto active = manager->getActive();
+  if (active) {
+    auto path = active->getSnapshotDirectory();
+    manager->shutdownLast();
+    return toSEXP(path);
+  } else {
+    std::cerr << "jetbrains_ther_device_shutdown(): nothing to shutdown. Ignored\n";
+    return R_NilValue;
+  }
 }
 
 SEXP jetbrains_ther_device_snapshot_count() {
