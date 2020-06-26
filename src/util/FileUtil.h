@@ -25,4 +25,9 @@ inline std::string readWholeFile(std::string const& path) {
   return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
 }
 
+inline void writeToFile(const std::string& path, const std::string& content) {
+  auto fout = std::ofstream(path, std::ios::binary);
+  fout.write(content.c_str(), content.size());
+}
+
 #endif //RWRAPPER_FILE_UTIL_H

@@ -91,6 +91,11 @@ public:
   Status graphicsDump(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) override;
   Status graphicsRescale(ServerContext* context, const GraphicsRescaleRequest* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsRescaleStored(ServerContext* context, const GraphicsRescaleStoredRequest* request, ServerWriter<CommandOutput>* writer) override;
+  Status graphicsPullChangedNumbers(ServerContext* context, const Empty*, Int32List* response) override;
+  Status graphicsPullSnapshot(ServerContext* context, const GraphicsPullSnapshotRequest* request, GraphicsPullSnapshotResponse* response) override;
+  Status graphicsPushSnapshot(ServerContext* context, const GraphicsPushSnapshotRequest* request, google::protobuf::StringValue* response) override;
+  Status graphicsCreateGroup(ServerContext* context, const google::protobuf::Empty* request, ServerWriter<CommandOutput>* writer) override;
+  Status graphicsRemoveGroup(ServerContext* context, const google::protobuf::StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsShutdown(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) override;
 
   Status httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) override;

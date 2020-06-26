@@ -17,6 +17,7 @@
 
 #include "REagerGraphicsDevice.h"
 
+#include <cstdio>
 #include <sstream>
 
 #include "Common.h"
@@ -30,32 +31,22 @@ REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int de
                                            int snapshotVersion, ScreenParameters parameters)
     : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
       snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
-      snapshotType(SnapshotType::SKETCH) { getSlave(); }
+      snapshotType(SnapshotType::NORMAL) { getSlave(); }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
-  auto sout = std::ostringstream();
-  sout << snapshotDirectory << "/snapshot" << makeSnapshotTypeSuffix()
-       << "_" << snapshotNumber << "_" << snapshotVersion << "_" << parameters.resolution << ".png";
-  return makePtr<SlaveDevice>(sout.str(), parameters);
+  auto name = SnapshotUtil::makeSnapshotName(snapshotType, snapshotNumber, snapshotVersion, parameters.resolution);
+  snapshotPath = snapshotDirectory + "/" + name;
+  return makePtr<SlaveDevice>(snapshotPath, parameters);
 }
 
-const char* REagerGraphicsDevice::makeSnapshotTypeSuffix() {
-  switch (snapshotType) {
-    case SnapshotType::SKETCH:
-      return "_sketch";
-
-    case SnapshotType::NORMAL:
-      return "_normal";
-
-    default:
-      return "";
-  }
-}
-
-void REagerGraphicsDevice::shutdownSlaveDevice() {
+void REagerGraphicsDevice::shutdownSlaveDevice(bool deletePlot) {
   DEVICE_TRACE;
   slaveDevice = nullptr;
+  if (deletePlot && !snapshotPath.empty()) {
+    std::remove(snapshotPath.c_str());
+    snapshotPath = "";
+  }
 }
 
 // Nullable
@@ -190,6 +181,10 @@ ScreenParameters REagerGraphicsDevice::logicScreenParameters() {
   return parameters;
 }
 
+int REagerGraphicsDevice::currentVersion() {
+  return snapshotVersion;
+}
+
 double REagerGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext context) {
   auto slave = getSlave();
   if (slave != nullptr) {
@@ -208,7 +203,7 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
 }
 
 bool REagerGraphicsDevice::dump() {
-  shutdownSlaveDevice();
+  shutdownSlaveDevice(false);
   return true;
 }
 

@@ -23,11 +23,18 @@
 #include "RStuff/RUtil.h"
 #include "util/ScopedAssign.h"
 #include "util/StringUtil.h"
+#include "util/FileUtil.h"
+#include "graphics/DeviceManager.h"
+#include "graphics/SnapshotUtil.h"
+#include "graphics/Evaluator.h"
 #include <condition_variable>
 #include <cstdlib>
 #include <grpcpp/server_builder.h>
 #include <memory>
+#include <fstream>
 #include <sstream>
+#include <iterator>
+#include <stdexcept>
 #include <thread>
 #include "util/Finally.h"
 #include <atomic>
@@ -68,6 +75,39 @@ namespace {
     };
     return joinToString(options, mapper, "list(", ")");
   }
+
+  std::shared_ptr<graphics::MasterDevice> getActiveDeviceOrThrow() {
+    auto active = graphics::DeviceManager::getInstance()->getActive();
+    if (!active) {
+      throw std::runtime_error("No active devices available");
+    }
+    return active;
+  }
+
+  void getInMemorySnapshotInfo(int number, std::string& directory, std::string& name) {
+    auto active = getActiveDeviceOrThrow();
+    directory = active->getSnapshotDirectory();
+    auto device = active->getDeviceAt(number);
+    if (!device) {
+      throw std::runtime_error("Current device is null");
+    }
+    auto version = device->currentVersion();
+    auto resolution = device->screenParameters().resolution;
+    name = graphics::SnapshotUtil::makeSnapshotName(number, version, resolution);
+  }
+
+  std::string getStoredSnapshotName(const std::string& directory, int number) {
+    auto sout = std::ostringstream();
+    sout << ".jetbrains$findStoredSnapshot('" << escapeStringCharacters(directory) << "', " << number << ")";
+    auto command = sout.str();
+    graphics::ScopeProtector protector;
+    auto nameSEXP = graphics::Evaluator::evaluate(command, &protector);
+    auto name = std::string(stringEltUTF8(nameSEXP, 0));
+    if (name.empty()) {
+      throw std::runtime_error("Cannot find stored snapshot #" + std::to_string(number));
+    }
+    return name;
+  }
 }
 
 RPIServiceImpl::RPIServiceImpl() :
@@ -85,8 +125,7 @@ RPIServiceImpl::~RPIServiceImpl() = default;
 Status RPIServiceImpl::graphicsInit(ServerContext* context, const GraphicsInitRequest* request, ServerWriter<CommandOutput>* writer) {
   auto& parameters = request->screenparameters();
   auto sout = std::ostringstream();
-  sout << ".Call(\".jetbrains_ther_device_init\", "
-       << "'" << request->snapshotdirectory() << "', "
+  sout << ".jetbrains$initGraphicsDevice("
        << parameters.width() << ", "
        << parameters.height() << ", "
        << parameters.resolution() << ", "
@@ -113,7 +152,7 @@ Status RPIServiceImpl::graphicsRescale(ServerContext* context, const GraphicsRes
 Status RPIServiceImpl::graphicsRescaleStored(ServerContext* context, const GraphicsRescaleStoredRequest* request, ServerWriter<CommandOutput>* writer) {
   auto strings = std::vector<std::string> {
     ".jetbrains_ther_device_rescale_stored",
-    request->parentdirectory(),
+    request->groupid(),
   };
   auto stringArguments = joinToString(strings, quote);
   auto numbers = std::vector<int> {
@@ -129,8 +168,69 @@ Status RPIServiceImpl::graphicsRescaleStored(ServerContext* context, const Graph
   return executeCommand(context, command, writer);
 }
 
+Status RPIServiceImpl::graphicsPullChangedNumbers(ServerContext* context, const Empty*, Int32List* response) {
+  executeOnMainThread([&] {
+    try {
+      auto active = getActiveDeviceOrThrow();
+      auto numbers = active->pullLatestChangedNumbers();
+      for (auto number : numbers) {
+        response->add_value(number);
+      }
+    } catch (const std::exception& e) {
+      response->set_message(e.what());
+    }
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::graphicsPullSnapshot(ServerContext* context, const GraphicsPullSnapshotRequest* request, GraphicsPullSnapshotResponse* response) {
+  executeOnMainThread([&] {
+    try {
+      std::string name;
+      auto directory = request->groupid();
+      auto number = request->snapshotnumber();
+      if (directory.empty()) {
+        getInMemorySnapshotInfo(number, directory, name);
+      } else {
+        name = getStoredSnapshotName(directory, number);
+      }
+      response->set_content(readWholeFile(directory + "/" + name));
+      response->set_snapshotname(name);
+      if (request->withrecorded()) {
+        auto path = graphics::SnapshotUtil::makeRecordedFilePath(directory, number);
+        response->set_recorded(readWholeFile(path));
+      }
+    } catch (const std::exception& e) {
+      response->set_message(e.what());
+    }
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::graphicsPushSnapshot(ServerContext* context, const GraphicsPushSnapshotRequest* request, google::protobuf::StringValue* response) {
+  executeOnMainThread([&] {
+    try {
+      auto path = graphics::SnapshotUtil::makeRecordedFilePath(request->groupid(), request->snapshotnumber());
+      writeToFile(path, request->recorded());
+    } catch (const std::exception& e) {
+      response->set_value(e.what());
+    }
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::graphicsCreateGroup(ServerContext* context, const google::protobuf::Empty* request, ServerWriter<CommandOutput>* writer) {
+  return executeCommand(context, ".jetbrains$createSnapshotGroup()", writer);
+}
+
+Status RPIServiceImpl::graphicsRemoveGroup(ServerContext* context, const google::protobuf::StringValue* request, ServerWriter<CommandOutput>* writer) {
+  auto sout = std::ostringstream();
+  sout << "unlink('" << escapeStringCharacters(request->value()) << "', recursive = TRUE)";
+  return executeCommand(context, sout.str(), writer);
+}
+
 Status RPIServiceImpl::graphicsShutdown(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) {
-  return executeCommand(context, ".Call('.jetbrains_ther_device_shutdown')", writer);
+  return executeCommand(context, ".jetbrains$shutdownGraphicsDevice()", writer);
 }
 
 Status RPIServiceImpl::beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) {

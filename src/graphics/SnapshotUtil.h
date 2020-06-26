@@ -20,11 +20,15 @@
 
 #include <string>
 
+#include "SnapshotType.h"
+
 namespace graphics {
 
 class SnapshotUtil {
 public:
-  static std::string makeFileName(const std::string& directory, int snapshotNumber);
+  static std::string makeSnapshotName(int number, int version, int resolution);
+  static std::string makeSnapshotName(SnapshotType type, int number, int version, int resolution);
+  static std::string makeRecordedFilePath(const std::string &directory, int snapshotNumber);
   static std::string makeSaveVariableCommand(const std::string& directory, int deviceNumber, int snapshotNumber);
   static std::string makeReplayFileCommand(const std::string& directory, int snapshotNumber);
   static std::string makeVariableName(int deviceNumber, int snapshotNumber);
