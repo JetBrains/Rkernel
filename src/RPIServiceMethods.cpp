@@ -182,6 +182,7 @@ void RPIServiceImpl::showFileHandler(std::string const& filePath, std::string co
 
 void RPIServiceImpl::showHelpHandler(std::string const& content, std::string const& url) {
   AsyncEvent event;
+  event.mutable_showhelprequest()->set_success(true);
   event.mutable_showhelprequest()->set_content(content);
   event.mutable_showhelprequest()->set_url(url);
   asyncEvents.push(event);

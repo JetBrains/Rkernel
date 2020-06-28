@@ -122,6 +122,7 @@ struct RObjects2 {
   PrSEXP compilerEnableJIT = compiler.getVar("enableJIT");
 
   PrSEXP utils = loadNamespace("utils");
+  PrSEXP help = utils.getVar("help");
   PrSEXP objectSize = utils.getVar("object.size");
 
   PrSEXP tools = loadNamespace("tools");

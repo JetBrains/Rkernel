@@ -98,8 +98,6 @@ public:
   Status graphicsRemoveGroup(ServerContext* context, const google::protobuf::StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsShutdown(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) override;
 
-  Status httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
-
   Status beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) override;
   Status afterChunkExecution(ServerContext *context, const Empty*, ServerWriter<CommandOutput> *writer) override;
   Status pullChunkOutputRelativePaths(ServerContext *context, const Empty*, StringList* response) override;
@@ -133,8 +131,10 @@ public:
 
   Status convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request,  ServerWriter<CommandOutput> *writer) override;
   Status makeRdFromRoxygen(ServerContext* context, const MakeRdFromRoxygenRequest* request,  ServerWriter<CommandOutput> *writer) override;
-  Status findPackagePathByTopic(ServerContext* context, const FindPackagePathByTopicRequest* request,  ServerWriter<CommandOutput> *writer) override;
-  Status findPackagePathByPackageName(ServerContext* context, const FindPackagePathByPackageNameRequest* request,  ServerWriter<CommandOutput> *writer) override;
+  Status httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
+  Status getDocumentationForPackage(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
+  Status getDocumentationForSymbol(ServerContext* context, const DocumentationForSymbolRequest* request, HttpdResponse* response) override;
+
   Status setSaveOnExit(ServerContext* context, const BoolValue* request, Empty*) override;
 
   void mainLoop();
