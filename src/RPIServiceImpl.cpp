@@ -381,18 +381,6 @@ Status RPIServiceImpl::makeRdFromRoxygen(ServerContext* context, const MakeRdFro
   return executeCommand(context, buildCallCommand("write", sout.str()), writer);
 }
 
-Status RPIServiceImpl::findPackagePathByTopic(ServerContext* context, const FindPackagePathByTopicRequest* request, ServerWriter<CommandOutput>* writer) {
-  auto sout = std::ostringstream();
-  sout << quote(request->topic()) << ", find.package(" << request->searchspace() << ")";
-  auto command = buildCallCommand("utils:::index.search", sout.str());
-  return executeCommand(context, command, writer);
-}
-
-Status RPIServiceImpl::findPackagePathByPackageName(ServerContext* context, const FindPackagePathByPackageNameRequest* request, ServerWriter<CommandOutput>* writer) {
-  auto command = buildCallCommand("base::find.package", quote(request->packagename()));
-  return executeCommand(context, command, writer);
-}
-
 void RPIServiceImpl::mainLoop() {
   AsyncEvent event;
   event.mutable_prompt();

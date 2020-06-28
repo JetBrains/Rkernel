@@ -66,7 +66,7 @@ struct GetContentResult {
 static GetContentResult getURLContent(std::string request, int maxRedirects = 5) {
   GetContentResult result = { false, "", request };
   if (startsWith(request, "http://127.0.0.1")) {
-    int pos = strlen("https://127.0.0.1");
+    int pos = strlen("http://127.0.0.1");
     while (pos < request.size() && request[pos] != '/') ++pos;
     request.erase(request.begin(), request.begin() + pos);
   }
@@ -144,12 +144,50 @@ bool processBrowseURL(std::string const& url) {
   return true;
 }
 
+static void getURLContent(std::string const& url, HttpdResponse* response) {
+  GetContentResult result = getURLContent(url);
+  response->set_success(result.success);
+  response->set_content(std::move(result.content));
+  response->set_url(std::move(result.url));
+}
+
 Status RPIServiceImpl::httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) {
   executeOnMainThread([&] {
-    GetContentResult result = getURLContent(request->value());
-    response->set_success(result.success);
-    response->set_content(std::move(result.content));
-    response->set_url(std::move(result.url));
+    getURLContent(request->value(), response);
+  }, context, true);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::getDocumentationForPackage(ServerContext* context, const StringValue* request, HttpdResponse* response) {
+  executeOnMainThread([&] {
+    getURLContent("http://127.0.0.1/library/" + request->value() + "/html/00Index.html", response);
+  }, context, true);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::getDocumentationForSymbol(ServerContext* context, const DocumentationForSymbolRequest* request, HttpdResponse* response) {
+  executeOnMainThread([&] {
+    std::string const& symbol = request->symbol();
+    std::string const& package = request->package();
+
+    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    jetbrainsEnv.assign("documentationUrl", R_NilValue);
+    PrSEXP expr = Rf_install(symbol.c_str());
+    if (!package.empty()) {
+      ShieldSEXP packageSym = Rf_install(package.c_str());
+      expr = Rf_lang3(Rf_install("::"), packageSym, expr);
+    }
+    expr = Rf_lang2(Rf_install("?"), expr);
+    expr = Rf_lang2(Rf_install("print"), expr);
+
+    static PrSEXP browser = RI->evalCode("function(url) .jetbrains$documentationUrl <<- url", RI->baseEnv);
+    WithOption withBrowser("browser", browser);
+    safeEval(expr, RI->utils);
+
+    std::string url = asStringUTF8(jetbrainsEnv.getVar("documentationUrl"));
+    if (!url.empty()) {
+      getURLContent(url, response);
+    }
   }, context, true);
   return Status::OK;
 }
