@@ -129,8 +129,7 @@ public:
   Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty*) override;
   Status clientRequestFinished(ServerContext* context, const Empty*, Empty*) override;
 
-  Status convertRd2HTML(ServerContext* context, const ConvertRd2HTMLRequest* request,  ServerWriter<CommandOutput> *writer) override;
-  Status makeRdFromRoxygen(ServerContext* context, const MakeRdFromRoxygenRequest* request,  ServerWriter<CommandOutput> *writer) override;
+  Status convertRoxygenToHTML(ServerContext* context, const ConvertRoxygenToHTMLRequest* request, ConvertRoxygenToHTMLResponse* response) override;
   Status httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
   Status getDocumentationForPackage(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
   Status getDocumentationForSymbol(ServerContext* context, const DocumentationForSymbolRequest* request, HttpdResponse* response) override;

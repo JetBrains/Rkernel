@@ -376,6 +376,14 @@ options(install.packages.compile.from.source = "always")
   })
 }
 
+.jetbrains$convertRoxygenToHTML <<- function(functionName, text) {
+  text <- format(
+    roxygen2:::roclet_process.roclet_rd(, roxygen2:::parse_text(text), base_path = ".")[[paste0(functionName, ".Rd")]])
+  links = gsub("^\\.\\./\\.\\./", "/library/", tools::findHTMLlinks())
+  text <- utils::capture.output(tools::Rd2HTML(textConnection(text), Links = links))
+  return(paste(text, collapse = "\n"))
+}
+
 local({
   env <- as.environment("package:utils")
   unlockBinding("View", env)
