@@ -191,3 +191,16 @@ Status RPIServiceImpl::getDocumentationForSymbol(ServerContext* context, const D
   }, context, true);
   return Status::OK;
 }
+
+Status RPIServiceImpl::convertRoxygenToHTML(ServerContext* context, const ConvertRoxygenToHTMLRequest* request, ConvertRoxygenToHTMLResponse* response) {
+  executeOnMainThread([&] {
+    try {
+      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP fun = jetbrainsEnv.getVar("convertRoxygenToHTML");
+      response->set_text(asStringUTF8(fun(request->functionname(), request->functiontext())));
+    } catch (RError const& e) {
+      response->set_error(e.what());
+    }
+  }, context, true);
+  return Status::OK;
+}
