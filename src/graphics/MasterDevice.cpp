@@ -276,27 +276,35 @@ std::unordered_set<int> MasterDevice::pullLatestChangedNumbers() {
 }
 
 bool MasterDevice::rescaleAllLast(ScreenParameters newParameters) {
-  auto hasRescaledAtLeastOne = false;
+  return commitAllLast(true, newParameters);
+}
+
+bool MasterDevice::commitAllLast(bool withRescale, ScreenParameters newParameters) {
+  auto hasCommittedAtLeastOne = false;
   for (auto number = currentSnapshotNumber; number >= 0; number--) {
     if (currentDeviceInfos[number].hasDumped) {
       break;
     }
-    if (rescaleByNumber(number, newParameters)) {
-      hasRescaledAtLeastOne = true;
+    if (commitByNumber(number, withRescale, newParameters)) {
+      hasCommittedAtLeastOne = true;
     }
   }
-  if (hasRescaledAtLeastOne) {
+  if (hasCommittedAtLeastOne) {
     addNewDevice();
   }
-  return hasRescaledAtLeastOne;
+  return hasCommittedAtLeastOne;
 }
 
 bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
+  return commitByNumber(number, true, newParameters);
+}
+
+bool MasterDevice::commitByNumber(int number, bool withRescale, ScreenParameters newParameters) {
   if (!masterDeviceDescriptor) {
     return false;
   }
 
-  if (!checkParameters(newParameters)) {
+  if (withRescale && !checkParameters(newParameters)) {
     std::cerr << "Invalid rescale parameters were provided: " << newParameters << "\n";
     return false;
   }
@@ -306,7 +314,9 @@ bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
   // that's why we should re-enable it manually here
   masterDeviceDescriptor->recordGraphics = TRUE;
 
-  currentScreenParameters = newParameters;
+  if (withRescale) {
+    currentScreenParameters = newParameters;
+  }
   auto& deviceInfo = currentDeviceInfos[number];
   auto device = deviceInfo.device;
   if (!device) {
@@ -315,7 +325,9 @@ bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
 
   if (!device->isBlank()) {
     recordAndDumpIfNecessary(deviceInfo, number);
-    rescaleAndDumpIfNecessary(device, newParameters);
+    if (withRescale) {
+      rescaleAndDumpIfNecessary(device, newParameters);
+    }
     latestChangedNumbers.insert(number);
     return true;
   } else {
@@ -346,6 +358,10 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
   device->dump();
 
   return true;
+}
+
+bool MasterDevice::dumpAllLast() {
+  return commitAllLast(false, ScreenParameters{});
 }
 
 void MasterDevice::onNewPage() {

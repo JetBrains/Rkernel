@@ -90,7 +90,7 @@ options(install.packages.compile.from.source = "always")
   file.path(.jetbrains$externalImageDir, base.name)
 }
 
-.jetbrains$runBeforeChunk <<- function(report.text, chunk.text, cache.dir, width, height, resolution) {
+.jetbrains$runBeforeChunk <<- function(report.text, chunk.text, cache.dir) {
   .rs.evaluateRmdParams(report.text)
   opts <- .rs.evaluateChunkOptions(chunk.text)
   data.dir <- file.path(cache.dir, "data")
