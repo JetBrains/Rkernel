@@ -19,24 +19,16 @@
   else res
 }
 
-.jetbrains$safeBaseApply <<- function(list, fun, ..., applyFun, dropNull = TRUE) {
+.jetbrains$safeSapply <<- function(list, fun, ..., dropNull = TRUE) {
   if (length(list) == 0) return(NULL)
   emptyHandler <- function(ignore) { }
-  result <- applyFun(list, function(e, ...) tryCatch(fun(e, ...), error = emptyHandler, warning = emptyHandler), ...)
+  result <- sapply(list, function(e, ...) tryCatch(fun(e, ...), error = emptyHandler, warning = emptyHandler), ...)
   if (dropNull) {
     result[sapply(result, function(x) !is.null(x))]
   }
   else {
     result
   }
-}
-
-.jetbrains$safeSapply <<- function(list, fun, ..., dropNull = TRUE) {
-  .jetbrains$safeBaseApply(list, fun, ..., applyFun = sapply, dropNull = dropNull)
-}
-
-.jetbrains$safeLapply <<- function(list, fun, ..., dropNull = TRUE) {
-  .jetbrains$safeBaseApply(list, fun, ..., applyFun = lapply, dropNull = dropNull)
 }
 
 .jetbrains$safePredicateAny <<- function(list, predicate, ...) {
@@ -47,8 +39,11 @@
   class(node) == "call" && node[[1]] == "function"
 }
 
-.jetbrains$safeFormalArgs <<- function(l) {
-  .jetbrains$safeSapply(l, formalArgs)
+.jetbrains$safeFormalArgs <<- function(l, package = NULL) {
+  .jetbrains$safeSapply(l, function(def) {
+    env <- tryCatch(asNamespace(package), error = function(e) { parent.frame() })
+    names(formals(def, envir = env))
+  })
 }
 
 .jetbrains$bindArgs <<- function(params, call) {
@@ -76,12 +71,12 @@
   res
 }
 
-.jetbrains$findNodeExtraNamedArgs <<- function(node, functionParams, depth, cache, recStack) {
+.jetbrains$findNodeExtraNamedArgs <<- function(node, functionParams, depth, package, cache, recStack) {
   if (!is.recursive(node) || depth <= 0) return()
   if (class(node) != "call" || length(node) < 2) {
     # Not a function/function call. Or argument list is empty.
-    Reduce(c, .jetbrains$safeLapply(node, .jetbrains$findNodeExtraNamedArgs, functionParams = functionParams,
-                                    depth = depth, cache = cache, recStack = recStack, dropNull = FALSE))
+    Reduce(c, lapply(node, .jetbrains$findNodeExtraNamedArgs, functionParams = functionParams,
+                     depth = depth, package = package, cache = cache, recStack = recStack))
   }
   else {
     if (.jetbrains$isFunctionNode(node)) {
@@ -93,21 +88,33 @@
       }
       else {
         # Function definition without ... -> collect info from body
-        .jetbrains$findNodeExtraNamedArgs(node[[3]], paramsNames, depth - 1, cache = cache, recStack = recStack)
+        .jetbrains$findNodeExtraNamedArgs(node[[3]], paramsNames, depth - 1, package = package, cache = cache, recStack = recStack)
       }
     }
     else {
-      res <- Reduce(c, .jetbrains$safeLapply(node, .jetbrains$findNodeExtraNamedArgs, functionParams = functionParams,
-                                             depth = depth, cache = cache, recStack = recStack, dropNull = FALSE))
-      if (is.symbol(node[[1]]) && .jetbrains$safePredicateAny(node, .jetbrains$safeEq, x = "...")) {
+      res <- Reduce(c, lapply(node, .jetbrains$findNodeExtraNamedArgs, functionParams = functionParams,
+                              depth = depth, package = package, cache = cache, recStack = recStack))
+      funName <- if (is.symbol(node[[1]])) {
+        node[[1]]
+      } else if (class(node[[1]]) == "call") {
+        ident <- node[[1]]
+        if (ident[[1]] == "::" && is.symbol(ident[[2]]) && is.symbol(ident[[3]])) {
+          package <- ident[[2]]
+          ident[[3]]
+        }
+        else NULL
+      } else {
+        NULL
+      }
+      if (!is.null(funName) && .jetbrains$safePredicateAny(node, .jetbrains$safeEq, x = "...")) {
         # Function call with ... agrument
-        callName <- as.character(node[[1]])
+        callName <- as.character(funName)
         if (.jetbrains$safePredicateAny(functionParams, .jetbrains$safeEq, x = callName)) {
           # Depends on parameters
           res <- c(res, list(list(callName, TRUE)))
         }
         else {
-          args <- .jetbrains$safeFormalArgs(callName)
+          args <- .jetbrains$safeFormalArgs(callName, package)
           binded <- .jetbrains$bindArgs(args, node)
 
           filterArgs <- function(argList) {
@@ -120,7 +127,7 @@
           }
 
           externalArgs <- NULL
-          funExtraArgs <- .jetbrains$safeLapply(.jetbrains$findExtraNamedArgs(callName, depth - 1, cache = cache, recStack = recStack), function(x) {
+          funExtraArgs <- lapply(.jetbrains$findExtraNamedArgs(callName, depth - 1, package = package, cache = cache, recStack = recStack), function(x) {
             name <- x[[1]]
             isFunForCompletion <- x[[2]]
             column <- list(name, isFunForCompletion)
@@ -133,7 +140,7 @@
                     list(as.character(val), TRUE)
                   }
                   else {
-                    externalArgs <<- c(res, .jetbrains$safeLapply(filterArgs(.jetbrains$safeFormalArgs(charVal)), function(x) list(x, F)))
+                    externalArgs <<- c(res, lapply(filterArgs(.jetbrains$safeFormalArgs(charVal, package)), function(x) list(x, F)))
                     NULL
                   }
                 }
@@ -146,7 +153,10 @@
                 || .jetbrains$safePredicateAny(functionParams, .jetbrains$safeEq, x = name)) NULL else column
             }
           })
-          res <- c(res, funExtraArgs, externalArgs, .jetbrains$safeLapply(filterArgs(args), function(x) list(x, F)))
+          if (length(funExtraArgs) > 0) {
+            funExtraArgs <- funExtraArgs[sapply(funExtraArgs, function(x) !is.null(x))]
+          }
+          res <- c(res, funExtraArgs, externalArgs, lapply(filterArgs(args), function(x) list(x, F)))
         }
       }
       res
@@ -159,7 +169,7 @@
 
     add <- function(envir, val) {
       if (exists(x, envir = envir, inherits = FALSE)) {
-        result <<- c(result, .jetbrains$safeLapply(envir[[x]], function(x) list(x, val)))
+        result <<- c(result, lapply(envir[[x]], function(x) list(x, val)))
       }
     }
 
@@ -173,7 +183,7 @@
 #' @returns List of pairs of type <character(1), logical(1)>. If second element of pair is FALSE, then
 #' first element is name of argument which can be passed directly to `...`. Otherwise
 #' first element is name of argument which is function whose arguments can also be passed to `...`.
-.jetbrains$findExtraNamedArgs <<- function(x, depth, cache = new.env(), recStack = NULL) {
+.jetbrains$findExtraNamedArgs <<- function(x, depth, package = NULL, cache = new.env(), recStack = NULL) {
   if (depth <= 0) return(NULL)
   if (is.character(x) && length(x) == 1) {
     if (.jetbrains$safePredicateAny(recStack, .jetbrains$safeEq, x = x)) return()
@@ -187,7 +197,13 @@
   params <- NULL
   body <- NULL
   str2lang <- function(s) parse(text = s, keep.source = FALSE)[[1]]
-  tryCatch({ body <- body(x); params <- formalArgs(x) }, error = function(e) {
+  tryCatch({
+      fun <- tryCatch(get(x, mode = "function", envir = asNamespace(package), inherits = FALSE), error = function(e) {
+        get(x, mode = "function", envir = parent.frame())
+      })
+      body <- base::body(fun)
+      params <- formalArgs(fun)
+  }, error = function(e) {
     node <- tryCatch(str2lang(x), error = function(e) { }, warning = function(w) { })
     if (.jetbrains$isFunctionNode(node)) {
       params <<- names(node[[2]])
@@ -195,7 +211,7 @@
     }
   }, warning = function(w) { })
   if (!is.null(body) && .jetbrains$safePredicateAny(params, .jetbrains$safeEq, x = "...")) {
-    res <- unique(.jetbrains$addArgsFromInternal(x, .jetbrains$findNodeExtraNamedArgs(body, params, depth, cache, c(recStack, x))))
+    res <- unique(.jetbrains$addArgsFromInternal(x, .jetbrains$findNodeExtraNamedArgs(body, params, depth, package, cache, c(recStack, x))))
     if (is.character(x) && length(x) == 1) {
       if (!exists(x, envir = cache, inherits = FALSE)) assign(x, list(), cache)
       listRes <- list(res)
