@@ -29,6 +29,17 @@ SEXP jetbrains_ther_device_init(std::string const& snapshotDir, double width, do
   return R_NilValue;
 }
 
+SEXP jetbrains_ther_device_dump() {
+  auto active = DeviceManager::getInstance()->getActive();
+  auto isDumped = false;
+  if (active) {
+    isDumped = active->dumpAllLast();
+  } else {
+    std::cerr << "jetbrains_ther_device_dump(): nothing to dump. Ignored\n";
+  }
+  return toSEXP(isDumped);
+}
+
 SEXP jetbrains_ther_device_restart() {
   DeviceManager::getInstance()->restartLast();
   return R_NilValue;

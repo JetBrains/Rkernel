@@ -234,22 +234,15 @@ Status RPIServiceImpl::graphicsShutdown(ServerContext* context, const Empty*, Se
 }
 
 Status RPIServiceImpl::beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) {
-  auto stringArguments = std::vector<std::string> {
+  auto arguments = std::vector<std::string> {
     request->rmarkdownparameters(),
     request->chunktext(),
     request->outputdirectory()
   };
-  auto numericArguments = std::vector<int> {
-    request->width(),
-    request->height()
-  };
-  auto joinedStrings = joinToString(stringArguments, [](const std::string& s) {
+  auto argumentString = joinToString(arguments, [](const std::string& s) {
     return quote(escapeStringCharacters(s));
   });
-  auto joinedNumbers = joinToString(numericArguments);
-  auto resolutionString = getResolutionString(request->resolution());
-  auto joinedArguments = joinToString(std::vector<std::string> { joinedStrings, joinedNumbers, resolutionString });
-  auto command = buildCallCommand(".jetbrains$runBeforeChunk", joinedArguments);
+  auto command = buildCallCommand(".jetbrains$runBeforeChunk", argumentString);
   return executeCommand(context, command, writer);
 }
 

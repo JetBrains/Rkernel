@@ -81,6 +81,13 @@ CPP_BEGIN
 CPP_END
 }
 
+SEXP jetbrains_ther_device_dump();
+CppExport SEXP _rplugingraphics_jetbrains_ther_device_dump() {
+  CPP_BEGIN
+    return jetbrains_ther_device_dump();
+  CPP_END
+}
+
 SEXP jetbrains_ther_device_shutdown();
 CppExport SEXP _rplugingraphics_jetbrains_ther_device_shutdown() {
   CPP_BEGIN
@@ -179,6 +186,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_rplugingraphics_rs_base64encode", (DL_FUNC) &_rplugingraphics_rs_base64encode, 2},
     {"_rplugingraphics_rs_base64decode", (DL_FUNC) &_rplugingraphics_rs_base64decode, 2},
     {".jetbrains_ther_device_init", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_init, 5},
+    {".jetbrains_ther_device_dump", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_dump, 0},
     {".jetbrains_ther_device_rescale", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_rescale, 4},
     {".jetbrains_ther_device_rescale_stored", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_rescale_stored, 6},
     {".jetbrains_ther_device_shutdown", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_shutdown, 0},

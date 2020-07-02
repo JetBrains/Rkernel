@@ -54,6 +54,8 @@ class MasterDevice {
   static void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters);
   void dumpNormal(DeviceInfo &deviceInfo);
   void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number);
+  bool commitAllLast(bool withRescale, ScreenParameters newParameters);
+  bool commitByNumber(int number, bool withRescale, ScreenParameters newParameters);
 
 public:
   MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory);
@@ -71,6 +73,7 @@ public:
   bool rescaleAllLast(ScreenParameters newParameters);
   bool rescaleByNumber(int number, ScreenParameters newParameters);
   bool rescaleByPath(const std::string& parentDirectory, int number, int version, ScreenParameters newParameters);
+  bool dumpAllLast();
   void onNewPage();
   void finalize();
   void shutdown();
