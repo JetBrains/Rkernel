@@ -21,6 +21,7 @@
 #include "debugger/SourceFileManager.h"
 #include "EventLoop.h"
 #include "RStuff/RObjects.h"
+#include "RLoader.h"
 
 const int EVALUATE_AS_TEXT_MAX_LENGTH = 500000;
 
@@ -298,15 +299,16 @@ void RPIServiceImpl::setValueImpl(RRef const& ref, SEXP value) {
   }
 }
 
-Status RPIServiceImpl::setValue(ServerContext* context, const SetValueRequest* request, SetValueResponse* response) {
+Status RPIServiceImpl::setValue(ServerContext* context, const SetValueRequest* request, ValueInfo* response) {
   executeOnMainThread([&] {
     try {
-      setValueImpl(request->ref(), dereference(request->value()));
-      response->mutable_ok();
+      ShieldSEXP value = dereference(request->value());
+      setValueImpl(request->ref(), value);
+      getValueInfo(value, response);
     } catch (RExceptionBase const& e) {
-      response->set_error(e.what());
+      response->mutable_error()->set_text(e.what());
     } catch (...) {
-      response->set_error("Error");
+      response->mutable_error()->set_text("Error");
       throw;
     }
   }, context, true);
