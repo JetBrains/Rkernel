@@ -17,111 +17,122 @@
 
 #!/usr/bin/env Rscript
 
-arguments = commandArgs(TRUE)
+arguments <- commandArgs(TRUE)
 
-if (length(arguments) != 2) {
-  warning("Usage: package_summary.R <package_name> <extraNamedArguments_path>")
+if (length(arguments) < 2) {
+  warning("Usage: package_summary.R <extraNamedArguments_path> <package_names>...")
   quit(save = "no", status = 1, runLast = FALSE)
 }
+
+assign(".jetbrains", new.env(), envir = baseenv())
+source(arguments[[1]]) # extraNamedArguments.R
 
 attachAndLoadNamespace <- function(pName) {
   suppressMessages(suppressWarnings(library(pName, character.only = T))) # Attach necessary for extraNamedArgs
   loadNamespace(pName)
 }
 
-pName = arguments[[1]]
+processPackage <- function(pName) {
+  cat(">>>RPLUGIN>>>")
+  namespace <- tryCatch(attachAndLoadNamespace(pName), error = function(e) {
+    cat("intellij-cannot-load-package")
+    message(e)
+    cat("<<<RPLUGIN<<<")
+    quit(save = "no", status = 1, runLast = FALSE)
+  })
 
-cat(">>>RPLUGIN>>>")
-namespace = tryCatch(attachAndLoadNamespace(pName), error = function(e) {
-  cat("intellij-cannot-load-package")
-  message(e)
-  cat("<<<RPLUGIN<<<")
-  quit(save = "no", status = 1, runLast = FALSE)
-})
 
-
-pPriority = packageDescription(pName) $ Priority  # Seems to be more efficient than looking through all installed packages
-pPriority = if (is.null(pPriority)) {
+  pPriority <- packageDescription(pName)$Priority  # Seems to be more efficient than looking through all installed packages
+  pPriority <- if (is.null(pPriority)) {
     NA
-} else {
+  } else {
     toupper(pPriority)
-}
-cat(pPriority)
+  }
+  cat(pPriority)
 
 
-exportedSymbols = getNamespaceExports(namespace)
-allSymbols = unique(c(ls(envir = namespace, all.names = TRUE), exportedSymbols))
-#exportedSymbols = allSymbols = getNamespaceExports(namespace)
+  exportedSymbols <- getNamespaceExports(namespace)
+  allSymbols <- unique(c(ls(envir = namespace, all.names = TRUE), exportedSymbols))
 
-#' some symbols are defined as functions in base.R but our parser does not like it.
-ignoreList = c("for", "function", "if", "repeat", "while")
+  #' some symbols are defined as functions in base.R but our parser does not like it.
+  ignoreList <- if (pName == "base") c("for", "function", "if", "repeat", "while") else NULL
 
-symbolSignature <- function(symbol, types, isExported, spec = c()) {
-  str = c(symbol, isExported, length(types))
-  str = c(str, types, spec)
-  paste(str, collapse='\001')
-}
+  symbolSignature <- function(symbol, types, isExported, spec = NULL) {
+    str <- c(symbol, isExported, length(types))
+    str <- c(str, types, spec)
+    paste(str, collapse = '\001')
+  }
 
-assign(".jetbrains", new.env(), envir = baseenv())
-source(arguments[[2]]) # extraNamedArguments.R
-cache <- new.env()
+  cache <- new.env()
+  for (symbol in allSymbols) {
+    if (symbol %in% ignoreList) next
+    obj <- base::get(symbol, envir = namespace)
 
-for (symbol in allSymbols) {
-  if (symbol %in% ignoreList) next
-  obj = base::get(symbol, envir = namespace)
-
-  types = class(obj)
-  spec <- NULL
-  if ("function" %in% types) {
-    description <- args(obj)
-    if (length(description) > 0) {
-      description <- deparse(description)
-      spec <- paste(description[seq_len(length(description) - 1)], collapse = "")
-      # See extraNamedArguments.R#.jetbrains$findExtraNamedArgs for details
-      extraNamedArgs <- tryCatch(.jetbrains$findExtraNamedArgs(symbol, 2, cache), error = function(e) {
-        write(geterrmessage(), file = stderr())
-      })
-      if (length(extraNamedArgs) > 0) {
-        argNames <- NULL # Names of arguments which can be passed directly to `...`
-        funNames <- NULL # Names of arguments which is function whose arguments can also be passed to `...`
-        lapply(extraNamedArgs, function(x) {
-          if (!x[[2]]) {
-            argNames <<- c(argNames, x[[1]])
+    types <- class(obj)
+    spec <- NULL
+    isExported <- symbol %in% exportedSymbols
+    if ("function" %in% types) {
+      description <- args(obj)
+      if (length(description) > 0) {
+        description <- deparse(description)
+        spec <- paste(description[seq_len(length(description) - 1)], collapse = "")
+        # See extraNamedArguments.R#.jetbrains$findExtraNamedArgs for details
+        if (isExported) {
+          extraNamedArgs <- tryCatch(.jetbrains$findExtraNamedArgs(symbol, 2, package = pName, cache = cache), error = function(e) {
+            message(e)
+          })
+          if (length(extraNamedArgs) > 0) {
+            argNames <- NULL # Names of arguments which can be passed directly to `...`
+            funNames <- NULL # Names of arguments which is function whose arguments can also be passed to `...`
+            lapply(extraNamedArgs, function(x) {
+              if (!x[[2]]) {
+                argNames <<- c(argNames, x[[1]])
+              }
+              else {
+                funNames <<- c(funNames, x[[1]])
+              }
+            })
+            spec <- c(spec, paste(argNames, collapse = ";"), paste(funNames, collapse = ";"))
           }
-          else {
-            funNames <<- c(funNames, x[[1]])
-          }
-        })
-        spec <- c(spec, paste(argNames, collapse = ";"), paste(funNames, collapse = ";"))
+        }
+      }
+    }
+    cat("\n")
+    cat(symbolSignature(symbol, types, isExported, spec))
+  }
+
+  ##
+  ## Also export datasets from package into skelekton
+  ##
+
+  # http://stackoverflow.com/questions/27709936/how-to-get-the-list-of-data-sets-in-a-particular-package
+  if (!(pName %in% c("base", "stats", "backports"))) {
+    dsets <- as.data.frame(data(package = pName)$result)
+
+    ## this fails for packages like 'fields' that export data as symbol and data
+    ## .. thus we rather just remove such duplicates here
+    dsets <- subset(dsets, !(Item %in% allSymbols))
+
+
+    dsets <- subset(dsets, !(0:nrow(dsets) %in% grep("(", as.character(dsets$Item), fixed = TRUE))[-1])
+
+    for (symbol in with(dsets, as.character(Item))) {
+      types <- tryCatch(class(eval(parse(text = paste0(pName, "::`", symbol, "`")))), error = function(e) {})
+      if (length(types) != 0) {
+        cat("\n")
+        cat(symbolSignature(symbol, types, TRUE))
       }
     }
   }
-  isExported = symbol %in% exportedSymbols
-  cat("\n")
-  cat(symbolSignature(symbol, types, isExported, spec))
+  cat("<<<RPLUGIN<<<")
 }
 
-##
-## Also export datasets from package into skelekton
-##
-
-# http://stackoverflow.com/questions/27709936/how-to-get-the-list-of-data-sets-in-a-particular-package
-if (!(pName %in% c("base", "stats", "backports"))) {
-  dsets = as.data.frame(data(package = pName)$result)
-
-## this fails for packages like 'fields' that export data as symbol and data
-## .. thus we rather just remove such duplicates here
-  dsets = subset(dsets, !(Item %in% allSymbols))
-
-
-  dsets = subset(dsets, !(0:nrow(dsets) %in% grep("(", as.character(dsets$Item), fixed = TRUE))[-1])
-
-  for(symbol in with(dsets, as.character(Item))) {
-    types = tryCatch(class(eval(parse(text=paste(pName, "::`", symbol, "`", sep="")))), error = function(e) c())
-    if (length(types) != 0) {
-      cat("\n")
-      cat(symbolSignature(symbol, types, TRUE))
-    }
-  }
+for (i in seq.int(2, length(arguments))) {
+  tryCatch({
+    processPackage(arguments[[i]])
+    flush(stdout())
+  }, error = function(e) {
+    message(e)
+    cat("<<<RPLUGIN<<<")
+  })
 }
-cat("<<<RPLUGIN<<<")
