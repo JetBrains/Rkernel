@@ -55,8 +55,8 @@
     force(code)
 })
 
-options(buildtools.check = .rs.checkBuildTools)
-options(buildtools.with = .rs.withBuildTools)
+#options(buildtools.check = .rs.checkBuildTools)
+#options(buildtools.with = .rs.withBuildTools)
 
 
 .rs.addFunction("websiteOutputDir", function(siteDir) {
