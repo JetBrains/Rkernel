@@ -40,3 +40,16 @@ if [ -n "$IS_MACOS" ]; then
   install_name_tool -change $OLDNAME @library_path/libR.dylib rwrapper
 fi
 mv rwrapper ../rwrapper-$PACKAGE_NAME
+cd ..
+
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+  cd ../../community/native/fsNotifier/linux
+  bash make.sh
+  mv fsnotifier64 ../../../../rplugin/rwrapper/fsnotifier-linux
+  git checkout fsnotifier.h
+  rm -f fsnotifier
+else
+  cd ../../community/native/fsNotifier/mac
+  bash make.sh
+  mv fsnotifier ../../../../rplugin/rwrapper/fsnotifier-osx
+fi
