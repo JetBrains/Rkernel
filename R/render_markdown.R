@@ -101,6 +101,8 @@ if (length(args) >= 4) {
   result_file <- NA
 }
 
+dir.create(library_path, recursive = TRUE)
+
 # RMarkdown looks for Pandoc in PATH and RSTUDIO_PANDOC envs
 # We don't want to touch RStudio's envs that's why we'd rather adjust current PATH
 old_path <- Sys.getenv("PATH")
@@ -119,7 +121,7 @@ if (!is.null(runtime) && grepl("^shiny", runtime)) {
   name <- basename(file_path)
   rmarkdown::run(name, dir = dirname(file_path), default_file = name, shiny_args = list(launch.browser = TRUE))
 } else {
-  output_file <- rmarkdown::render(file_path, output_dir = dirname(file_path), knit_root_dir = knit_root_directory)
+  output_file <- rmarkdown::render(file_path, output_dir = knit_root_directory, knit_root_dir = knit_root_directory)
   if (!is.na(result_file)) {
     cat(output_file, file = result_file)
   }
