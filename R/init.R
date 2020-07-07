@@ -76,10 +76,19 @@ options(install.packages.compile.from.source = "always")
   })
 }
 
+.jetbrains$createTempDirectory <<- function(suffix) {
+  pattern <- paste0("jetbrains_", suffix)
+  path <- tempfile(pattern = pattern)
+  dir.create(path)
+  path
+}
+
 # Fallback values
+.jetbrains$chunkOutputDir <<- "."
 .jetbrains$externalImageDir <<- "."
 .jetbrains$externalImageCounter <<- 0
 
+# Note: used in "NotebookHtmlWidgets.R" of RSession
 .jetbrains$getNextExternalImagePath <<- function(path) {
   snapshot.count <- .Call(".jetbrains_ther_device_snapshot_count")
   if (is.null(snapshot.count)) {
@@ -90,14 +99,15 @@ options(install.packages.compile.from.source = "always")
   file.path(.jetbrains$externalImageDir, base.name)
 }
 
-.jetbrains$runBeforeChunk <<- function(report.text, chunk.text, cache.dir) {
+.jetbrains$runBeforeChunk <<- function(report.text, chunk.text) {
   .rs.evaluateRmdParams(report.text)
   opts <- .rs.evaluateChunkOptions(chunk.text)
-  data.dir <- file.path(cache.dir, "data")
-  html.lib.dir <- file.path(cache.dir, "lib")
-  image.dir <- file.path(cache.dir,  "images")
-  external.image.dir <- file.path(cache.dir, "external-images")
-  dir.create(cache.dir, recursive = TRUE, showWarnings = FALSE)
+  output.dir <- .jetbrains$createTempDirectory("chunk_outputs")
+  .jetbrains$chunkOutputDir <<- output.dir
+  data.dir <- file.path(output.dir, "data")
+  html.lib.dir <- file.path(output.dir, "lib")
+  image.dir <- file.path(output.dir,  "images")
+  external.image.dir <- file.path(output.dir, "external-images")
   dir.create(image.dir, showWarnings = FALSE)
   dir.create(external.image.dir, showWarnings = FALSE)
   dir.create(html.lib.dir, showWarnings = FALSE)
@@ -105,7 +115,7 @@ options(install.packages.compile.from.source = "always")
 
   .jetbrains$externalImageDir <<- external.image.dir
   .jetbrains$externalImageCounter <<- 0
-  .rs.initHtmlCapture(cache.dir, html.lib.dir, opts)
+  .rs.initHtmlCapture(output.dir, html.lib.dir, opts)
   .rs.initDataCapture(data.dir, opts)
   if (!.rs.hasVar("jbHookedPackages")) {
     .rs.setVar("jbHookedPackages", character())
@@ -116,6 +126,15 @@ options(install.packages.compile.from.source = "always")
 .jetbrains$runAfterChunk <<- function() {
   .rs.releaseHtmlCapture()
   .rs.releaseDataCapture()
+  unlink(.jetbrains$chunkOutputDir, recursive = TRUE)
+}
+
+.jetbrains$getChunkOutputRelativePaths <<- function() {
+  list.files(.jetbrains$chunkOutputDir, recursive = TRUE, include.dirs = FALSE, full.names = FALSE)
+}
+
+.jetbrains$getChunkOutputFullPath <<- function(relative.path) {
+  file.path(.jetbrains$chunkOutputDir, relative.path)
 }
 
 .jetbrains$findInheritorNamedArguments <<- function(x) {
@@ -209,9 +228,7 @@ options(install.packages.compile.from.source = "always")
 }
 
 .jetbrains$createSnapshotGroup <<- function() {
-  path <- tempfile(pattern = "jetbrains_ther_device")
-  dir.create(path)
-  path
+  .jetbrains$createTempDirectory("snapshot_group")
 }
 
 .jetbrains$shutdownGraphicsDevice <<- function() {
