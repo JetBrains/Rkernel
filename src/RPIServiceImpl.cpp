@@ -108,6 +108,14 @@ namespace {
     }
     return name;
   }
+
+  std::string getChunkOutputFullPath(const std::string& relativePath) {
+    graphics::ScopeProtector protector;
+    auto argument = quote(escapeStringCharacters(relativePath));
+    auto command = buildCallCommand(".jetbrains$getChunkOutputFullPath", argument);
+    auto fullPathSEXP = graphics::Evaluator::evaluate(command, &protector);
+    return stringEltUTF8(fullPathSEXP, 0);
+  }
 }
 
 RPIServiceImpl::RPIServiceImpl() :
@@ -236,8 +244,7 @@ Status RPIServiceImpl::graphicsShutdown(ServerContext* context, const Empty*, Se
 Status RPIServiceImpl::beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) {
   auto arguments = std::vector<std::string> {
     request->rmarkdownparameters(),
-    request->chunktext(),
-    request->outputdirectory()
+    request->chunktext()
   };
   auto argumentString = joinToString(arguments, [](const std::string& s) {
     return quote(escapeStringCharacters(s));
@@ -248,6 +255,31 @@ Status RPIServiceImpl::beforeChunkExecution(ServerContext *context, const ChunkP
 
 Status RPIServiceImpl::afterChunkExecution(ServerContext *context, const ::google::protobuf::Empty *, ServerWriter<CommandOutput> *writer) {
   return executeCommand(context, ".jetbrains$runAfterChunk()", writer);
+}
+
+Status RPIServiceImpl::pullChunkOutputRelativePaths(ServerContext *context, const Empty*, StringList* response) {
+  executeOnMainThread([&] {
+    graphics::ScopeProtector protector;
+    auto command = ".jetbrains$getChunkOutputRelativePaths()";
+    auto pathsSEXP = graphics::Evaluator::evaluate(command, &protector);
+    auto length = Rf_xlength(pathsSEXP);
+    for (auto i = 0; i < length; i++) {
+      response->add_list(stringEltUTF8(pathsSEXP, i));
+    }
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::pullChunkOutputFile(ServerContext *context, const StringValue* request, PullChunkOutputFileResponse* response) {
+  executeOnMainThread([&] {
+    try {
+      auto fullPath = getChunkOutputFullPath(request->value());
+      response->set_content(readWholeFile(fullPath));
+    } catch (const std::exception& e) {
+      response->set_message(e.what());
+    }
+  }, context);
+  return Status::OK;
 }
 
 Status RPIServiceImpl::repoGetPackageVersion(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) {
