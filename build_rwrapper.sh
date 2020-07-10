@@ -43,7 +43,7 @@ mv rwrapper ../rwrapper-$PACKAGE_NAME
 
 cd ..
 if [ ! -f fsnotifier-linux ]; then
-  wget https://github.com/JetBrains/intellij-community/raw/master/bin/linux/fsnotifier -O fsnotifier-linux
+  wget https://github.com/JetBrains/intellij-community/raw/master/bin/linux/fsnotifier64 -O fsnotifier-linux
   chmod +x fsnotifier-linux
 fi
 if [ ! -f fsnotifier-osx ]; then
