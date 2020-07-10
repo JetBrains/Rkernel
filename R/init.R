@@ -76,11 +76,15 @@ options(install.packages.compile.from.source = "always")
   })
 }
 
+.jetbrains$toSystemIndependentPath <<- function(path) {
+  gsub("\\\\", "/", path)
+}
+
 .jetbrains$createTempDirectory <<- function(suffix) {
   pattern <- paste0("jetbrains_", suffix)
   path <- tempfile(pattern = pattern)
   dir.create(path)
-  path
+  .jetbrains$toSystemIndependentPath(path)
 }
 
 # Fallback values
