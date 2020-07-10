@@ -43,13 +43,13 @@ mv rwrapper ../rwrapper-$PACKAGE_NAME
 
 cd ..
 if [ ! -f fsnotifier-linux ]; then
-  curl https://github.com/JetBrains/intellij-community/raw/master/bin/linux/fsnotifier -o fsnotifier-linux
+  wget https://github.com/JetBrains/intellij-community/raw/master/bin/linux/fsnotifier -O fsnotifier-linux
   chmod +x fsnotifier-linux
 fi
 if [ ! -f fsnotifier-osx ]; then
-  curl https://github.com/JetBrains/intellij-community/raw/master/bin/mac/fsnotifier -o fsnotifier-osx
+  wget https://github.com/JetBrains/intellij-community/raw/master/bin/mac/fsnotifier -O fsnotifier-osx
   chmod +x fsnotifier-osx
 fi
 if [ ! -f fsnotifier-win.exe ]; then
-  curl https://github.com/JetBrains/intellij-community/raw/master/bin/win/fsnotifier.exe -o fsnotifier-win.exe
+  wget https://github.com/JetBrains/intellij-community/raw/master/bin/win/fsnotifier.exe -O fsnotifier-win.exe
 fi
