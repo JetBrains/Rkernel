@@ -44,6 +44,11 @@ Status RPIServiceImpl::isBusy(ServerContext*, const Empty*, BoolValue* response)
 }
 
 Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerWriter<CommandOutput>* response) {
+  if (!request->httpuseragent().empty()) {
+    executeOnMainThread([&] {
+      RI->options(named("HTTPUserAgent", request->httpuseragent()));
+    });
+  }
   if (!request->workspacefile().empty()) {
     executeOnMainThread([&] {
       sessionManager.workspaceFile = request->workspacefile();
