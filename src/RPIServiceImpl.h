@@ -132,6 +132,7 @@ public:
   Status loadEnvironment(ServerContext *context, const LoadEnvironmentRequest *request, Empty*) override;
   Status setOutputWidth(ServerContext* context, const Int32Value* request, Empty*) override;
   Status clientRequestFinished(ServerContext* context, const Empty*, Empty*) override;
+  Status rStudioApiResponse(ServerContext* context, const RObject* request, Empty* response) override;
 
   Status convertRoxygenToHTML(ServerContext* context, const ConvertRoxygenToHTMLRequest* request, ConvertRoxygenToHTMLResponse* response) override;
   Status httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
@@ -152,6 +153,7 @@ public:
   void showFileHandler(std::string const& filePath, std::string const& title);
   void showHelpHandler(std::string const& content, std::string const& url);
   void browseURLHandler(std::string const& url);
+  RObject rStudioApiRequest(int32_t functionID, const RObject &args);
 
   void sendAsyncEvent(AsyncEvent const& e);
   void setChildProcessState();
@@ -180,6 +182,7 @@ private:
   bool subprocessInterrupt = false;
 
   bool isInClientRequest = false;
+  bool isInRStudioApiRequest = false;
 
   std::unordered_set<int> dataFramesCache;
   std::vector<RDebuggerStackFrame> lastErrorStack;

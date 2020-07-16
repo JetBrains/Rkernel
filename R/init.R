@@ -38,6 +38,11 @@ options(device = function() {
   .Call(".jetbrains_ther_device_restart")
 })
 
+# Set "RStudio as .Platform$GUI
+unlockBinding(".Platform", baseenv())
+.Platform$GUI <<- "RStudio"
+lockBinding(".Platform", baseenv())
+
 # Some packages might be not available as binaries.
 # The default behaviour of interpreter in such a case
 # is to ask user whether he wants to install it from source instead.
@@ -49,9 +54,13 @@ options(install.packages.compile.from.source = "always")
   current.wd <- getwd()
   tryCatch({
     tools.path <- file.path(rsession.path, "Tools.R")
+    options.path <- file.path(rsession.path, "Options.R")
+    api.path <- file.path(rsession.path, "Api.R")
     modules.path <- file.path(rsession.path, "modules")
     setwd(modules.path)
     source(tools.path, local = TRUE)
+    source(api.path, local = TRUE)
+    source(options.path, local = TRUE)
     sapply(Filter(function(s) s != "SessionCompileAttributes.R" & s != "SessionPlots.R",
                   list.files(modules.path, pattern = ".*\\.r$", ignore.case = TRUE)),
                   function(x) { source(file.path(modules.path, x), local = TRUE) } )

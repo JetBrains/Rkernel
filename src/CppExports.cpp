@@ -21,6 +21,7 @@
 #include "RStuff/RInclude.h"
 #include <signal.h>
 #include "RStuff/RUtil.h"
+#include "RStudioApi.h"
 
 #define CppExport extern "C" attribute_visible
 
@@ -179,6 +180,12 @@ CppExport SEXP _jetbrains_safeEvalHelper(SEXP x, SEXP env, SEXP oldSuspendInterr
   return result;
 }
 
+CppExport SEXP _jetbrains_getSourceEditorContext() {
+  CPP_BEGIN
+    return getSourceEditorContext();
+  CPP_END
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -200,6 +207,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_raiseSigsegv", (DL_FUNC) &_jetbrains_raiseSigsegv, 0},
     {".jetbrains_runFunction", (DL_FUNC) &_jetbrains_runFunction, 1},
     {".jetbrains_safeEvalHelper", (DL_FUNC) &_jetbrains_safeEvalHelper, 3},
+    {".jetbrains_getSourceEditorContext", (DL_FUNC) &_jetbrains_getSourceEditorContext, 0},
     {nullptr, nullptr, 0}
 };
 

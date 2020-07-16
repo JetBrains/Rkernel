@@ -26,6 +26,8 @@
 #include <signal.h>
 #include "util/FileUtil.h"
 
+static RObject rStudioResponse;
+
 static std::string getRVersion() {
   return (std::string)asStringUTF8(RI->doubleSubscript(RI->version, "major")) + "." +
          asStringUTF8(RI->doubleSubscript(RI->version, "minor"));
@@ -276,9 +278,29 @@ void RPIServiceImpl::browseURLHandler(const std::string &url) {
   asyncEvents.push(event);
 }
 
+RObject RPIServiceImpl::rStudioApiRequest(int32_t functionID, const RObject &args) {
+  AsyncEvent event;
+  event.mutable_rstudioapirequest()->set_functionid(functionID);
+  event.mutable_rstudioapirequest()->set_allocated_args(new RObject(args));
+  asyncEvents.push(event);
+  ScopedAssign<bool> with(isInRStudioApiRequest, true);
+  runEventLoop();
+  return rStudioResponse;
+}
+
 Status RPIServiceImpl::clientRequestFinished(ServerContext* context, const Empty*, Empty*) {
   executeOnMainThread([&]{
     if (isInClientRequest) {
+      breakEventLoop();
+    }
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::rStudioApiResponse(ServerContext* context, const RObject* request, Empty* response) {
+  executeOnMainThread([&]{
+    if (isInRStudioApiRequest) {
+      rStudioResponse = *request;
       breakEventLoop();
     }
   }, context);
