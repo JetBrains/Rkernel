@@ -70,8 +70,10 @@ struct RObjects2 {
   PrSEXP in = baseEnv.getVar("%in%");
   PrSEXP isDataFrame = baseEnv.getVar("is.data.frame");
   PrSEXP isNa = baseEnv.getVar("is.na");
+  PrSEXP length = baseEnv.getVar("length");
   PrSEXP leq = baseEnv.getVar("<=");
   PrSEXP less = baseEnv.getVar("<");
+  PrSEXP libPaths = baseEnv.getVar(".libPaths");
   PrSEXP list = baseEnv.getVar("list");
   PrSEXP load = baseEnv.getVar("load");
   PrSEXP loadedNamespaces = baseEnv.getVar("loadedNamespaces");

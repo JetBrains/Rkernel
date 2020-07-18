@@ -283,6 +283,30 @@ options(install.packages.compile.from.source = "always")
   }
 }
 
+.jetbrains$getSysEnv <<- function(env_name, flags) {
+  s <- Sys.getenv(env_name)
+  s <- strsplit(s, ":")[[1]]
+  if ("--normalize-path" %in% flags) {
+    s <- sapply(s, normalizePath)
+  }
+  s
+}
+
+.jetbrains$loadLibraryPath <<- function() {
+  res <- NULL
+  for (path in .libPaths()) {
+    res <- c(res, list(path, file.access(path, 2) == 0))
+  }
+  res
+}
+
+.jetbrains$loadInstalledPackages <<- function() {
+  versions <- as.data.frame(installed.packages()[, c("Package", "Version", "Priority", "LibPath")])
+  description <- data.frame("Title" = I(lapply(versions[, "Package"], function(x) packageDescription(x, fields = "Title"))),
+                            "URL" = I(lapply(versions[, "Package"], function(x) packageDescription(x, fields = "URL"))))
+  cbind(versions, description)
+}
+
 .jetbrains$unloadLibrary <<- function(package.name, with.dynamic.library) {
   resource.name <- paste0("package:", package.name)
   detach(resource.name, unload = TRUE, character.only = TRUE)
