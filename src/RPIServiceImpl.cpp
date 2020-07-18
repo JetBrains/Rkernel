@@ -290,7 +290,10 @@ Status RPIServiceImpl::repoGetPackageVersion(ServerContext* context, const Strin
 
 Status RPIServiceImpl::repoInstallPackage(ServerContext* context, const RepoInstallPackageRequest* request, Empty*) {
   auto sout = std::ostringstream();
-  sout << "install.packages('" << escapeStringCharacters(request->packagename()) << "'";
+  auto packageName = escapeStringCharacters(request->packagename());
+  sout << "if ('renv' %in% loadedNamespaces() && renv:::renv_project_initialized(renv:::renv_project_resolve()))";
+  sout << " renv::install('" << packageName << "') else";
+  sout << " install.packages('" << packageName << "'";
   auto& arguments = request->arguments();
   for (auto& pair : arguments) {
     sout << ", " << pair.first << " = " << pair.second;

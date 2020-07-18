@@ -116,6 +116,82 @@ Status RPIServiceImpl::clearEnvironment(ServerContext* context, const RRef* requ
   return Status::OK;
 }
 
+Status RPIServiceImpl::getSysEnv(ServerContext *context, const GetSysEnvRequest *request, StringList *response) {
+  executeOnMainThread([&] {
+      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP func = jetbrainsEnv.getVar("getSysEnv");
+      std::vector<std::string> flags;
+      for (auto &s : request->flags()) flags.push_back(s);
+      ShieldSEXP result = func(request->envname(), makeCharacterVector(flags));
+
+      if (TYPEOF(result) != STRSXP) return;
+      for (int i = 0; i < result.length(); ++i) {
+        response->add_list(stringEltUTF8(result, i));
+      }
+  }, context, true);
+  return Status::OK;
+}
+
+std::string getCellStringValue(const ShieldSEXP &frame, int row, int column) {
+  ShieldSEXP cell = VECTOR_ELT(frame, column);
+  return stringEltUTF8(cell, row);
+}
+
+void characterizeCells(ShieldSEXP &frame) {
+  for (int i = 0; i < frame.length(); ++i) {
+    SET_VECTOR_ELT(frame, i, RI->asCharacter(VECTOR_ELT(frame, i)));
+  }
+}
+
+Status RPIServiceImpl::loadInstalledPackages(ServerContext *context, const Empty *, RInstalledPackageList *response) {
+  executeOnMainThread([&] {
+      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP func = jetbrainsEnv.getVar("loadInstalledPackages");
+      ShieldSEXP packages = func();
+      if (TYPEOF(packages) != VECSXP || packages.length() < 4) return;
+
+      ShieldSEXP names = RI->names(packages);
+      characterizeCells(packages);
+      int rowsCnt = asInt(RI->nrow(packages));
+      for (int i = 0; i < rowsCnt; ++i) {
+        RInstalledPackageList_RInstalledPackage *rInstalledPackage = response->add_packages();
+
+        rInstalledPackage->set_packagename(getCellStringValue(packages, i, 0));
+        rInstalledPackage->set_packageversion(getCellStringValue(packages, i, 1));
+        std::string priority = getCellStringValue(packages, i, 2);
+        if (priority.empty()) {
+          rInstalledPackage->set_priority(RInstalledPackageList_RInstalledPackage_RPackagePriority_NA);
+        } else if (priority == "base") {
+          rInstalledPackage->set_priority(RInstalledPackageList_RInstalledPackage_RPackagePriority_BASE);
+        } else {
+          rInstalledPackage->set_priority(RInstalledPackageList_RInstalledPackage_RPackagePriority_RECOMMENDED);
+        }
+        rInstalledPackage->set_librarypath(getCellStringValue(packages, i, 3));
+        for (int j = 4; j < packages.length(); ++j) {
+          RInstalledPackageList_RInstalledPackage_MapEntry *mapEntry = rInstalledPackage->add_description();
+          mapEntry->set_key(stringEltUTF8(names, j));
+          mapEntry->set_value(getCellStringValue(packages, i, j));
+        }
+      }
+  }, context, true);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::loadLibPaths(ServerContext *context, const Empty *, RLibraryPathList *response) {
+  executeOnMainThread([&] {
+      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP func = jetbrainsEnv.getVar("loadLibraryPath");
+      ShieldSEXP libPaths = func();
+      if (TYPEOF(libPaths) != VECSXP || libPaths.length() % 2 != 0) return;
+      for (int i = 0; i < libPaths.length(); i += 2) {
+        RLibraryPathList_RLibraryPath *path = response->add_libpaths();
+        path->set_path(stringEltUTF8(VECTOR_ELT(libPaths, i), 0));
+        path->set_iswritable(asBool(VECTOR_ELT(libPaths, i + 1)));
+      }
+  }, context, true);
+  return Status::OK;
+}
+
 Status RPIServiceImpl::loadLibrary(ServerContext* context, const StringValue* request, Empty*) {
   auto detachCommandBuilder = std::ostringstream();
   detachCommandBuilder << "library(" << request->value() << ")\n";

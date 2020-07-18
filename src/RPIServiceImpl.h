@@ -122,6 +122,9 @@ public:
   Status getWorkingDir(ServerContext* context, const Empty*, StringValue* response) override;
   Status setWorkingDir(ServerContext* context, const StringValue* request, Empty*) override;
   Status clearEnvironment(ServerContext* context, const RRef* request, Empty*) override;
+  Status getSysEnv(ServerContext* context, const GetSysEnvRequest* request, StringList* response) override;
+  Status loadInstalledPackages(ServerContext* context, const Empty*, RInstalledPackageList* response) override;
+  Status loadLibPaths(ServerContext* context, const Empty*, RLibraryPathList* response) override;
   Status loadLibrary(ServerContext* context, const StringValue* request, Empty*) override;
   Status unloadLibrary(ServerContext* context, const UnloadLibraryRequest* request, Empty*) override;
   Status saveGlobalEnvironment(ServerContext *context, const StringValue *request, Empty*) override;
