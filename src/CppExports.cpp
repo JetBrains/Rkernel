@@ -186,6 +186,24 @@ CppExport SEXP _jetbrains_getSourceEditorContext() {
   CPP_END
 }
 
+CppExport SEXP _jetbrains_getConsoleEditorContext() {
+  CPP_BEGIN
+    return getConsoleEditorContext();
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_insertText(SEXP insertions, SEXP id) {
+  CPP_BEGIN
+    return insertText(insertions, id);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP focus) {
+  CPP_BEGIN
+    return sendToConsole(code, execute, echo, focus);
+  CPP_END
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -208,6 +226,9 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_runFunction", (DL_FUNC) &_jetbrains_runFunction, 1},
     {".jetbrains_safeEvalHelper", (DL_FUNC) &_jetbrains_safeEvalHelper, 3},
     {".jetbrains_getSourceEditorContext", (DL_FUNC) &_jetbrains_getSourceEditorContext, 0},
+    {".jetbrains_insertText", (DL_FUNC) &_jetbrains_insertText, 2},
+    {".jetbrains_sendToConsole", (DL_FUNC) &_jetbrains_sendToConsole, 4},
+    {".jetbrains_getConsoleEditorContext", (DL_FUNC) &_jetbrains_getConsoleEditorContext, 0},
     {nullptr, nullptr, 0}
 };
 

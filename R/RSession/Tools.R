@@ -1063,3 +1063,16 @@ assign(envir = .rs.Env, ".rs.hasVar", function(name)
       options(HTTPUserAgent = newAgent)
    }
 })
+
+.rs.addFunction("getEditorContext", function(response) {
+  result <- list()
+  result[["id"]] <- response[[2]]
+  result[["path"]] <- response[[2]]
+  result[["contents"]] <- unlist(response[[3]])
+  result[["selection"]] <- rstudioapi:::as.document_selection(purrr::modify(response[[4]], function (elem) {
+    r <- rstudioapi::as.document_range(c(elem[[1]], elem[[2]], elem[[3]], elem[[4]]))
+    txt <- elem[[5]]
+    list(range=r, text=txt)
+  }))
+  result
+})

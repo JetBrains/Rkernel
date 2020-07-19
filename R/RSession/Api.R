@@ -302,12 +302,6 @@
    invalidTextMsg <- "'text' should be a character vector"
    invalidLengthMsg <- "'text' should either be length 1, or same length as 'ranges'"
 
-   if (is.null(id))
-      id <- ""
-
-   if (!is.character(id))
-      stop("'id' must be NULL or a character vector of length one")
-
    # allow calls of the form:
    #
    #    insertText("foo")
@@ -337,17 +331,8 @@
    # sort the ranges in decreasing order -- this way, we can
    # ensure the replacements occur correctly (except in the
    # case of overlaps)
-   if (length(ranges)) {
-      idx <- order(unlist(lapply(ranges, `[[`, 1)))
-
-      ranges <- ranges[idx]
-      if (length(text) != 1)
-         text <- text[idx]
-   }
-
-   data <- list(ranges = ranges, text = text, id = .rs.scalar(id))
-   .rs.enqueEditorClientEvent("replace_ranges", data)
-   invisible(data)
+   .Call(".jetbrains_insertText", mapply(list, ranges, text, SIMPLIFY = FALSE), id)
+   list(ranges = ranges, text = text, id = id)
 })
 
 .rs.addApiFunction("setSelectionRanges", function(ranges, id = "")
@@ -370,21 +355,13 @@
 })
 
 .rs.addApiFunction("getConsoleEditorContext", function() {
-   .Call("rs_getEditorContext", 1L)
+   response <- .Call(".jetbrains_getConsoleEditorContext")
+   .rs.getEditorContext(response)
 })
 
 .rs.addApiFunction("getSourceEditorContext", function() {
-  response <- .Call(".jetbrains_getSourceEditorContext")
-  result <- list()
-  result[["id"]] <- response[[1]]
-  result[["path"]] <- response[[2]]
-  result[["contents"]] <- unlist(response[[3]])
-  result[["selection"]] <- rstudioapi:::as.document_selection(purrr::modify(response[[4]], function (elem) {
-     r <- rstudioapi::as.document_range(c(elem[[1]], elem[[2]], elem[[3]], elem[[4]]))
-     txt <- elem[[5]]
-     list(range=r, text=txt)
-  }))
-  result
+   response <- .Call(".jetbrains_getSourceEditorContext")
+   .rs.getEditorContext(response)
 })
 
 .rs.addApiFunction("getActiveProject", function() {
@@ -400,15 +377,12 @@
       stop("'code' should be a character vector", call. = FALSE)
 
    code <- paste(code, collapse = "\n")
-   data <- list(
-      code = .rs.scalar(code),
-      echo = .rs.scalar(as.logical(echo)),
-      execute = .rs.scalar(as.logical(execute)),
-      focus = .rs.scalar(as.logical(focus)),
-      language = "R"
-   )
+   data <- list(code,
+                as.logical(execute),
+                as.logical(echo),
+                as.logical(focus))
 
-   .rs.enqueClientEvent("send_to_console", data)
+   .Call(".jetbrains_sendToConsole", code, as.logical(execute), as.logical(echo), as.logical(focus))
    invisible(data)
 })
 
