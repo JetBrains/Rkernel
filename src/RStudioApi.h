@@ -1,10 +1,8 @@
 #ifndef RWRAPPER_RSTUDIOAPI_H
 #define RWRAPPER_RSTUDIOAPI_H
 
-#include <cstdint>
-#include <vector>
 #include "RPIServiceImpl.h"
-#include <grpcpp/server_builder.h>
+#include "RStuff/MySEXP.h"
 
 #define GET_SOURCE_EDITOR_CONTEXT_ID 0
 #define INSERT_TEXT_ID 1

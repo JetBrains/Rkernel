@@ -1,5 +1,4 @@
 #include "RStudioApi.h"
-#include "RStuff/RObjects.h"
 
 SEXP getSourceEditorContext() {
   RObject args;
@@ -31,24 +30,57 @@ SEXP sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP focus) {
 
 SEXP toSEXP(const RObject &rObject) {
   switch (rObject.object_case()) {
-    case RObject::kRString:
-      return mkStringUTF8(rObject.rstring().string());
-    case RObject::kRInt:
-      return ScalarInteger(rObject.rint().int_());
-    case RObject::kRDouble:
-      return ScalarReal(rObject.rdouble().double_());
+    case RObject::kRString: {
+      ShieldSEXP x = Rf_allocVector(STRSXP, rObject.rstring().strings_size());
+      for (int i = 0; i < (int) rObject.rstring().strings_size(); ++i) {
+        SET_STRING_ELT(x, i, mkCharUTF8(rObject.rstring().strings(i)));
+      }
+      return x;
+    }
+    case RObject::kRInt: {
+      ShieldSEXP x = Rf_allocVector(INTSXP, rObject.rint().ints_size());
+      for (int i = 0; i < (int) rObject.rint().ints_size(); ++i) {
+        SET_INTEGER_ELT(x, i, rObject.rint().ints(i));
+      }
+      return x;
+    }
+    case RObject::kRDouble: {
+      ShieldSEXP x = Rf_allocVector(REALSXP, rObject.rdouble().doubles_size());
+      for (int i = 0; i < (int) rObject.rdouble().doubles_size(); ++i) {
+        SET_REAL_ELT(x, i, rObject.rdouble().doubles(i));
+      }
+      return x;
+    }
     case RObject::OBJECT_NOT_SET:
       return allocVector(VECSXP, 0);
     case RObject::kRnull:
       return R_NilValue;
-    case RObject::kRboolean:
-      return ScalarLogical(rObject.rboolean().boolean());
-    case RObject::kList:
+    case RObject::kRboolean: {
+      ShieldSEXP x = Rf_allocVector(LGLSXP, rObject.rboolean().booleans_size());
+      for (int i = 0; i < (int) rObject.rboolean().booleans_size(); ++i) {
+        SET_LOGICAL_ELT(x, i, rObject.rboolean().booleans(i));
+      }
+      return x;
+    }
+    case RObject::kList: {
       ShieldSEXP res = allocVector(VECSXP, rObject.list().robjects_size());
       for (size_t i = 0; i < rObject.list().robjects_size(); i++) {
         SET_VECTOR_ELT(res, i, toSEXP(rObject.list().robjects(i)));
       }
       return res;
+    }
+    case RObject::kNamedList: {
+      ShieldSEXP names = Rf_allocVector(STRSXP, rObject.namedlist().robjects_size());
+      for (int i = 0; i < (int) rObject.namedlist().robjects_size(); ++i) {
+        SET_STRING_ELT(names, i, mkCharUTF8(rObject.namedlist().robjects(i).key()));
+      }
+      ShieldSEXP values = allocVector(VECSXP, rObject.namedlist().robjects_size());
+      for (size_t i = 0; i < rObject.namedlist().robjects_size(); i++) {
+        SET_VECTOR_ELT(values, i, toSEXP(rObject.namedlist().robjects(i).value()));
+      }
+      Rf_setAttrib(values, R_NamesSymbol, names);
+      return values;
+    }
   }
 }
 
@@ -62,47 +94,23 @@ RObject fromSEXP(SEXP const &expr) {
     return result;
   } else if (TYPEOF(expr) == REALSXP) {
     RObject result;
-    if (Rf_xlength(expr) == 1) {
-      result.set_allocated_rdouble(new RObject_RDouble);
-      result.mutable_rdouble()->set_double_((asDoubleOrError(expr)));
-    } else {
-      result.set_allocated_list(new RObject_List);
-      for (size_t i = 0; i < LENGTH(expr); i++) {
-        auto v = new RObject;
-        v->set_allocated_rdouble(new RObject_RDouble);
-        v->mutable_rdouble()->set_double_(REAL_ELT(expr, i));
-        result.mutable_list()->mutable_robjects()->AddAllocated(v);
-      }
+    result.set_allocated_rdouble(new RObject_RDouble);
+    for (size_t i = 0; i < LENGTH(expr); i++) {
+      result.mutable_rdouble()->add_doubles(REAL_ELT(expr, i));
     }
     return result;
   } else if (TYPEOF(expr) == INTSXP) {
     RObject result;
-    if (Rf_xlength(expr) == 1) {
-      result.set_allocated_rint(new RObject_RInt);
-      result.mutable_rint()->set_int_((asInt64OrError(expr)));
-    } else {
-      result.set_allocated_list(new RObject_List);
-      for (size_t i = 0; i < LENGTH(expr); i++) {
-        auto v = new RObject;
-        v->set_allocated_rint(new RObject_RInt);
-        v->mutable_rint()->set_int_(INTEGER_ELT(expr, i));
-        result.mutable_list()->mutable_robjects()->AddAllocated(v);
-      }
+    result.set_allocated_rint(new RObject_RInt);
+    for (size_t i = 0; i < LENGTH(expr); i++) {
+      result.mutable_rint()->add_ints(INTEGER_ELT(expr, i));
     }
     return result;
   } else if (TYPEOF(expr) == STRSXP) {
     RObject result;
-    if (Rf_xlength(expr) == 1) {
-      result.set_allocated_rstring(new RObject_RString);
-      result.mutable_rstring()->set_string((asStringUTF8OrError(expr)));
-    } else {
-      result.set_allocated_list(new RObject_List);
-      for (size_t i = 0; i < LENGTH(expr); i++) {
-        auto v = new RObject;
-        v->set_allocated_rstring(new RObject_RString);
-        v->mutable_rstring()->set_string(asStringUTF8OrError(STRING_ELT(expr, i)));
-        result.mutable_list()->mutable_robjects()->AddAllocated(v);
-      }
+    result.set_allocated_rstring(new RObject_RString);
+    for (size_t i = 0; i < LENGTH(expr); i++) {
+      result.mutable_rstring()->add_strings(asStringUTF8OrError(STRING_ELT(expr, i)));
     }
     return result;
   } else if (TYPEOF(expr) == NILSXP) {
@@ -111,17 +119,9 @@ RObject fromSEXP(SEXP const &expr) {
     return result;
   } else if (TYPEOF(expr) == LGLSXP) {
     RObject result;
-    if (Rf_xlength(expr) == 1) {
-      result.set_allocated_rboolean(new RObject_RBoolean);
-      result.mutable_rboolean()->set_boolean((asBoolOrError(expr)));
-    } else {
-      result.set_allocated_list(new RObject_List);
-      for (size_t i = 0; i < LENGTH(expr); i++) {
-        auto v = new RObject;
-        v->set_allocated_rboolean(new RObject_RBoolean);
-        v->mutable_rboolean()->set_boolean(LOGICAL_ELT(expr, i));
-        result.mutable_list()->mutable_robjects()->AddAllocated(v);
-      }
+    result.set_allocated_rboolean(new RObject_RBoolean);
+    for (size_t i = 0; i < LENGTH(expr); i++) {
+      result.mutable_rboolean()->add_booleans(LOGICAL_ELT(expr, i));
     }
     return result;
   } else throw std::exception();

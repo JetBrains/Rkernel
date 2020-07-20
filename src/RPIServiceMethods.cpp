@@ -25,6 +25,7 @@
 #include "Session.h"
 #include <signal.h>
 #include "util/FileUtil.h"
+#include "Timer.h"
 
 static RObject rStudioResponse;
 
@@ -284,6 +285,14 @@ RObject RPIServiceImpl::rStudioApiRequest(int32_t functionID, const RObject &arg
   event.mutable_rstudioapirequest()->set_allocated_args(new RObject(args));
   asyncEvents.push(event);
   ScopedAssign<bool> with(isInRStudioApiRequest, true);
+  std::unique_ptr<Timer> timeoutTimer = std::make_unique<Timer>([&] {
+    rpiService->executeOnMainThread([&] {
+      RObject result;
+      result.set_allocated_rnull(new RObject_RNull);
+      rStudioResponse = result;
+      breakEventLoop();
+    });
+  }, 5);
   runEventLoop();
   return rStudioResponse;
 }

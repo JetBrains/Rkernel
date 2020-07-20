@@ -328,11 +328,10 @@
    if (length(text) != 1 && length(ranges) != length(text))
       stop(invalidLengthMsg, call. = FALSE)
 
-   # sort the ranges in decreasing order -- this way, we can
-   # ensure the replacements occur correctly (except in the
-   # case of overlaps)
-   .Call(".jetbrains_insertText", mapply(list, ranges, text, SIMPLIFY = FALSE), id)
-   list(ranges = ranges, text = text, id = id)
+   data <- list(ranges = ranges, text = text, id = .rs.scalar(id))
+   response <- .Call(".jetbrains_insertText", mapply(list, ranges, text, SIMPLIFY = FALSE), id)
+   if (is.null(response)) stop("Timeout exceeded")
+   invisible(data)
 })
 
 .rs.addApiFunction("setSelectionRanges", function(ranges, id = "")
@@ -377,12 +376,16 @@
       stop("'code' should be a character vector", call. = FALSE)
 
    code <- paste(code, collapse = "\n")
-   data <- list(code,
-                as.logical(execute),
-                as.logical(echo),
-                as.logical(focus))
+   data <- list(
+     code = .rs.scalar(code),
+     echo = .rs.scalar(as.logical(echo)),
+     execute = .rs.scalar(as.logical(execute)),
+     focus = .rs.scalar(as.logical(focus)),
+     language = "R"
+   )
 
-   .Call(".jetbrains_sendToConsole", code, as.logical(execute), as.logical(echo), as.logical(focus))
+   response <- .Call(".jetbrains_sendToConsole", code, as.logical(execute), as.logical(echo), as.logical(focus))
+   if (is.null(response)) stop("Timeout exceeded")
    invisible(data)
 })
 

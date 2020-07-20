@@ -51,6 +51,16 @@ assign( envir = .rs.Env, ".rs.addGlobalFunction", function(name, FN)
    environment(.rs.Env[[name]]) <- .rs.Env
 })
 
+# Wrap a return value in this to give a hint to the
+# JSON serializer that one-element vectors should be
+# marshalled as scalar types instead of arrays
+.rs.addFunction("scalar", function(obj)
+  {
+  if (!is.null(obj))
+    class(obj) <- 'rs.scalar'
+  return(obj)
+})
+
 # add an rpc handler to the tools:rstudio environment
 .rs.addFunction( "addApiFunction", function(name, FN)
 {
@@ -1065,14 +1075,13 @@ assign(envir = .rs.Env, ".rs.hasVar", function(name)
 })
 
 .rs.addFunction("getEditorContext", function(response) {
-  result <- list()
-  result[["id"]] <- response[[2]]
-  result[["path"]] <- response[[2]]
-  result[["contents"]] <- unlist(response[[3]])
-  result[["selection"]] <- rstudioapi:::as.document_selection(purrr::modify(response[[4]], function (elem) {
-    r <- rstudioapi::as.document_range(c(elem[[1]], elem[[2]], elem[[3]], elem[[4]]))
-    txt <- elem[[5]]
+  if (is.null(response)) stop("Timeout exceeded")
+  if (length(response) == 0) return(NULL)
+  response[["id"]] <- response[["path"]]
+  response[["selection"]] <- rstudioapi:::as.document_selection(purrr::modify(response[["selection"]], function (elem) {
+    r <- rstudioapi::as.document_range(elem[[1]])
+    txt <- elem[[2]]
     list(range=r, text=txt)
   }))
-  result
+  response
 })
