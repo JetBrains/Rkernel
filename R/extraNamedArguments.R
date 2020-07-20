@@ -40,9 +40,13 @@
 }
 
 .jetbrains$safeFormalArgs <<- function(l, package = NULL) {
+  env_formals <- function (fun, envir) {
+    if (is.character(fun)) fun <- get(fun, mode = "function", envir = envir)
+    .Internal(formals(fun))
+  }
   .jetbrains$safeSapply(l, function(def) {
     env <- tryCatch(asNamespace(package), error = function(e) { parent.frame() })
-    names(formals(def, envir = env))
+    names(env_formals(def, envir = env))
   })
 }
 
