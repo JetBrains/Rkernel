@@ -85,7 +85,7 @@ namespace {
       throw std::runtime_error("Current device is null");
     }
     auto version = device->currentVersion();
-    auto resolution = device->screenParameters().resolution;
+    auto resolution = device->currentResolution();
     name = graphics::SnapshotUtil::makeSnapshotName(number, version, resolution);
   }
 

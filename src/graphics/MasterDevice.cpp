@@ -30,7 +30,6 @@ namespace graphics {
 namespace {
 
 const auto MASTER_DEVICE_NAME = "TheRPlugin_Device";
-const auto DUMMY_SNAPSHOT_NAME = "snapshot_0.png";
 
 MasterDevice* masterOf(pDevDesc descriptor) {
   auto masterDevice = MasterDevice::from(descriptor);
@@ -398,7 +397,7 @@ void MasterDevice::restart() {
   }
 
   auto masterDevDesc = new DevDesc;
-  auto slaveDevice = SlaveDevice(currentSnapshotDirectory + "/" + DUMMY_SNAPSHOT_NAME, currentScreenParameters);
+  auto slaveDevice = SlaveDevice(currentSnapshotDirectory + "/" + SnapshotUtil::getDummySnapshotName(), currentScreenParameters);
   auto slaveDevDesc = slaveDevice.getDescriptor();
 
   // Note: under some circumstances (R interpreter failures) slave device's descriptor can be null
