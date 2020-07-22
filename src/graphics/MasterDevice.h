@@ -50,9 +50,8 @@ class MasterDevice {
 
   void record(DeviceInfo& deviceInfo, int number);
   static void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters);
-  void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type);
   static void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters);
-  void dumpNormal(DeviceInfo &deviceInfo);
+  static void dumpNormal(DeviceInfo &deviceInfo);
   void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number);
   bool commitAllLast(bool withRescale, ScreenParameters newParameters);
   bool commitByNumber(int number, bool withRescale, ScreenParameters newParameters);

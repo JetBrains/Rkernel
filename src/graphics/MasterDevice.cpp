@@ -351,9 +351,7 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
     return false;
   }
 
-  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version, newParameters);
-
-  device->rescale(SnapshotType::NORMAL, newParameters);
+  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version + 1, newParameters);
   device->replayFromFile(parentDirectory, number);
   device->dump();
 
@@ -538,10 +536,6 @@ void MasterDevice::rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& de
   }
 }
 
-void MasterDevice::rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type) {
-  rescaleAndDump(device, type, currentScreenParameters);
-}
-
 void MasterDevice::rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters) {
   device->rescale(type, newParameters);
   device->replay();
@@ -552,7 +546,6 @@ void MasterDevice::dumpNormal(DeviceInfo &deviceInfo) {
   auto device = deviceInfo.device;
   device->dump();
   deviceInfo.hasDumped = true;
-  rescaleAndDump(device, SnapshotType::NORMAL);  // Dump full-screen "normal"
 }
 
 void MasterDevice::record(DeviceInfo& deviceInfo, int number) {

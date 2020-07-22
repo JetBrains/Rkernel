@@ -53,7 +53,7 @@ private:
   Ptr<SlaveDevice> slaveDevice;
 
   Ptr<SlaveDevice> initializeSlaveDevice();
-  void shutdownSlaveDevice(bool deletePlot = true);
+  void shutdownSlaveDevice();
   pDevDesc getSlave();
   void replayWithCommand(const std::string& command);
 

@@ -40,13 +40,9 @@ Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   return makePtr<SlaveDevice>(snapshotPath, parameters);
 }
 
-void REagerGraphicsDevice::shutdownSlaveDevice(bool deletePlot) {
+void REagerGraphicsDevice::shutdownSlaveDevice() {
   DEVICE_TRACE;
   slaveDevice = nullptr;
-  if (deletePlot && !snapshotPath.empty()) {
-    std::remove(snapshotPath.c_str());
-    snapshotPath = "";
-  }
 }
 
 // Nullable
@@ -203,7 +199,7 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
 }
 
 bool REagerGraphicsDevice::dump() {
-  shutdownSlaveDevice(false);
+  shutdownSlaveDevice();
   return true;
 }
 
