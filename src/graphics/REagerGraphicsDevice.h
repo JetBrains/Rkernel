@@ -42,6 +42,7 @@ struct MetricInfo {
 
 class REagerGraphicsDevice {
 private:
+  bool isPlotOnNewPage;
   bool isDeviceBlank;
   bool hasDumped;
   int deviceNumber;
@@ -91,6 +92,7 @@ public:
   void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context);
   bool dump();
   void rescale(SnapshotType newType, ScreenParameters newParameters);
+  bool isOnNewPage();
   bool isBlank();
   void replay();
   void replayFromFile(const std::string& parentDirectory, int number);

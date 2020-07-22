@@ -31,7 +31,7 @@ REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int de
                                            int snapshotVersion, ScreenParameters parameters)
     : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
       snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
-      snapshotType(SnapshotType::NORMAL), hasDumped(false) { getSlave(); }
+      snapshotType(SnapshotType::NORMAL), hasDumped(false), isPlotOnNewPage(false) { getSlave(); }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
@@ -125,6 +125,7 @@ void REagerGraphicsDevice::setMode(int mode) {
 }
 
 void REagerGraphicsDevice::newPage(pGEcontext context) {
+  isPlotOnNewPage = true;
   auto slave = getSlave();
   if (slave != nullptr) {
     slave->newPage(context, slave);
@@ -242,6 +243,10 @@ void REagerGraphicsDevice::rescale(SnapshotType newType, ScreenParameters newPar
   parameters = newParameters;
   snapshotVersion++;
   hasDumped = false;
+}
+
+bool REagerGraphicsDevice::isOnNewPage() {
+  return isPlotOnNewPage;
 }
 
 bool REagerGraphicsDevice::isBlank() {

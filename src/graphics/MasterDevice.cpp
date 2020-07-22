@@ -543,6 +543,22 @@ void MasterDevice::rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, Snaps
 
 void MasterDevice::dumpNormal(DeviceInfo &deviceInfo) {
   auto device = deviceInfo.device;
+  if (!device->isOnNewPage()) {
+    // Note: commands like `points(...)` don't invoke `newPage()`
+    // since they are just the continuations of previous plots
+    // which implies that you will get an invalid PNG file
+    // if you try to dump a current device right now.
+    // The correct solution is to:
+    //  1) discard current slave device (it's partial anyway)
+    //  2) replay it from scratch => the previous plot will be replayed automatically as well
+    //  3) dump
+    // CAUTION: it's important to use `close()` instead of `dump()` since
+    // the latter will mark device as dumped and you won't be able to
+    // save a replayed plot to the same path
+    // (see `REagerGraphicsDevice::initializeSlaveDevice()`).
+    device->close();
+    device->replay();
+  }
   device->dump();
   deviceInfo.hasDumped = true;
 }
