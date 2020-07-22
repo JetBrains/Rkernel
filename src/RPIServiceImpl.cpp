@@ -29,6 +29,7 @@
 #include "graphics/Evaluator.h"
 #include <condition_variable>
 #include <cstdlib>
+#include <cstdio>
 #include <grpcpp/server_builder.h>
 #include <memory>
 #include <fstream>
@@ -49,14 +50,6 @@ namespace {
       offset = getFunTabOffset("curlDownload");
     }
     return offset >= 0;
-  }
-
-  std::string getResolutionString(int resolution) {
-    if (resolution > 0) {
-      return std::to_string(resolution);
-    } else {
-      return "NA";
-    }
   }
 
   const char* getBooleanString(bool value) {
@@ -115,6 +108,12 @@ namespace {
     auto command = buildCallCommand(".jetbrains$getChunkOutputFullPath", argument);
     auto fullPathSEXP = graphics::Evaluator::evaluate(command, &protector);
     return stringEltUTF8(fullPathSEXP, 0);
+  }
+
+  std::string readWholeFileAndDelete(const std::string& path) {
+    auto content = readWholeFile(path);
+    std::remove(path.c_str());
+    return content;
   }
 }
 
@@ -202,7 +201,24 @@ Status RPIServiceImpl::graphicsPullSnapshot(ServerContext* context, const Graphi
       } else {
         name = getStoredSnapshotName(directory, number);
       }
-      response->set_content(readWholeFile(directory + "/" + name));
+      /*
+       * Note: one of the most important questions of the graphics machinery
+       * is how to keep snapshot groups (i.e. folders) consistent
+       * which means they mustn't contain different versions
+       * of the same snapshot at the same time.
+       * The most straight forward and safe approach is to insert
+       * clean up functions at every "synchronization" point
+       * which will scan folder and delete old versions
+       * (right after either rescale or dump).
+       * However, this approach has serious disadvantages:
+       *  1) It requires a big amount of additional code which is hard to maintain
+       *  2) It has a linear time complexity.
+       * The suggested solution (delete a snapshot right after it's pulled)
+       * is not the best one for sure since it makes pull request
+       * not re-entrant but it's very easy to implement
+       * and also highly computationally effective
+       */
+      response->set_content(readWholeFileAndDelete(directory + "/" + name));
       response->set_snapshotname(name);
       if (request->withrecorded()) {
         auto path = graphics::SnapshotUtil::makeRecordedFilePath(directory, number);
