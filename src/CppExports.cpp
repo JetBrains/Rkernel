@@ -204,6 +204,18 @@ CppExport SEXP _jetbrains_sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP
   CPP_END
 }
 
+CppExport SEXP _jetbrains_navigateToFile(SEXP filename, SEXP position) {
+  CPP_BEGIN
+    return navigateToFile(filename, position);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_getActiveProject() {
+  CPP_BEGIN
+    return getActiveProject();
+  CPP_END
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -229,6 +241,8 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_insertText", (DL_FUNC) &_jetbrains_insertText, 2},
     {".jetbrains_sendToConsole", (DL_FUNC) &_jetbrains_sendToConsole, 4},
     {".jetbrains_getConsoleEditorContext", (DL_FUNC) &_jetbrains_getConsoleEditorContext, 0},
+    {".jetbrains_navigateToFile", (DL_FUNC) &_jetbrains_navigateToFile, 2},
+    {".jetbrains_getActiveProject", (DL_FUNC) &_jetbrains_getActiveProject, 0},
     {nullptr, nullptr, 0}
 };
 

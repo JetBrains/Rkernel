@@ -28,6 +28,19 @@ SEXP sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP focus) {
   return toSEXP(rpiService->rStudioApiRequest(SEND_TO_CONSOLE_ID, args));
 }
 
+SEXP navigateToFile(SEXP filename, SEXP position) {
+  RObject args;
+  args.set_allocated_list(new RObject_List);
+  args.mutable_list()->mutable_robjects()->Add(fromSEXP(filename));
+  args.mutable_list()->mutable_robjects()->Add(fromSEXP(position));
+  return toSEXP(rpiService->rStudioApiRequest(NAVIGATE_TO_FILE_ID, args));
+}
+
+SEXP getActiveProject() {
+  RObject args;
+  return toSEXP(rpiService->rStudioApiRequest(GET_ACTIVE_PROJECT_ID, args));
+}
+
 SEXP toSEXP(const RObject &rObject) {
   switch (rObject.object_case()) {
     case RObject::kRString: {

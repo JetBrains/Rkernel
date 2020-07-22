@@ -211,6 +211,9 @@
 })
 
 .rs.addApiFunction("navigateToFile", function(filePath, line = 1L, col = 1L) {
+   if (line == -1) line <- 1
+   if (col == -1) col <- 1
+
    # validate file argument
    if (!is.character(filePath)) {
       stop("filePath must be a character")
@@ -232,18 +235,9 @@
       stop("line and column must be numeric values.")
    }
 
-   # expand and alias for client
    filePath <- .rs.normalizePath(filePath, winslash="/", mustWork = TRUE)
-   homeDir <- path.expand("~")
-   if (identical(substr(filePath, 1, nchar(homeDir)), homeDir)) {
-      filePath <- file.path("~", substring(filePath, nchar(homeDir) + 2))
-   }
 
-   # send event to client
-   .rs.enqueClientEvent("jump_to_function", list(
-      file_name     = .rs.scalar(filePath),
-      line_number   = .rs.scalar(line),
-      column_number = .rs.scalar(col)))
+   .Call(".jetbrains_navigateToFile", filePath, c(line, col))
 
    invisible(NULL)
 })
@@ -329,7 +323,8 @@
       stop(invalidLengthMsg, call. = FALSE)
 
    data <- list(ranges = ranges, text = text, id = .rs.scalar(id))
-   response <- .Call(".jetbrains_insertText", mapply(list, ranges, text, SIMPLIFY = FALSE), id)
+   response <- .Call(".jetbrains_insertText",
+                     mapply(list, if (length(ranges) == 0) list(c(-1,-1,-1,-1)) else ranges, text, SIMPLIFY = FALSE), id)
    if (is.null(response)) stop("Timeout exceeded")
    invisible(data)
 })
@@ -364,7 +359,9 @@
 })
 
 .rs.addApiFunction("getActiveProject", function() {
-   .rs.getProjectDirectory()
+   path <- .Call(".jetbrains_getActiveProject")
+   if (length(path) == 0) return(NULL)
+   path
 })
 
 .rs.addApiFunction("sendToConsole", function(code,
