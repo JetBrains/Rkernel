@@ -43,6 +43,7 @@ struct MetricInfo {
 class REagerGraphicsDevice {
 private:
   bool isDeviceBlank;
+  bool hasDumped;
   int deviceNumber;
   int snapshotNumber;
   int snapshotVersion;
@@ -85,6 +86,7 @@ public:
   ScreenParameters screenParameters();
   ScreenParameters logicScreenParameters();
   int currentVersion();
+  int currentResolution();
   double widthOfStringUtf8(const char* text, pGEcontext context);
   void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context);
   bool dump();

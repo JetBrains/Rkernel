@@ -24,6 +24,7 @@ namespace graphics {
 namespace {
 
 const auto ENVIRONMENT_NAME = ".jetbrains";
+const auto DUMMY_SNAPSHOT_NAME = "snapshot_0.png";
 const auto RECORDED_SNAPSHOT_PREFIX = "recordedSnapshot";
 const auto RECORD_COMMAND_NAME = "grDevices::recordPlot";
 const auto REPLAY_COMMAND_NAME = "grDevices::replayPlot";
@@ -48,6 +49,10 @@ std::string makeLoadAndReplayCommand(const std::string& filePath) {
 }
 
 }  // anonymous
+
+const char* SnapshotUtil::getDummySnapshotName() {
+  return DUMMY_SNAPSHOT_NAME;
+}
 
 std::string SnapshotUtil::makeSnapshotName(int number, int version, int resolution) {
   return makeSnapshotName(SnapshotType::NORMAL, number, version, resolution);

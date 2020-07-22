@@ -26,6 +26,7 @@ namespace graphics {
 
 class SnapshotUtil {
 public:
+  static const char* getDummySnapshotName();
   static std::string makeSnapshotName(int number, int version, int resolution);
   static std::string makeSnapshotName(SnapshotType type, int number, int version, int resolution);
   static std::string makeRecordedFilePath(const std::string &directory, int snapshotNumber);

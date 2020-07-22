@@ -31,11 +31,38 @@ REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int de
                                            int snapshotVersion, ScreenParameters parameters)
     : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
       snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
-      snapshotType(SnapshotType::NORMAL) { getSlave(); }
+      snapshotType(SnapshotType::NORMAL), hasDumped(false) { getSlave(); }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
-  auto name = SnapshotUtil::makeSnapshotName(snapshotType, snapshotNumber, snapshotVersion, parameters.resolution);
+  auto name = std::string();
+  if (!hasDumped) {
+    name = SnapshotUtil::makeSnapshotName(snapshotType, snapshotNumber, snapshotVersion, parameters.resolution);
+  } else {
+    // Note: use fake destination path when the plot has already been dumped.
+    // Rationale: initialization of slave device triggers an empty "<name>.png" file
+    // to be created but it has a different behaviour on different OSes.
+    // On Unixes nothing will be written to a disk if there is nothing to draw
+    // which is absolutely fine,
+    // however on Windows this file will be saved as is (infamous white rectangle).
+    // So the following steps will lead to R-811 and R-815 symptoms:
+    //  1) The plot is drawn and dumped (i.e. written to disk)
+    //  2) Some operation requires a slave device
+    //  3) A new slave device is created **with the same destination path**
+    //  4) Requested operation is performed
+    //  5) Slave device is shut down
+    // The 5th step is absolutely safe for Unix but will **overwrite** contents
+    // of previously dumped plot with a useless white rectangle on Windows.
+    // So how can one fight this? The correct solution is to make step #2 impossible
+    // but in practice you can never know whether a requested operation requires
+    // a new slave device or not
+    // (check out `screenParameters()` method which looks like an absolutely harmless getter
+    // but yes, it will create a new slave device when needed)
+    // that's why it's safer to assume step #2 is unavoidable and thus it's
+    // better to prevent step #3 instead by replacing the path to already dumped plot
+    // with a fake one
+    name = SnapshotUtil::getDummySnapshotName();
+  }
   snapshotPath = snapshotDirectory + "/" + name;
   return makePtr<SlaveDevice>(snapshotPath, parameters);
 }
@@ -181,6 +208,10 @@ int REagerGraphicsDevice::currentVersion() {
   return snapshotVersion;
 }
 
+int REagerGraphicsDevice::currentResolution() {
+  return parameters.resolution;
+}
+
 double REagerGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext context) {
   auto slave = getSlave();
   if (slave != nullptr) {
@@ -200,6 +231,7 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
 
 bool REagerGraphicsDevice::dump() {
   shutdownSlaveDevice();
+  hasDumped = true;
   return true;
 }
 
@@ -209,6 +241,7 @@ void REagerGraphicsDevice::rescale(SnapshotType newType, ScreenParameters newPar
   snapshotType = newType;
   parameters = newParameters;
   snapshotVersion++;
+  hasDumped = false;
 }
 
 bool REagerGraphicsDevice::isBlank() {
