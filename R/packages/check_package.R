@@ -2,7 +2,7 @@
 
 args = commandArgs(TRUE)
 cran <- FALSE
-if (args[1] == "--as-cran") {
+if (length(args) > 0 && args[1] == "--as-cran") {
   cran <- TRUE
   args <- tail(args, n = -1L)
 }
