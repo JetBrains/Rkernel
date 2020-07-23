@@ -417,7 +417,7 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
     }
   }, immediate);
   bool cancelled = false;
-  while (true) {
+  while (!terminateProceed) {
     int currentState = state.load();
     if (currentState == STATE_DONE) break;
     if (currentState == STATE_RUNNING && !cancelled && context != nullptr && context->IsCancelled()) {
@@ -519,6 +519,7 @@ void quitRPIService() {
   for (int iter = 0; iter < 100 && !rpiService->terminateProceed; ++iter) {
     std::this_thread::sleep_for(std::chrono::milliseconds(25));
   }
+  rpiService->terminateProceed = true;
   server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(1));
   R_interrupts_pending = false;
   server = nullptr;
