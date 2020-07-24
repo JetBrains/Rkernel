@@ -65,7 +65,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
     bool streamOutput = request->streamoutput() && writer != nullptr;
     bool isRepl = request->isrepl();
     bool isDebug = isRepl && request->isdebug();
-    bool firstDebugCommand = isDebug && request->firstdebugcommand();
+    auto firstDebugCommand = request->firstdebugcommand();
     bool setLastValue = request->setlastvalue();
 
     ScopedAssign<bool> withIsReplOutput(isReplOutput, isRepl && !streamOutput);
