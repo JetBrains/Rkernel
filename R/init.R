@@ -408,6 +408,28 @@ options(install.packages.compile.from.source = "always")
   return(paste(text, collapse = "\n"))
 }
 
+.jetbrains$oldHttpd <<- tools:::httpd
+local({
+  env <- loadNamespace("tools")
+  unlockBinding("httpd", env)
+  env$httpd <- function(path, query, ...) {
+    prefix <- "/jb_get_file/"
+    if (!startsWith(path, prefix)) {
+      return(.jetbrains$oldHttpd(path, query, ...))
+    }
+    file <- substr(path, nchar(prefix), nchar(path))
+    mimeType <- function(path) {
+      ext <- strsplit(path, ".", fixed = TRUE)[[1]]
+      if (n <- length(ext)) ext <- ext[n] else ""
+      switch(ext, css = "text/css", gif = "image/gif", jpg = "image/jpeg", png = "image/png", svg = "image/svg+xml",
+             html = "text/html", pdf = "application/pdf", eps = , ps = "application/postscript",
+             sgml = "text/sgml", xml = "text/xml", "text/plain")
+    }
+    return(list(file = file, `content-type` = mimeType(path)))
+  }
+  lockBinding("httpd", env)
+})
+
 local({
   env <- as.environment("package:utils")
   unlockBinding("View", env)

@@ -204,3 +204,11 @@ Status RPIServiceImpl::convertRoxygenToHTML(ServerContext* context, const Conver
   }, context, true);
   return Status::OK;
 }
+
+Status RPIServiceImpl::startHttpd(ServerContext* context, const Empty*, Int32Value* response) {
+  executeOnMainThread([&] {
+    RI->startDynamicHelp();
+    response->set_value(asInt(RI->httpdPort()));
+  }, context, true);
+  return Status::OK;
+}

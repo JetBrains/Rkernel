@@ -130,6 +130,7 @@ struct RObjects2 {
   PrSEXP tools = loadNamespace("tools");
   PrSEXP httpd = tools.getVar("httpd");
   PrSEXP httpdPort = tools.getVar("httpdPort");
+  PrSEXP startDynamicHelp = tools.getVar("startDynamicHelp");
 
   SEXP evalCode(std::string const& code, SEXP env) {
     SHIELD(env);
