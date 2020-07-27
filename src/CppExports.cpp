@@ -192,6 +192,12 @@ CppExport SEXP _jetbrains_getConsoleEditorContext() {
   CPP_END
 }
 
+CppExport SEXP _jetbrains_getActiveDocumentContext() {
+  CPP_BEGIN
+    return getActiveDocumentContext();
+  CPP_END
+}
+
 CppExport SEXP _jetbrains_insertText(SEXP insertions, SEXP id) {
   CPP_BEGIN
     return insertText(insertions, id);
@@ -243,6 +249,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_getConsoleEditorContext", (DL_FUNC) &_jetbrains_getConsoleEditorContext, 0},
     {".jetbrains_navigateToFile", (DL_FUNC) &_jetbrains_navigateToFile, 2},
     {".jetbrains_getActiveProject", (DL_FUNC) &_jetbrains_getActiveProject, 0},
+    {".jetbrains_getActiveDocumentContext", (DL_FUNC) &_jetbrains_getActiveDocumentContext, 0},
     {nullptr, nullptr, 0}
 };
 

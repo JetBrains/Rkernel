@@ -10,6 +10,11 @@ SEXP getConsoleEditorContext() {
   return toSEXP(rpiService->rStudioApiRequest(GET_CONSOLE_EDITOR_CONTEXT_ID, args));
 }
 
+SEXP getActiveDocumentContext() {
+  RObject args;
+  return toSEXP(rpiService->rStudioApiRequest(GET_ACTIVE_DOCUMENT_CONTEXT_ID, args));
+}
+
 SEXP insertText(SEXP insertions, SEXP id) {
   RObject args;
   args.set_allocated_list(new RObject_List);

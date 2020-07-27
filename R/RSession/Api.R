@@ -341,11 +341,13 @@
 # of the 'rstudioapi' package -- it is superceded by
 # '.rs.getLastActiveEditorContext()'.
 .rs.addApiFunction("getActiveDocumentContext", function() {
-   .Call("rs_getEditorContext", 0L)
+   response <- .Call(".jetbrains_getActiveDocumentContext")
+   .rs.getEditorContext(response)
 })
 
 .rs.addApiFunction("getLastActiveEditorContext", function() {
-   .Call("rs_getEditorContext", 0L)
+   response <- .Call(".jetbrains_getActiveDocumentContext")
+   .rs.getEditorContext(response)
 })
 
 .rs.addApiFunction("getConsoleEditorContext", function() {

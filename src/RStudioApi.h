@@ -10,10 +10,13 @@
 #define GET_CONSOLE_EDITOR_CONTEXT_ID 3
 #define NAVIGATE_TO_FILE_ID 4
 #define GET_ACTIVE_PROJECT_ID 5
+#define GET_ACTIVE_DOCUMENT_CONTEXT_ID 6
 
 SEXP getSourceEditorContext();
 
 SEXP getConsoleEditorContext();
+
+SEXP getActiveDocumentContext();
 
 SEXP insertText(SEXP insertions, SEXP id);
 
