@@ -66,7 +66,7 @@ install_pandoc <- function(library_path) {
 
   os_name <- Sys.info()["sysname"]
   os_suffix <- if (os_name == "Linux") {
-    "linux"
+    "linux(-amd64)?"
   } else {
     if (os_name == "Darwin") {
       "macOS"
