@@ -34,6 +34,7 @@ static std::string getRVersion() {
 Status RPIServiceImpl::getInfo(ServerContext* context, const Empty*, GetInfoResponse* response) {
   executeOnMainThread([&] {
     response->set_rversion(getRVersion());
+    response->set_pid(asInt(RI->sysGetPid()));
   }, context);
   return Status::OK;
 }
