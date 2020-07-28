@@ -285,20 +285,26 @@ RObject RPIServiceImpl::rStudioApiRequest(int32_t functionID, const RObject &arg
   event.mutable_rstudioapirequest()->set_allocated_args(new RObject(args));
   asyncEvents.push(event);
   ScopedAssign<bool> with(isInRStudioApiRequest, true);
+  int timeout;
+  if (functionID < 8 || functionID > 15) {
+    timeout = 30;
+  } else {
+    timeout = 3 * 60;
+  }
   std::unique_ptr<Timer> timeoutTimer = std::make_unique<Timer>([&] {
     rpiService->executeOnMainThread([&] {
       RObject result;
-      result.set_allocated_rnull(new RObject_RNull);
+      result.set_error("Timeout exceeded");
       rStudioResponse = result;
       breakEventLoop();
     });
-  }, 5);
+  }, timeout);
   runEventLoop();
   return rStudioResponse;
 }
 
 Status RPIServiceImpl::clientRequestFinished(ServerContext* context, const Empty*, Empty*) {
-  executeOnMainThread([&]{
+  executeOnMainThread([&] {
     if (isInClientRequest) {
       breakEventLoop();
     }
@@ -307,7 +313,7 @@ Status RPIServiceImpl::clientRequestFinished(ServerContext* context, const Empty
 }
 
 Status RPIServiceImpl::rStudioApiResponse(ServerContext* context, const RObject* request, Empty* response) {
-  executeOnMainThread([&]{
+  executeOnMainThread([&] {
     if (isInRStudioApiRequest) {
       rStudioResponse = *request;
       breakEventLoop();

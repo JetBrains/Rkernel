@@ -46,6 +46,51 @@ SEXP getActiveProject() {
   return toSEXP(rpiService->rStudioApiRequest(GET_ACTIVE_PROJECT_ID, args));
 }
 
+SEXP setSelectionRanges(SEXP ranges, SEXP id) {
+  RObject args;
+  args.set_allocated_list(new RObject_List);
+  args.mutable_list()->mutable_robjects()->Add(fromSEXP(ranges));
+  args.mutable_list()->mutable_robjects()->Add(fromSEXP(id));
+  return toSEXP(rpiService->rStudioApiRequest(SET_SELECTION_RANGES_ID, args));
+}
+
+SEXP askForPassword(SEXP message) {
+  return dialogHelper(message, ASK_FOR_PASSWORD_ID);
+}
+
+SEXP showQuestion(SEXP args) {
+  return dialogHelper(args, SHOW_QUESTION_ID);
+}
+
+SEXP showPrompt(SEXP args) {
+  return dialogHelper(args, SHOW_PROMPT_ID);
+}
+
+SEXP askForSecret(SEXP args) {
+  return dialogHelper(args, ASK_FOR_SECRET_ID);
+}
+
+SEXP selectFile(SEXP args) {
+  return dialogHelper(args, SELECT_FILE_ID);
+}
+
+SEXP selectDirectory(SEXP args) {
+  return dialogHelper(args, SELECT_DIRECTORY_ID);
+}
+
+SEXP showDialog(SEXP args) {
+  return dialogHelper(args, SHOW_DIALOG_ID);
+}
+
+SEXP updateDialog(SEXP args) {
+  return dialogHelper(args, UPDATE_DIALOG_ID);
+}
+
+SEXP getThemeInfo() {
+  RObject args;
+  return toSEXP(rpiService->rStudioApiRequest(GET_THEME_INFO_ID, args));
+}
+
 SEXP toSEXP(const RObject &rObject) {
   switch (rObject.object_case()) {
     case RObject::kRString: {
@@ -99,6 +144,9 @@ SEXP toSEXP(const RObject &rObject) {
       Rf_setAttrib(values, R_NamesSymbol, names);
       return values;
     }
+    case RObject::kError: {
+      error_return(rObject.error().data())
+    }
   }
 }
 
@@ -143,4 +191,11 @@ RObject fromSEXP(SEXP const &expr) {
     }
     return result;
   } else throw std::exception();
+}
+
+SEXP dialogHelper(SEXP args, int32_t id) {
+  RObject args_;
+  args_.set_allocated_list(new RObject_List);
+  args_.mutable_list()->mutable_robjects()->Add(fromSEXP(args));
+  return toSEXP(rpiService->rStudioApiRequest(id, args_));
 }

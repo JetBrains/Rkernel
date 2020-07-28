@@ -1075,8 +1075,7 @@ assign(envir = .rs.Env, ".rs.hasVar", function(name)
 })
 
 .rs.addFunction("getEditorContext", function(response) {
-  if (is.null(response)) stop("Timeout exceeded")
-  if (length(response) == 0) return(NULL)
+  if (is.null(response)) return(NULL)
   response[["selection"]] <- rstudioapi:::as.document_selection(purrr::modify(response[["selection"]], function (elem) {
     r <- rstudioapi::as.document_range(elem[[1]])
     txt <- elem[[2]]

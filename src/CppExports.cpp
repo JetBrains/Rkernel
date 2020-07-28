@@ -222,6 +222,67 @@ CppExport SEXP _jetbrains_getActiveProject() {
   CPP_END
 }
 
+CppExport SEXP _jetbrains_setSelectionRanges(SEXP ranges, SEXP id) {
+  CPP_BEGIN
+    return setSelectionRanges(ranges, id);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_askForPassword(SEXP message) {
+  CPP_BEGIN
+    return askForPassword(message);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_showQuestion(SEXP args) {
+  CPP_BEGIN
+    return showQuestion(args);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_showPrompt(SEXP args) {
+  CPP_BEGIN
+    return showPrompt(args);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_askForSecret(SEXP args) {
+  CPP_BEGIN
+    return askForSecret(args);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_selectFile(SEXP args) {
+  CPP_BEGIN
+    return selectFile(args);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_selectDirectory(SEXP args) {
+  CPP_BEGIN
+    return selectDirectory(args);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_showDialog(SEXP args) {
+  CPP_BEGIN
+    return showDialog(args);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_updateDialog(SEXP args) {
+  CPP_BEGIN
+    return updateDialog(args);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_getThemeInfo() {
+  CPP_BEGIN
+    return getThemeInfo();
+  CPP_END
+}
+
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -250,6 +311,16 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_navigateToFile", (DL_FUNC) &_jetbrains_navigateToFile, 2},
     {".jetbrains_getActiveProject", (DL_FUNC) &_jetbrains_getActiveProject, 0},
     {".jetbrains_getActiveDocumentContext", (DL_FUNC) &_jetbrains_getActiveDocumentContext, 0},
+    {".jetbrains_setSelectionRanges", (DL_FUNC) &_jetbrains_setSelectionRanges, 2},
+    {".jetbrains_askForPassword", (DL_FUNC) &_jetbrains_askForPassword, 1},
+    {".jetbrains_showQuestion", (DL_FUNC) &_jetbrains_showQuestion, 1},
+    {".jetbrains_showPrompt", (DL_FUNC) &_jetbrains_showPrompt, 1},
+    {".jetbrains_askForSecret", (DL_FUNC) &_jetbrains_askForSecret, 1},
+    {".jetbrains_selectFile", (DL_FUNC) &_jetbrains_selectFile, 1},
+    {".jetbrains_selectDirectory", (DL_FUNC) &_jetbrains_selectDirectory, 1},
+    {".jetbrains_showDialog", (DL_FUNC) &_jetbrains_showDialog, 1},
+    {".jetbrains_updateDialog", (DL_FUNC) &_jetbrains_updateDialog, 1},
+    {".jetbrains_getThemeInfo", (DL_FUNC) &_jetbrains_getThemeInfo, 0},
     {nullptr, nullptr, 0}
 };
 

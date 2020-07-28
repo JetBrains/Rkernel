@@ -323,9 +323,8 @@
       stop(invalidLengthMsg, call. = FALSE)
 
    data <- list(ranges = ranges, text = text, id = .rs.scalar(id))
-   response <- .Call(".jetbrains_insertText",
+   .Call(".jetbrains_insertText",
                      mapply(list, if (length(ranges) == 0) list(c(-1,-1,-1,-1)) else ranges, text, SIMPLIFY = FALSE), id)
-   if (is.null(response)) stop("Timeout exceeded")
    invisible(data)
 })
 
@@ -333,7 +332,7 @@
 {
    ranges <- .rs.validateAndTransformLocation(ranges)
    data <- list(ranges = ranges, id = .rs.scalar(id))
-   .rs.enqueEditorClientEvent("set_selection_ranges", data)
+   .Call(".jetbrains_setSelectionRanges", ranges, id)
    invisible(data)
 })
 
@@ -361,9 +360,7 @@
 })
 
 .rs.addApiFunction("getActiveProject", function() {
-   path <- .Call(".jetbrains_getActiveProject")
-   if (length(path) == 0) return(NULL)
-   path
+   .Call(".jetbrains_getActiveProject")
 })
 
 .rs.addApiFunction("sendToConsole", function(code,
@@ -383,13 +380,12 @@
      language = "R"
    )
 
-   response <- .Call(".jetbrains_sendToConsole", code, as.logical(execute), as.logical(echo), as.logical(focus))
-   if (is.null(response)) stop("Timeout exceeded")
+   .Call(".jetbrains_sendToConsole", code, as.logical(execute), as.logical(echo), as.logical(focus))
    invisible(data)
 })
 
 .rs.addApiFunction("askForPassword", function(prompt) {
-   .rs.askForPassword(prompt)
+   .Call(".jetbrains_askForPassword", prompt)
 })
 
 .rs.addFunction("dialogIcon", function(name) {
@@ -407,15 +403,7 @@
    if (is.null(url) || is.na(url))
       url <- ""
    
-   .Call("rs_showDialog",
-      title = title,
-      message = message,
-      dialogIcon = .rs.dialogIcon()$info,
-      prompt = FALSE,
-      promptDefault = "",
-      ok = "OK",
-      cancel = "Cancel",
-      url = url)
+   .Call(".jetbrains_showDialog", c(title, message, url))
 })
 
 .rs.addApiFunction("updateDialog", function(...)
@@ -432,15 +420,7 @@
    if (is.null(default) || is.na(default))
       default <- ""
    
-   .Call("rs_showDialog",
-      title = title,
-      message = message,
-      dialogIcon = .rs.dialogIcon()$info,
-      prompt = TRUE,
-      promptDefault = default,
-      ok = "OK",
-      cancel = "Cancel",
-      url = "")
+   .Call(".jetbrains_showPrompt", c(title, message, default))
 })
 
 .rs.addApiFunction("showQuestion", function(title, message, ok = "OK", cancel = "Cancel") {
@@ -451,16 +431,7 @@
    
    if (is.null(cancel) || is.na(cancel))
       cancel <- "Cancel"
-   
-   .Call("rs_showDialog",
-      title = title,
-      message = message,
-      dialogIcon = .rs.dialogIcon()$question,
-      prompt = FALSE,
-      promptDefault = NULL,
-      ok = ok,
-      cancel = cancel,
-      url = NULL)
+   .Call(".jetbrains_showQuestion", c(title, message, ok, cancel))
 })
 
 .rs.addApiFunction("writePreference", function(name, value) {
@@ -680,14 +651,13 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
    filter = NULL,
    existing = TRUE)
 {
-   .Call("rs_openFileDialog",
-         1L,
+   .Call(".jetbrains_selectFile", c(
          caption,
          label,
          path,
          filter,
-         existing,
-         PACKAGE = "(embedding)")
+         existing)
+   )
 })
 
 .rs.addApiFunction("selectDirectory", function(
@@ -706,43 +676,11 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
 })
 
 .rs.addApiFunction("getThemeInfo", function() {
-   
-   # read theme preferences
-   global <- .rs.readUiPref("flat_theme")
-
-   theme <- .rs.readUiPref("rstheme")
-   if (is.null(theme))
-      theme <- list("name" = "Textmate (default)", "isDark" = FALSE)
-
-   global <- switch(
-      if (is.null(global)) "" else global,
-      alternate = "Sky",
-      default = "Modern",
-      "Classic"
-   )
-
-   # default/fallback theme colors 
-   foreground <- "#000000";
-   background <- "#FFFFFF";
-
-   # attempt to read colors from browser
-   colors <- .Call("rs_getThemeColors", PACKAGE = "(embedding)")
-   if (!is.null(colors)) {
-      foreground <- colors$foreground
-      background <- colors$background
-   }
-
-   list(
-      editor = theme$name,
-      global = global,
-      dark = theme$isDark,
-      foreground = foreground,
-      background = background
-   )
+   .Call(".jetbrains_getThemeInfo")
 })
 
 .rs.addApiFunction("askForSecret", function(name, title, prompt) {
-   .rs.askForSecret(name, title, prompt)
+   .Call(".jetbrains_askForSecret", c(name, title, prompt))
 })
 
 .rs.addApiFunction("previewSql", function(conn, statement, ...) {
