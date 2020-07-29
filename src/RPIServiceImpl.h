@@ -54,6 +54,7 @@ public:
   Status debugAddBreakpoint(ServerContext* context, const DebugAddBreakpointRequest* request, Empty*) override;
   Status debugRemoveBreakpoint(ServerContext* context, const SourcePosition* request, Empty*) override;
   Status debugCommandContinue(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandKeepPrevious(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandPause(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandStop(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandStepOver(ServerContext* context, const Empty*, Empty*) override;
@@ -146,7 +147,7 @@ public:
       bool askInput,
       std::function<void(std::string)> const& inputCallback, std::function<void()> const& interruptCallback);
   void subprocessHandlerStop();
-  void debugPromptHandler();
+  void debugPromptHandler(bool isStepStop, bool isBreakpoint);
   void viewHandler(SEXP x, SEXP title);
   void showFileHandler(std::string const& filePath, std::string const& title);
   void showHelpHandler(std::string const& content, std::string const& url);
