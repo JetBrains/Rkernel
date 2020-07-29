@@ -164,10 +164,12 @@ std::string RPIServiceImpl::readLineHandler(std::string const& prompt) {
   return result;
 }
 
-void RPIServiceImpl::debugPromptHandler() {
+void RPIServiceImpl::debugPromptHandler(bool isStepStop, bool isBreakpoint) {
   if (replState != REPL_BUSY) return;
   AsyncEvent event;
   rDebugger.buildDebugPrompt(event.mutable_debugprompt());
+  event.mutable_debugprompt()->set_isstep(isStepStop);
+  event.mutable_debugprompt()->set_isbreakpoint(isBreakpoint);
   asyncEvents.push(event);
   ScopedAssign<ReplState> withState(replState, DEBUG_PROMPT);
   runEventLoop();

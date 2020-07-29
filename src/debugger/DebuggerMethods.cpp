@@ -49,6 +49,13 @@ Status RPIServiceImpl::debugCommandContinue(ServerContext*, const Empty*, Empty*
   return Status::OK;
 }
 
+Status RPIServiceImpl::debugCommandKeepPrevious(ServerContext*, const Empty*, Empty*) {
+  eventLoopExecute([=] {
+    if (replState == DEBUG_PROMPT) breakEventLoop("");
+  });
+  return Status::OK;
+}
+
 Status RPIServiceImpl::debugCommandPause(ServerContext*, const Empty*, Empty*) {
   if (replState == REPL_BUSY && rDebugger.isEnabled()) {
     rDebugger.setCommand(PAUSE);

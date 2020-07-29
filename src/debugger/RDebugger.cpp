@@ -225,8 +225,10 @@ void RDebugger::doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint,
 
   CPP_BEGIN
     bool suspend = isStepStop || (R_Srcref != R_NilValue && R_Srcref == runToPositionTarget);
+    bool isBreakpoint = false;
     if (!breakpointsMuted && breakpoint != nullptr) {
       if (checkCondition(breakpoint->condition, env)) {
+        isBreakpoint = true;
         evaluateAndLog(breakpoint->evaluateAndLog, env);
         if (breakpoint->suspend) {
           suspend = true;
@@ -235,10 +237,8 @@ void RDebugger::doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint,
     }
 
     if (!suspend) return;
-    setCommand(CONTINUE);
     stack = buildStack(getContextDump(currentCall));
-
-    rpiService->debugPromptHandler();
+    rpiService->debugPromptHandler(isStepStop, isBreakpoint);
   CPP_END_VOID
 }
 
