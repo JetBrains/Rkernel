@@ -86,8 +86,8 @@ install_pandoc <- function(library_path) {
 
 args = commandArgs(TRUE)
 
-if (length(args) != 3 && length(args) != 4) {
-    warning(paste0("Usage: render_markdown.R <library_path> <file_path> <render_directory> [result_file]\n",
+if (length(args) != 4 && length(args) != 5) {
+    warning(paste0("Usage: render_markdown.R <library_path> <file_path> <root_directory> <output_directory> [result_file]\n",
                    "  Path to output will be saved to [result_file]"))
     quit(save = "no", status = 1, runLast = FALSE)
 }
@@ -95,8 +95,9 @@ if (length(args) != 3 && length(args) != 4) {
 library_path <- args[1]
 file_path <- args[2]
 knit_root_directory <- args[3]
-if (length(args) >= 4) {
-  result_file <- args[4]
+output_directory <- args[4]
+if (length(args) >= 5) {
+  result_file <- args[5]
 } else {
   result_file <- NA
 }
@@ -121,7 +122,7 @@ if (!is.null(runtime) && grepl("^shiny", runtime)) {
   name <- basename(file_path)
   rmarkdown::run(name, dir = dirname(file_path), default_file = name, shiny_args = list(launch.browser = TRUE))
 } else {
-  output_file <- rmarkdown::render(file_path, output_dir = knit_root_directory, knit_root_dir = knit_root_directory)
+  output_file <- rmarkdown::render(file_path, output_dir = output_directory, knit_root_dir = knit_root_directory)
   if (!is.na(result_file)) {
     cat(output_file, file = result_file)
   }
