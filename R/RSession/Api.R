@@ -452,22 +452,11 @@
 })
 
 .rs.addApiFunction("documentSave", function(id = NULL) {
-   # If no ID is specified, try to save the active editor.
-   if (is.null(id)) {
-      context <- .rs.api.getSourceEditorContext()
-      if (!is.null(context)) {
-         id <- context$id
-      }
-   }
-   if (is.null(id)) {
-      # No ID specified and no document open; succeed without meaning
-      return(TRUE)
-   }
-   .Call("rs_requestDocumentSave", id, PACKAGE = "(embedding)")
+   TRUE
 })
 
 .rs.addApiFunction("documentSaveAll", function() {
-   .Call("rs_requestDocumentSave", NULL, PACKAGE = "(embedding)")
+   TRUE
 })
 
 .rs.addApiFunction("documentNew", function(type, code, row = 0, column= 0, execute = FALSE) {
