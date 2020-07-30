@@ -363,7 +363,23 @@ bool MasterDevice::dumpAllLast() {
 
 void MasterDevice::onNewPage() {
   auto hasGgPlot = isNextGgPlot;  // Note: store it here since `addNewDevice` will reset it to `false`
-  if (!getCurrentDevice()->isBlank()) {
+  auto currentDevice = getCurrentDevice();
+  if (!currentDevice->isBlank()) {
+    /*
+     * Note: R has a limit of 60 devices opened at the same time
+     * so it's necessary to close a currently opened device.
+     * CAUTION: it's important to use `close()` instead of `dump()` since
+     * the latter will mark device as dumped and you won't be able to
+     * save a replayed plot to the same path
+     * (see `REagerGraphicsDevice::initializeSlaveDevice()`).
+     * CAUTION: the `hasDumped` flag for DeviceInfo is **not** set here intentionally
+     * since some previously written code (see `commitAllLast()` for example)
+     * relies on it and might be accidentally broken otherwise.
+     * You don't have to worry about it though:
+     * subsequent invocations of `dump()` won't produce any CPU load
+     * if this device has already been closed
+     */
+    currentDevice->close();
     addNewDevice();
   }
   currentDeviceInfos[currentSnapshotNumber].hasGgPlot = hasGgPlot;
