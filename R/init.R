@@ -285,9 +285,14 @@ options(install.packages.compile.from.source = "always")
 
 .jetbrains$getSysEnv <<- function(env_name, flags) {
   s <- Sys.getenv(env_name)
-  s <- strsplit(s, ":")[[1]]
+  os_name <- Sys.info()["sysname"]
+  separator <- if (os_name == "Windows") ";" else ":"
+  s <- strsplit(s, separator)[[1]]
   if ("--normalize-path" %in% flags) {
-    s <- sapply(s, normalizePath)
+    s <- sapply(s, function (p) {
+      normalized <- normalizePath(p)
+      .jetbrains$toSystemIndependentPath(normalized)
+    })
   }
   s
 }
