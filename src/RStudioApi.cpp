@@ -91,6 +91,14 @@ SEXP getThemeInfo() {
   return toSEXP(rpiService->rStudioApiRequest(GET_THEME_INFO_ID, args));
 }
 
+SEXP jobRunScript(SEXP args) {
+  return toSEXP(rpiService->rStudioApiRequest(JOB_RUN_SCRIPT_ID, fromSEXP(args)));
+}
+
+SEXP jobRemove(SEXP job) {
+  return toSEXP(rpiService->rStudioApiRequest(JOB_REMOVE_ID, fromSEXP(job)));
+}
+
 SEXP toSEXP(const RObject &rObject) {
   switch (rObject.object_case()) {
     case RObject::kRString: {

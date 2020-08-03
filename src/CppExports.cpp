@@ -282,6 +282,17 @@ CppExport SEXP _jetbrains_getThemeInfo() {
   CPP_END
 }
 
+CppExport SEXP _jetbrains_jobRunScript(SEXP args) {
+  CPP_BEGIN
+    return jobRunScript(args);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_jobRemove(SEXP args) {
+  CPP_BEGIN
+    return jobRemove(args);
+  CPP_END
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
@@ -321,6 +332,8 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_showDialog", (DL_FUNC) &_jetbrains_showDialog, 1},
     {".jetbrains_updateDialog", (DL_FUNC) &_jetbrains_updateDialog, 1},
     {".jetbrains_getThemeInfo", (DL_FUNC) &_jetbrains_getThemeInfo, 0},
+    {".jetbrains_jobRunScript", (DL_FUNC) &_jetbrains_jobRunScript, 1},
+    {".jetbrains_jobRemove", (DL_FUNC) &_jetbrains_jobRemove, 1},
     {nullptr, nullptr, 0}
 };
 

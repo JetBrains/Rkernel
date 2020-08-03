@@ -21,6 +21,9 @@
 #define SHOW_DIALOG_ID 14
 #define UPDATE_DIALOG_ID 15
 #define GET_THEME_INFO_ID 16
+#define JOB_RUN_SCRIPT_ID 17
+#define JOB_REMOVE_ID 18
+#define JOB_SET_STATE_ID 19
 
 SEXP getSourceEditorContext();
 
@@ -55,6 +58,10 @@ SEXP showDialog(SEXP args);
 SEXP updateDialog(SEXP args);
 
 SEXP getThemeInfo();
+
+SEXP jobRunScript(SEXP args);
+
+SEXP jobRemove(SEXP job);
 
 SEXP toSEXP(const RObject &rObject);
 

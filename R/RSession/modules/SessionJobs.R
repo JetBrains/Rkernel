@@ -41,7 +41,9 @@
 .rs.addApiFunction("removeJob", function(job) {
    if (missing(job))
       stop("Must specify job ID to remove.")
-   .Call("rs_removeJob", job, PACKAGE = "(embedding)")
+   if (!is.character(job))
+     stop(paste0("Job ID '", job, "' does not exist."))
+   .Call(".jetbrains_jobRemove", job)
    invisible(NULL)
 })
 
@@ -77,7 +79,7 @@
    if (missing(job))
       stop("Must specify job ID to change state for.")
    state <- match.arg(state)
-   .Call("rs_setJobState", job, state, PACKAGE = "(embedding)")
+   #.Call("rs_setJobState", job, state, PACKAGE = "(embedding)")
    invisible(NULL)
 })
 
@@ -96,8 +98,7 @@
       stop("Must specify path to R script to run.")
    if (!file.exists(path))
       stop("The R script '", path, "' does not exist.")
-   .Call("rs_runScriptJob", path, name, encoding, workingDir, importEnv, exportEnv, 
-         PACKAGE = "(embedding)")
+   .Call(".jetbrains_jobRunScript", list(path, name, encoding, workingDir, importEnv, exportEnv))
 })
 
 .rs.addApiFunction("executeJobAction", function(job, action) {
