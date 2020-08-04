@@ -1,5 +1,7 @@
 # Rkernel
 
+[![official JetBrains project](https://jb.gg/badges/official.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
+
 Rkernel is a program responsible for handling various types of requests:
 code execution, code completions, debugging, and so on. Is also provides 
 a response from the R interpreter.
