@@ -22,6 +22,7 @@
 #include "util/ScopedAssign.h"
 #include <grpcpp/server_builder.h>
 #include "util/Finally.h"
+#include "RStudioApi.h"
 
 static void executeCodeImpl(SEXP exprs, SEXP env, bool withEcho = true, bool isDebug = false,
                             bool withExceptionHandler = false, bool setLasValue = false,
@@ -294,6 +295,7 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
   ShieldSEXP srcrefs = getBlockSrcrefs(exprs);
   for (int i = 0; i < length; ++i) {
     PrSEXP forEval = exprs[i];
+    ScopedAssign<std::string> with(currentExpr, stringEltUTF8(RI->deparse(RI->quote.lang(forEval)), 0));
     ShieldSEXP srcref = getSrcref(srcrefs, i);
     forEval = wrapWithSrcref(forEval, srcref);
     forEval = Rf_lang4(RI->wrapEval, forEval, env, toSEXP(isDebug));

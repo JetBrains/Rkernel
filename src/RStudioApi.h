@@ -25,6 +25,8 @@
 #define JOB_REMOVE_ID 18
 #define JOB_SET_STATE_ID 19
 
+extern std::string currentExpr;
+
 SEXP getSourceEditorContext();
 
 SEXP getConsoleEditorContext();
@@ -68,5 +70,7 @@ SEXP toSEXP(const RObject &rObject);
 RObject fromSEXP(const SEXP &expr);
 
 SEXP dialogHelper(SEXP args, int32_t id);
+
+RObject currentExpression();
 
 #endif //RWRAPPER_RSTUDIOAPI_H

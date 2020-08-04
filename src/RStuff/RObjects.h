@@ -91,6 +91,7 @@ struct RObjects2 {
   PrSEXP onExit = baseEnv.getVar("on.exit");
   PrSEXP options = baseEnv.getVar("options");
   PrSEXP parse = baseEnv.getVar("parse");
+  PrSEXP deparse = baseEnv.getVar("deparse");
   PrSEXP paste = baseEnv.getVar("paste");
   PrSEXP print = baseEnv.getVar("print");
   PrSEXP q = baseEnv.getVar("q");

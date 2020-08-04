@@ -1,5 +1,7 @@
 #include "RStudioApi.h"
 
+std::string currentExpr;
+
 SEXP getSourceEditorContext() {
   RObject args;
   return toSEXP(rpiService->rStudioApiRequest(GET_SOURCE_EDITOR_CONTEXT_ID, args));
@@ -30,6 +32,7 @@ SEXP sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP focus) {
   args.mutable_list()->mutable_robjects()->Add(fromSEXP(execute));
   args.mutable_list()->mutable_robjects()->Add(fromSEXP(echo));
   args.mutable_list()->mutable_robjects()->Add(fromSEXP(focus));
+  args.mutable_list()->mutable_robjects()->Add(currentExpression());
   return toSEXP(rpiService->rStudioApiRequest(SEND_TO_CONSOLE_ID, args));
 }
 
@@ -206,4 +209,11 @@ SEXP dialogHelper(SEXP args, int32_t id) {
   args_.set_allocated_list(new RObject_List);
   args_.mutable_list()->mutable_robjects()->Add(fromSEXP(args));
   return toSEXP(rpiService->rStudioApiRequest(id, args_));
+}
+
+RObject currentExpression() {
+  RObject result;
+  result.set_allocated_rstring(new RObject_RString);
+  result.mutable_rstring()->add_strings(currentExpr);
+  return result;
 }
