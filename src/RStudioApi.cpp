@@ -102,6 +102,10 @@ SEXP jobRemove(SEXP job) {
   return toSEXP(rpiService->rStudioApiRequest(JOB_REMOVE_ID, fromSEXP(job)));
 }
 
+SEXP restartSession(SEXP command) {
+  return toSEXP(rpiService->rStudioApiRequest(RESTART_SESSION_ID, fromSEXP(command)));
+}
+
 SEXP toSEXP(const RObject &rObject) {
   switch (rObject.object_case()) {
     case RObject::kRString: {

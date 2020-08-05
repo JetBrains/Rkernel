@@ -294,6 +294,12 @@ CppExport SEXP _jetbrains_jobRemove(SEXP args) {
   CPP_END
 }
 
+CppExport SEXP _jetbrains_restartSession(SEXP command) {
+  CPP_BEGIN
+    return restartSession(command);
+  CPP_END
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -334,6 +340,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_getThemeInfo", (DL_FUNC) &_jetbrains_getThemeInfo, 0},
     {".jetbrains_jobRunScript", (DL_FUNC) &_jetbrains_jobRunScript, 1},
     {".jetbrains_jobRemove", (DL_FUNC) &_jetbrains_jobRemove, 1},
+    {".jetbrains_restartSession", (DL_FUNC) &_jetbrains_restartSession, 1},
     {nullptr, nullptr, 0}
 };
 

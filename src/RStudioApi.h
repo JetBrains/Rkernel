@@ -24,6 +24,7 @@
 #define JOB_RUN_SCRIPT_ID 17
 #define JOB_REMOVE_ID 18
 #define JOB_SET_STATE_ID 19
+#define RESTART_SESSION_ID 20
 
 extern std::string currentExpr;
 
@@ -64,6 +65,8 @@ SEXP getThemeInfo();
 SEXP jobRunScript(SEXP args);
 
 SEXP jobRemove(SEXP job);
+
+SEXP restartSession(SEXP command);
 
 SEXP toSEXP(const RObject &rObject);
 

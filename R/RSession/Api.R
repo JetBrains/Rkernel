@@ -1,6 +1,7 @@
 .rs.addApiFunction("restartSession", function(command = NULL) {
    command <- as.character(command)
-   invisible(.rs.restartR(command))
+   .Call(".jetbrains_restartSession", list(command, TRUE, FALSE, FALSE, ""))
+   invisible(NULL)
 })
 
 .rs.addApiFunction("initializeProject", function(path = getwd())
