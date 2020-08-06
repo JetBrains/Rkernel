@@ -212,8 +212,8 @@
 })
 
 .rs.addApiFunction("navigateToFile", function(filePath, line = 1L, col = 1L) {
-   if (line == -1) line <- 1
-   if (col == -1) col <- 1
+   if (line == -1 || line == 0) line <- 1
+   if (col == -1 || line == 0) col <- 1
 
    # validate file argument
    if (!is.character(filePath)) {
@@ -238,7 +238,7 @@
 
    filePath <- .rs.normalizePath(filePath, winslash="/", mustWork = TRUE)
 
-   .Call(".jetbrains_navigateToFile", filePath, c(line, col))
+   .Call(".jetbrains_navigateToFile", list( filePath, c(line, col)))
 
    invisible(NULL)
 })
@@ -324,8 +324,10 @@
       stop(invalidLengthMsg, call. = FALSE)
 
    data <- list(ranges = ranges, text = text, id = .rs.scalar(id))
-   .Call(".jetbrains_insertText",
-                     mapply(list, if (length(ranges) == 0) list(c(-1,-1,-1,-1)) else ranges, text, SIMPLIFY = FALSE), id)
+   .Call(".jetbrains_insertText", list(
+     mapply(list, if (length(ranges) == 0) list(c(-1,-1,-1,-1)) else ranges, text, SIMPLIFY = FALSE),
+     id
+   ))
    invisible(data)
 })
 
@@ -333,7 +335,7 @@
 {
    ranges <- .rs.validateAndTransformLocation(ranges)
    data <- list(ranges = ranges, id = .rs.scalar(id))
-   .Call(".jetbrains_setSelectionRanges", ranges, id)
+   .Call(".jetbrains_setSelectionRanges", list(ranges, id))
    invisible(data)
 })
 
@@ -341,27 +343,27 @@
 # of the 'rstudioapi' package -- it is superceded by
 # '.rs.getLastActiveEditorContext()'.
 .rs.addApiFunction("getActiveDocumentContext", function() {
-   response <- .Call(".jetbrains_getActiveDocumentContext")
+   response <- .Call(".jetbrains_getActiveDocumentContext", NULL)
    .rs.getEditorContext(response)
 })
 
 .rs.addApiFunction("getLastActiveEditorContext", function() {
-   response <- .Call(".jetbrains_getActiveDocumentContext")
+   response <- .Call(".jetbrains_getActiveDocumentContext", NULL)
    .rs.getEditorContext(response)
 })
 
 .rs.addApiFunction("getConsoleEditorContext", function() {
-   response <- .Call(".jetbrains_getConsoleEditorContext")
+   response <- .Call(".jetbrains_getConsoleEditorContext", NULL)
    .rs.getEditorContext(response)
 })
 
 .rs.addApiFunction("getSourceEditorContext", function() {
-   response <- .Call(".jetbrains_getSourceEditorContext")
+   response <- .Call(".jetbrains_getSourceEditorContext", NULL)
    .rs.getEditorContext(response)
 })
 
 .rs.addApiFunction("getActiveProject", function() {
-   .Call(".jetbrains_getActiveProject")
+   .Call(".jetbrains_getActiveProject", NULL)
 })
 
 .rs.addApiFunction("sendToConsole", function(code,
@@ -460,21 +462,11 @@
    TRUE
 })
 
-.rs.addApiFunction("documentNew", function(type, code, row = 0, column= 0, execute = FALSE) {
-   type <- switch(
-      type,
-      rmarkdown = "r_markdown",
-      sql = "sql",
-      "r_script"
-   )
+.rs.addApiFunction("documentNew", function(type, code, row = 0, column = 0, execute = FALSE) {
+   if (row != 0) row <- row - 1
+   if (column != 0) column <- column - 1
 
-   .rs.enqueClientEvent("new_document_with_code", list(
-      type = .rs.scalar(type),
-      code = .rs.scalar(code),
-      row = .rs.scalar(row),
-      column = .rs.scalar(column),
-      execute = .rs.scalar(execute)
-   ))
+   .Call(".jetbrains_documentNew", list(type, code, c(as.integer(row), as.integer(column)), execute))
 
    invisible(NULL)
 })
@@ -666,7 +658,7 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
 })
 
 .rs.addApiFunction("getThemeInfo", function() {
-   .Call(".jetbrains_getThemeInfo")
+   .Call(".jetbrains_getThemeInfo", NULL)
 })
 
 .rs.addApiFunction("askForSecret", function(name, title, prompt) {
@@ -705,7 +697,7 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
 
 # translate a local URL into an externally accessible URL on RStudio Server
 .rs.addApiFunction("translateLocalUrl", function(url, absolute = FALSE) {
-  .Call("rs_translateLocalUrl", url, absolute, PACKAGE = "(embedding)")
+  .Call(".jetbrains_translateLocalUrl", url, absolute)
 })
 
 # execute an arbitrary RStudio application command (AppCommand)

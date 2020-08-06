@@ -2,27 +2,8 @@
 
 std::string currentExpr;
 
-SEXP getSourceEditorContext() {
-  RObject args;
-  return toSEXP(rpiService->rStudioApiRequest(GET_SOURCE_EDITOR_CONTEXT_ID, args));
-}
-
-SEXP getConsoleEditorContext() {
-  RObject args;
-  return toSEXP(rpiService->rStudioApiRequest(GET_CONSOLE_EDITOR_CONTEXT_ID, args));
-}
-
-SEXP getActiveDocumentContext() {
-  RObject args;
-  return toSEXP(rpiService->rStudioApiRequest(GET_ACTIVE_DOCUMENT_CONTEXT_ID, args));
-}
-
-SEXP insertText(SEXP insertions, SEXP id) {
-  RObject args;
-  args.set_allocated_list(new RObject_List);
-  args.mutable_list()->mutable_robjects()->Add(fromSEXP(insertions));
-  args.mutable_list()->mutable_robjects()->Add(fromSEXP(id));
-  return toSEXP(rpiService->rStudioApiRequest(INSERT_TEXT_ID, args));
+SEXP rStudioApiHelper(SEXP args, int id) {
+  return toSEXP(rpiService->rStudioApiRequest(id, fromSEXP(args)));
 }
 
 SEXP sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP focus) {
@@ -34,76 +15,6 @@ SEXP sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP focus) {
   args.mutable_list()->mutable_robjects()->Add(fromSEXP(focus));
   args.mutable_list()->mutable_robjects()->Add(currentExpression());
   return toSEXP(rpiService->rStudioApiRequest(SEND_TO_CONSOLE_ID, args));
-}
-
-SEXP navigateToFile(SEXP filename, SEXP position) {
-  RObject args;
-  args.set_allocated_list(new RObject_List);
-  args.mutable_list()->mutable_robjects()->Add(fromSEXP(filename));
-  args.mutable_list()->mutable_robjects()->Add(fromSEXP(position));
-  return toSEXP(rpiService->rStudioApiRequest(NAVIGATE_TO_FILE_ID, args));
-}
-
-SEXP getActiveProject() {
-  RObject args;
-  return toSEXP(rpiService->rStudioApiRequest(GET_ACTIVE_PROJECT_ID, args));
-}
-
-SEXP setSelectionRanges(SEXP ranges, SEXP id) {
-  RObject args;
-  args.set_allocated_list(new RObject_List);
-  args.mutable_list()->mutable_robjects()->Add(fromSEXP(ranges));
-  args.mutable_list()->mutable_robjects()->Add(fromSEXP(id));
-  return toSEXP(rpiService->rStudioApiRequest(SET_SELECTION_RANGES_ID, args));
-}
-
-SEXP askForPassword(SEXP message) {
-  return dialogHelper(message, ASK_FOR_PASSWORD_ID);
-}
-
-SEXP showQuestion(SEXP args) {
-  return dialogHelper(args, SHOW_QUESTION_ID);
-}
-
-SEXP showPrompt(SEXP args) {
-  return dialogHelper(args, SHOW_PROMPT_ID);
-}
-
-SEXP askForSecret(SEXP args) {
-  return dialogHelper(args, ASK_FOR_SECRET_ID);
-}
-
-SEXP selectFile(SEXP args) {
-  return dialogHelper(args, SELECT_FILE_ID);
-}
-
-SEXP selectDirectory(SEXP args) {
-  return dialogHelper(args, SELECT_DIRECTORY_ID);
-}
-
-SEXP showDialog(SEXP args) {
-  return dialogHelper(args, SHOW_DIALOG_ID);
-}
-
-SEXP updateDialog(SEXP args) {
-  return dialogHelper(args, UPDATE_DIALOG_ID);
-}
-
-SEXP getThemeInfo() {
-  RObject args;
-  return toSEXP(rpiService->rStudioApiRequest(GET_THEME_INFO_ID, args));
-}
-
-SEXP jobRunScript(SEXP args) {
-  return toSEXP(rpiService->rStudioApiRequest(JOB_RUN_SCRIPT_ID, fromSEXP(args)));
-}
-
-SEXP jobRemove(SEXP job) {
-  return toSEXP(rpiService->rStudioApiRequest(JOB_REMOVE_ID, fromSEXP(job)));
-}
-
-SEXP restartSession(SEXP command) {
-  return toSEXP(rpiService->rStudioApiRequest(RESTART_SESSION_ID, fromSEXP(command)));
 }
 
 SEXP toSEXP(const RObject &rObject) {
@@ -206,13 +117,6 @@ RObject fromSEXP(SEXP const &expr) {
     }
     return result;
   } else throw std::exception();
-}
-
-SEXP dialogHelper(SEXP args, int32_t id) {
-  RObject args_;
-  args_.set_allocated_list(new RObject_List);
-  args_.mutable_list()->mutable_robjects()->Add(fromSEXP(args));
-  return toSEXP(rpiService->rStudioApiRequest(id, args_));
 }
 
 RObject currentExpression() {

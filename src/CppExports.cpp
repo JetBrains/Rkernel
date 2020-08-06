@@ -180,27 +180,27 @@ CppExport SEXP _jetbrains_safeEvalHelper(SEXP x, SEXP env, SEXP oldSuspendInterr
   return result;
 }
 
-CppExport SEXP _jetbrains_getSourceEditorContext() {
+CppExport SEXP _jetbrains_getSourceEditorContext(SEXP args) {
   CPP_BEGIN
-    return getSourceEditorContext();
+    return rStudioApiHelper(args, GET_SOURCE_EDITOR_CONTEXT_ID);
   CPP_END
 }
 
-CppExport SEXP _jetbrains_getConsoleEditorContext() {
+CppExport SEXP _jetbrains_getConsoleEditorContext(SEXP args) {
   CPP_BEGIN
-    return getConsoleEditorContext();
+    return rStudioApiHelper(args, GET_CONSOLE_EDITOR_CONTEXT_ID);
   CPP_END
 }
 
-CppExport SEXP _jetbrains_getActiveDocumentContext() {
+CppExport SEXP _jetbrains_getActiveDocumentContext(SEXP args) {
   CPP_BEGIN
-    return getActiveDocumentContext();
+    return rStudioApiHelper(args, GET_ACTIVE_DOCUMENT_CONTEXT_ID);
   CPP_END
 }
 
-CppExport SEXP _jetbrains_insertText(SEXP insertions, SEXP id) {
+CppExport SEXP _jetbrains_insertText(SEXP args) {
   CPP_BEGIN
-    return insertText(insertions, id);
+    return rStudioApiHelper(args, INSERT_TEXT_ID);
   CPP_END
 }
 
@@ -210,93 +210,99 @@ CppExport SEXP _jetbrains_sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP
   CPP_END
 }
 
-CppExport SEXP _jetbrains_navigateToFile(SEXP filename, SEXP position) {
+CppExport SEXP _jetbrains_navigateToFile(SEXP args) {
   CPP_BEGIN
-    return navigateToFile(filename, position);
+    return rStudioApiHelper(args, NAVIGATE_TO_FILE_ID);
   CPP_END
 }
 
-CppExport SEXP _jetbrains_getActiveProject() {
+CppExport SEXP _jetbrains_getActiveProject(SEXP args) {
   CPP_BEGIN
-    return getActiveProject();
+    return rStudioApiHelper(args, GET_ACTIVE_PROJECT_ID);
   CPP_END
 }
 
-CppExport SEXP _jetbrains_setSelectionRanges(SEXP ranges, SEXP id) {
+CppExport SEXP _jetbrains_setSelectionRanges(SEXP args) {
   CPP_BEGIN
-    return setSelectionRanges(ranges, id);
+    return rStudioApiHelper(args, SET_SELECTION_RANGES_ID);
   CPP_END
 }
 
-CppExport SEXP _jetbrains_askForPassword(SEXP message) {
+CppExport SEXP _jetbrains_askForPassword(SEXP args) {
   CPP_BEGIN
-    return askForPassword(message);
+    return rStudioApiHelper(args, ASK_FOR_PASSWORD_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_showQuestion(SEXP args) {
   CPP_BEGIN
-    return showQuestion(args);
+    return rStudioApiHelper(args, SHOW_QUESTION_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_showPrompt(SEXP args) {
   CPP_BEGIN
-    return showPrompt(args);
+    return rStudioApiHelper(args, SHOW_PROMPT_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_askForSecret(SEXP args) {
   CPP_BEGIN
-    return askForSecret(args);
+    return rStudioApiHelper(args, ASK_FOR_SECRET_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_selectFile(SEXP args) {
   CPP_BEGIN
-    return selectFile(args);
+    return rStudioApiHelper(args, SELECT_FILE_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_selectDirectory(SEXP args) {
   CPP_BEGIN
-    return selectDirectory(args);
+    return rStudioApiHelper(args, SELECT_DIRECTORY_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_showDialog(SEXP args) {
   CPP_BEGIN
-    return showDialog(args);
+    return rStudioApiHelper(args, SHOW_DIALOG_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_updateDialog(SEXP args) {
   CPP_BEGIN
-    return updateDialog(args);
+    return rStudioApiHelper(args, UPDATE_DIALOG_ID);
   CPP_END
 }
 
-CppExport SEXP _jetbrains_getThemeInfo() {
+CppExport SEXP _jetbrains_getThemeInfo(SEXP args) {
   CPP_BEGIN
-    return getThemeInfo();
+    return rStudioApiHelper(args, GET_THEME_INFO_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_jobRunScript(SEXP args) {
   CPP_BEGIN
-    return jobRunScript(args);
+    return rStudioApiHelper(args, JOB_RUN_SCRIPT_ID);
   CPP_END
 }
 
 CppExport SEXP _jetbrains_jobRemove(SEXP args) {
   CPP_BEGIN
-    return jobRemove(args);
+    return rStudioApiHelper(args, JOB_REMOVE_ID);
   CPP_END
 }
 
-CppExport SEXP _jetbrains_restartSession(SEXP command) {
+CppExport SEXP _jetbrains_restartSession(SEXP args) {
   CPP_BEGIN
-    return restartSession(command);
+    return rStudioApiHelper(args, RESTART_SESSION_ID);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_documentNew(SEXP args) {
+  CPP_BEGIN
+    return rStudioApiHelper(args, DOCUMENT_NEW_ID);
   CPP_END
 }
 
@@ -321,14 +327,14 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_raiseSigsegv", (DL_FUNC) &_jetbrains_raiseSigsegv, 0},
     {".jetbrains_runFunction", (DL_FUNC) &_jetbrains_runFunction, 1},
     {".jetbrains_safeEvalHelper", (DL_FUNC) &_jetbrains_safeEvalHelper, 3},
-    {".jetbrains_getSourceEditorContext", (DL_FUNC) &_jetbrains_getSourceEditorContext, 0},
-    {".jetbrains_insertText", (DL_FUNC) &_jetbrains_insertText, 2},
+    {".jetbrains_getSourceEditorContext", (DL_FUNC) &_jetbrains_getSourceEditorContext, 1},
+    {".jetbrains_insertText", (DL_FUNC) &_jetbrains_insertText, 1},
     {".jetbrains_sendToConsole", (DL_FUNC) &_jetbrains_sendToConsole, 4},
-    {".jetbrains_getConsoleEditorContext", (DL_FUNC) &_jetbrains_getConsoleEditorContext, 0},
-    {".jetbrains_navigateToFile", (DL_FUNC) &_jetbrains_navigateToFile, 2},
-    {".jetbrains_getActiveProject", (DL_FUNC) &_jetbrains_getActiveProject, 0},
-    {".jetbrains_getActiveDocumentContext", (DL_FUNC) &_jetbrains_getActiveDocumentContext, 0},
-    {".jetbrains_setSelectionRanges", (DL_FUNC) &_jetbrains_setSelectionRanges, 2},
+    {".jetbrains_getConsoleEditorContext", (DL_FUNC) &_jetbrains_getConsoleEditorContext, 1},
+    {".jetbrains_navigateToFile", (DL_FUNC) &_jetbrains_navigateToFile, 1},
+    {".jetbrains_getActiveProject", (DL_FUNC) &_jetbrains_getActiveProject, 1},
+    {".jetbrains_getActiveDocumentContext", (DL_FUNC) &_jetbrains_getActiveDocumentContext, 1},
+    {".jetbrains_setSelectionRanges", (DL_FUNC) &_jetbrains_setSelectionRanges, 1},
     {".jetbrains_askForPassword", (DL_FUNC) &_jetbrains_askForPassword, 1},
     {".jetbrains_showQuestion", (DL_FUNC) &_jetbrains_showQuestion, 1},
     {".jetbrains_showPrompt", (DL_FUNC) &_jetbrains_showPrompt, 1},
@@ -337,10 +343,11 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_selectDirectory", (DL_FUNC) &_jetbrains_selectDirectory, 1},
     {".jetbrains_showDialog", (DL_FUNC) &_jetbrains_showDialog, 1},
     {".jetbrains_updateDialog", (DL_FUNC) &_jetbrains_updateDialog, 1},
-    {".jetbrains_getThemeInfo", (DL_FUNC) &_jetbrains_getThemeInfo, 0},
+    {".jetbrains_getThemeInfo", (DL_FUNC) &_jetbrains_getThemeInfo, 1},
     {".jetbrains_jobRunScript", (DL_FUNC) &_jetbrains_jobRunScript, 1},
     {".jetbrains_jobRemove", (DL_FUNC) &_jetbrains_jobRemove, 1},
     {".jetbrains_restartSession", (DL_FUNC) &_jetbrains_restartSession, 1},
+    {".jetbrains_documentNew", (DL_FUNC) &_jetbrains_documentNew, 1},
     {nullptr, nullptr, 0}
 };
 

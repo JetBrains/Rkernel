@@ -26,6 +26,7 @@
 #include <signal.h>
 #include "util/FileUtil.h"
 #include "Timer.h"
+#include "RStudioApi.h"
 
 static RObject rStudioResponse;
 
@@ -286,7 +287,7 @@ RObject RPIServiceImpl::rStudioApiRequest(int32_t functionID, const RObject &arg
   asyncEvents.push(event);
   ScopedAssign<bool> with(isInRStudioApiRequest, true);
   int timeout;
-  if (functionID < 8 || functionID > 15) {
+  if ((functionID < 8 || functionID > 15) && functionID != DOCUMENT_NEW_ID) {
     timeout = 30;
   } else {
     timeout = 3 * 60;

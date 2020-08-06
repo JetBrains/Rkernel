@@ -25,54 +25,17 @@
 #define JOB_REMOVE_ID 18
 #define JOB_SET_STATE_ID 19
 #define RESTART_SESSION_ID 20
+#define DOCUMENT_NEW_ID 21
 
 extern std::string currentExpr;
 
-SEXP getSourceEditorContext();
-
-SEXP getConsoleEditorContext();
-
-SEXP getActiveDocumentContext();
-
-SEXP insertText(SEXP insertions, SEXP id);
+SEXP rStudioApiHelper(SEXP args, int id);
 
 SEXP sendToConsole(SEXP code, SEXP execute, SEXP echo, SEXP focus);
-
-SEXP navigateToFile(SEXP filename, SEXP position);
-
-SEXP getActiveProject();
-
-SEXP setSelectionRanges(SEXP ranges, SEXP id);
-
-SEXP askForPassword(SEXP message);
-
-SEXP showQuestion(SEXP args);
-
-SEXP showPrompt(SEXP args);
-
-SEXP askForSecret(SEXP args);
-
-SEXP selectFile(SEXP args);
-
-SEXP selectDirectory(SEXP args);
-
-SEXP showDialog(SEXP args);
-
-SEXP updateDialog(SEXP args);
-
-SEXP getThemeInfo();
-
-SEXP jobRunScript(SEXP args);
-
-SEXP jobRemove(SEXP job);
-
-SEXP restartSession(SEXP command);
 
 SEXP toSEXP(const RObject &rObject);
 
 RObject fromSEXP(const SEXP &expr);
-
-SEXP dialogHelper(SEXP args, int32_t id);
 
 RObject currentExpression();
 
