@@ -305,9 +305,12 @@ options(install.packages.compile.from.source = "always")
 
 .jetbrains$loadInstalledPackages <<- function() {
   versions <- as.data.frame(installed.packages()[, c("Package", "Version", "Priority", "LibPath")])
+  canonicalPackagePaths <- data.frame(CanonicalPath = apply(versions, 1, function(row) {
+    normalizePath(file.path(row["LibPath"], row["Package"]))
+  }))
   description <- data.frame("Title" = I(lapply(versions[, "Package"], function(x) packageDescription(x, fields = "Title"))),
                             "URL" = I(lapply(versions[, "Package"], function(x) packageDescription(x, fields = "URL"))))
-  cbind(versions, description)
+  cbind(versions, canonicalPackagePaths, description)
 }
 
 .jetbrains$unloadLibrary <<- function(package.name, with.dynamic.library) {
