@@ -168,7 +168,8 @@ Status RPIServiceImpl::loadInstalledPackages(ServerContext *context, const Empty
           rInstalledPackage->set_priority(RInstalledPackageList_RInstalledPackage_RPackagePriority_RECOMMENDED);
         }
         rInstalledPackage->set_librarypath(getCellStringValue(packages, i, 3));
-        for (int j = 4; j < packages.length(); ++j) {
+        rInstalledPackage->set_canonicalpackagepath(getCellStringValue(packages, i, 4));
+        for (int j = 5; j < packages.length(); ++j) {
           RInstalledPackageList_RInstalledPackage_MapEntry *mapEntry = rInstalledPackage->add_description();
           mapEntry->set_key(stringEltUTF8(names, j));
           mapEntry->set_value(getCellStringValue(packages, i, j));
