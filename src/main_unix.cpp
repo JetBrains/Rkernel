@@ -17,12 +17,19 @@
 
 #include "RPIServiceImpl.h"
 #include "IO.h"
+#include <cstdlib>
 
 void setupForkHandler();
 
 #ifdef CRASHPAD_ENABLED
 bool setupCrashpadHandler();
 #endif
+
+void initLang() {
+  const char* lang = getenv("LANG");
+  if (lang != nullptr && strlen(lang) > 0) return;
+  setenv("LANG", "en_US.UTF-8", true);
+}
 
 int main(int argc, char* argv[]) {
   commandLineOptions.parse(argc, argv);
@@ -44,6 +51,9 @@ int main(int argc, char* argv[]) {
   ptr_R_WriteConsole = nullptr;
   ptr_R_WriteConsoleEx = myWriteConsoleEx;
   ptr_R_Suicide = mySuicide;
+
+  initLang();
+
   Rf_mainloop();
   return 0;
 }
