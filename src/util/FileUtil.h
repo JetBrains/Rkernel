@@ -20,6 +20,11 @@
 #include <string>
 #include <fstream>
 
+inline bool fileExists(const std::string& path) {
+  return std::ifstream(path).good();
+}
+
+// CAUTION: returns an empty string if file doesn't exist
 inline std::string readWholeFile(std::string const& path) {
   std::ifstream file(path, std::ios_base::in | std::ios_base::binary);
   return std::string(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
