@@ -89,17 +89,14 @@ namespace {
     name = graphics::SnapshotUtil::makeSnapshotName(number, version, resolution);
   }
 
+  // Note: returns an empty string if a snapshot cannot be found
   std::string getStoredSnapshotName(const std::string& directory, int number) {
     auto sout = std::ostringstream();
     sout << ".jetbrains$findStoredSnapshot('" << escapeStringCharacters(directory) << "', " << number << ")";
     auto command = sout.str();
     graphics::ScopeProtector protector;
     auto nameSEXP = graphics::Evaluator::evaluate(command, &protector);
-    auto name = std::string(stringEltUTF8(nameSEXP, 0));
-    if (name.empty()) {
-      throw std::runtime_error("Cannot find stored snapshot #" + std::to_string(number));
-    }
-    return name;
+    return std::string(stringEltUTF8(nameSEXP, 0));
   }
 
   std::string getChunkOutputFullPath(const std::string& relativePath) {
@@ -200,6 +197,9 @@ Status RPIServiceImpl::graphicsPullSnapshot(ServerContext* context, const Graphi
         getInMemorySnapshotInfo(number, directory, name);
       } else {
         name = getStoredSnapshotName(directory, number);
+        if (name.empty()) {
+          return;  // Note: requested snapshot wasn't found. Silently return an empty response
+        }
       }
       /*
        * Note: one of the most important questions of the graphics machinery
