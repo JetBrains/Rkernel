@@ -218,11 +218,15 @@ Status RPIServiceImpl::graphicsPullSnapshot(ServerContext* context, const Graphi
        * not re-entrant but it's very easy to implement
        * and also highly computationally effective
        */
-      response->set_content(readWholeFileAndDelete(directory + "/" + name));
+      auto contentPath = directory + "/" + name;
+      if (!fileExists(contentPath)) {
+        return;  // Note: silently return an empty response. This situation will be handled by a client side
+      }
+      response->set_content(readWholeFileAndDelete(contentPath));
       response->set_snapshotname(name);
       if (request->withrecorded()) {
-        auto path = graphics::SnapshotUtil::makeRecordedFilePath(directory, number);
-        response->set_recorded(readWholeFile(path));
+        auto recordedPath = graphics::SnapshotUtil::makeRecordedFilePath(directory, number);
+        response->set_recorded(readWholeFile(recordedPath));
       }
     } catch (const std::exception& e) {
       response->set_message(e.what());
