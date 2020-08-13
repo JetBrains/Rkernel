@@ -411,16 +411,14 @@ options(install.packages.compile.from.source = "always")
   return(paste(text, collapse = "\n"))
 }
 
-.jetbrains$oldHttpd <<- tools:::httpd
 local({
-  env <- loadNamespace("tools")
-  unlockBinding("httpd", env)
-  env$httpd <- function(path, query, ...) {
-    prefix <- "/jb_get_file/"
-    if (!startsWith(path, prefix)) {
-      return(.jetbrains$oldHttpd(path, query, ...))
+  handlersEnv <- tools:::.httpd.handlers.env
+  handlersEnv$jb_get_file <- function(path, query, ...) {
+    prefix <- "/custom/jb_get_file/"
+    file <- substr(path, nchar(prefix) + 1, nchar(path))
+    if (!file.exists(file)) {
+      return(list(payload = paste0("No such file ", file)))
     }
-    file <- substr(path, nchar(prefix), nchar(path))
     mimeType <- function(path) {
       ext <- strsplit(path, ".", fixed = TRUE)[[1]]
       if (n <- length(ext)) ext <- ext[n] else ""
@@ -430,7 +428,6 @@ local({
     }
     return(list(file = file, `content-type` = mimeType(path)))
   }
-  lockBinding("httpd", env)
 })
 
 local({

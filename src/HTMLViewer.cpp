@@ -131,12 +131,9 @@ static GetContentResult getURLContent(std::string request, int maxRedirects = 5)
 bool processBrowseURL(std::string const& url) {
   int port = asInt(RI->httpdPort());
   std::string prefix = "http://127.0.0.1:" + std::to_string(port) + "/";
-  if (!startsWith(url, prefix)) {
-    if (commandLineOptions.isRemote) {
-      rpiService->browseURLHandler(url);
-      return true;
-    }
-    return false;
+  if (!startsWith(url, prefix) || startsWith(url, prefix + "custom/")) {
+    rpiService->browseURLHandler(url);
+    return true;
   }
   GetContentResult response = getURLContent(url);
   if (!response.success) return false;
@@ -207,8 +204,13 @@ Status RPIServiceImpl::convertRoxygenToHTML(ServerContext* context, const Conver
 
 Status RPIServiceImpl::startHttpd(ServerContext* context, const Empty*, Int32Value* response) {
   executeOnMainThread([&] {
-    RI->startDynamicHelp();
-    response->set_value(asInt(RI->httpdPort()));
+    int port = asInt(RI->httpdPort());
+    if (port == 0) {
+      RI->startDynamicHelp();
+      response->set_value(asInt(RI->httpdPort()));
+    } else {
+      response->set_value(port);
+    }
   }, context, true);
   return Status::OK;
 }
