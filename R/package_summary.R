@@ -125,6 +125,21 @@ processPackage <- function(pName) {
       }
     }
   }
+
+  classTable <- methods:::.classTable
+  # class_name types... <slotName, slotType>... superClasses... isVirtual
+  lapply(names(classTable), function(className) {
+    class <- classTable[[className]]
+    if (inherits(class, "classRepresentation") && class@package == pName) {
+      spec <- NULL
+      slots <- sapply(names(class@slots), function(s) c(s, class@slots[[s]]))
+      spec <- c(spec, length(slots), unlist(slots))
+      superClasses <- sapply(class@contains, function(y) y@superClass)
+      spec <- c(spec, length(superClasses), unlist(superClasses))
+      cat("\n")
+      cat(symbolSignature(className, class(class), TRUE, c(spec, class@virtual)))
+    }
+  })
   cat("<<<RPLUGIN<<<")
 }
 

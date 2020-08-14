@@ -283,6 +283,15 @@ options(install.packages.compile.from.source = "always")
   }
 }
 
+.jetbrains$getLoadedS4ClassInfos <<- function() {
+  classTable <- methods:::.classTable
+  infos <- lapply(names(classTable), function(className) {
+    class <- classTable[[className]]
+    if (inherits(class, "classRepresentation")) class
+  })
+  Filter(function(x) !is.null(x), infos)
+}
+
 .jetbrains$getSysEnv <<- function(env_name, flags) {
   s <- Sys.getenv(env_name)
   s <- strsplit(s, .Platform$path.sep)[[1]]
