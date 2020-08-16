@@ -98,6 +98,11 @@
       stop("Must specify path to R script to run.")
    if (!file.exists(path))
       stop("The R script '", path, "' does not exist.")
+   if (!is.null(workingDir)) {
+      workingDir <- normalizePath(workingDir, winslash = "/", mustWork = TRUE)
+      if (!file.exists(workingDir))
+        stop("The working directory '", workingDir, "' does not exist.")
+   }
    .Call(".jetbrains_jobRunScript", list(path, name, encoding, workingDir, importEnv, exportEnv))
 })
 

@@ -26,6 +26,7 @@
 #define JOB_SET_STATE_ID 19
 #define RESTART_SESSION_ID 20
 #define DOCUMENT_NEW_ID 21
+#define VIEWER_ID 35
 
 extern std::string currentExpr;
 

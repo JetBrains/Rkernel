@@ -119,7 +119,7 @@
   if (!is.null(height) && (!is.numeric(height) || (length(height) != 1)))
      stop("height must be a single element numeric vector or 'maximize'.")
 
-  invisible(.Call(getNativeSymbolInfo("rs_viewer", PACKAGE=""), url, height))
+  invisible(.Call(".jetbrains_viewer", list(url, height)))
 })
 
 
@@ -498,7 +498,7 @@
    if (is.null(id) || !is.character(id) || length(id) != 1)
       stop("'id' must be a character vector of length one")
 
-  .Call("rs_terminalSend", id, text)
+  .Call(".jetbrains_terminal", list(id, text), 33)
    invisible(NULL)
 })
 
@@ -506,7 +506,7 @@
    if (is.null(id) || !is.character(id) || length(id) != 1)
       stop("'id' must be a character vector of length one")
 
-  .Call("rs_terminalClear", id)
+  .Call(".jetbrains_terminal", list(id), 25)
   invisible(NULL)
 })
 
@@ -528,32 +528,32 @@
    if (!validShellType)
       stop("'shellType' must be NULL, or one of 'default', 'win-cmd', 'win-ps', 'win-git-bash', 'win-wsl-bash', or 'custom'.") 
 
-   .Call("rs_terminalCreate", caption, show, shellType)
+   .Call(".jetbrains_terminal", list(caption, show, shellType), 27)
 })
 
 .rs.addApiFunction("terminalBusy", function(id) {
    if (is.null(id) || !is.character(id))
       stop("'id' must be a character vector")
 
-   .Call("rs_terminalBusy", id)
+   .Call(".jetbrains_terminal", list(id), 24)
 })
 
 .rs.addApiFunction("terminalRunning", function(id) {
    if (is.null(id) || !is.character(id))
       stop("'id' must be a character vector")
 
-   .Call("rs_terminalRunning", id)
+   .Call(".jetbrains_terminal", list(id), 32)
 })
 
 .rs.addApiFunction("terminalList", function() {
-   .Call("rs_terminalList")
+   .Call(".jetbrains_terminal", list(), 31)
 })
 
 .rs.addApiFunction("terminalContext", function(id) {
    if (is.null(id) || !is.character(id) || (length(id) != 1))
       stop("'id' must be a single element character vector")
 
-   .Call("rs_terminalContext", id)
+   .Call(".jetbrains_terminal", list(id), 26)
 })
 
 .rs.addApiFunction("terminalActivate", function(id = NULL, show = TRUE) {
@@ -563,7 +563,7 @@
    if (!is.logical(show))
      stop("'show' must be TRUE or FALSE")
 
-   .Call("rs_terminalActivate", id, show)
+   .Call(".jetbrains_terminal", list(id, show), 22)
    invisible(NULL)
 })
 
@@ -574,19 +574,19 @@
    if (is.null(stripAnsi) || !is.logical(stripAnsi))
       stop("'stripAnsi' must be a logical vector")
 
-   .Call("rs_terminalBuffer", id, stripAnsi)
+   .Call(".jetbrains_terminal", list(id, stripAnsi), 23)
 })
 
 .rs.addApiFunction("terminalKill", function(id) {
    if (is.null(id) || !is.character(id))
       stop("'id' must be a character vector")
 
-   .Call("rs_terminalKill", id)
+   .Call(".jetbrains_terminal", list(id), 30)
    invisible(NULL)
 })
 
 .rs.addApiFunction("terminalVisible", function() {
-   .Call("rs_terminalVisible")
+   .Call(".jetbrains_terminal", list(), 34)
 })
 
 .rs.addApiFunction("terminalExecute", function(command,
@@ -602,14 +602,14 @@
    if (is.null(show) || !is.logical(show))
       stop("'show' must be a logical vector")
 
-   .Call("rs_terminalExecute", command, workingDir, env, show)
+   .Call(".jetbrains_terminal", list(command, workingDir, env, show), 28)
 })
 
 .rs.addApiFunction("terminalExitCode", function(id) {
    if (is.null(id) || !is.character(id) || (length(id) != 1))
       stop("'id' must be a single element character vector")
 
-   .Call("rs_terminalExitCode", id)
+   .Call(".jetbrains_terminal", list(id), 29)
 })
 
 options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
