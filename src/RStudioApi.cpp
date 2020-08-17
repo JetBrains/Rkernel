@@ -29,14 +29,14 @@ SEXP toSEXP(const RObject &rObject) {
     case RObject::kRInt: {
       ShieldSEXP x = Rf_allocVector(INTSXP, rObject.rint().ints_size());
       for (int i = 0; i < (int) rObject.rint().ints_size(); ++i) {
-        SET_INTEGER_ELT(x, i, rObject.rint().ints(i));
+        INTEGER(x)[i] = rObject.rint().ints(i);
       }
       return x;
     }
     case RObject::kRDouble: {
       ShieldSEXP x = Rf_allocVector(REALSXP, rObject.rdouble().doubles_size());
       for (int i = 0; i < (int) rObject.rdouble().doubles_size(); ++i) {
-        SET_REAL_ELT(x, i, rObject.rdouble().doubles(i));
+        REAL(x)[i] = rObject.rdouble().doubles(i);
       }
       return x;
     }
@@ -47,7 +47,7 @@ SEXP toSEXP(const RObject &rObject) {
     case RObject::kRboolean: {
       ShieldSEXP x = Rf_allocVector(LGLSXP, rObject.rboolean().booleans_size());
       for (int i = 0; i < (int) rObject.rboolean().booleans_size(); ++i) {
-        SET_LOGICAL_ELT(x, i, rObject.rboolean().booleans(i));
+        LOGICAL(x)[i] = rObject.rboolean().booleans(i);
       }
       return x;
     }
@@ -88,14 +88,14 @@ RObject fromSEXP(SEXP const &expr) {
     RObject result;
     result.set_allocated_rdouble(new RObject_RDouble);
     for (size_t i = 0; i < LENGTH(expr); i++) {
-      result.mutable_rdouble()->add_doubles(REAL_ELT(expr, i));
+      result.mutable_rdouble()->add_doubles(REAL(expr)[i]);
     }
     return result;
   } else if (TYPEOF(expr) == INTSXP) {
     RObject result;
     result.set_allocated_rint(new RObject_RInt);
     for (size_t i = 0; i < LENGTH(expr); i++) {
-      result.mutable_rint()->add_ints(INTEGER_ELT(expr, i));
+      result.mutable_rint()->add_ints(INTEGER(expr)[i]);
     }
     return result;
   } else if (TYPEOF(expr) == STRSXP) {
@@ -113,7 +113,7 @@ RObject fromSEXP(SEXP const &expr) {
     RObject result;
     result.set_allocated_rboolean(new RObject_RBoolean);
     for (size_t i = 0; i < LENGTH(expr); i++) {
-      result.mutable_rboolean()->add_booleans(LOGICAL_ELT(expr, i));
+      result.mutable_rboolean()->add_booleans(LOGICAL(expr)[i]);
     }
     return result;
   } else throw std::exception();

@@ -74,7 +74,8 @@ list(APPEND RWRAPPER_SOURCES
     src/Session.cpp
     src/EventLoop.cpp
     src/CrashReport.cpp
-    src/RStudioApi.cpp)
+    src/RStudioApi.cpp
+    src/Timer.cpp)
 
 if(WIN32)
     add_definitions(-DNOMINMAX)

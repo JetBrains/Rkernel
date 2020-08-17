@@ -24,7 +24,6 @@
 #include "EventLoop.h"
 #include "Session.h"
 #include <signal.h>
-#include "util/FileUtil.h"
 #include "Timer.h"
 #include "RStudioApi.h"
 
