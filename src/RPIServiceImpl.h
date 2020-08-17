@@ -137,6 +137,7 @@ public:
   Status httpdRequest(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
   Status getDocumentationForPackage(ServerContext* context, const StringValue* request, HttpdResponse* response) override;
   Status getDocumentationForSymbol(ServerContext* context, const DocumentationForSymbolRequest* request, HttpdResponse* response) override;
+  Status startHttpd(ServerContext* context, const Empty*, Int32Value* response) override;
 
   Status setSaveOnExit(ServerContext* context, const BoolValue* request, Empty*) override;
 
