@@ -27,6 +27,7 @@
 #define RESTART_SESSION_ID 20
 #define DOCUMENT_NEW_ID 21
 #define VIEWER_ID 35
+#define VERSION_INFO_MODE_ID 36
 
 extern std::string currentExpr;
 

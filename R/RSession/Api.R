@@ -85,11 +85,11 @@
 
 .rs.addApiFunction("versionInfo", function() {
   info <- list()
-  info$citation <- .Call("rs_rstudioCitation", PACKAGE = "(embedding)")
-  info$mode <- .Call("rs_rstudioProgramMode", PACKAGE = "(embedding)")
-  info$edition <- .Call("rs_rstudioEdition", PACKAGE = "(embedding)")
-  info$version <- .Call("rs_rstudioVersion", PACKAGE = "(embedding)")
-  info$version <- package_version(info$version)
+  info$citation <- ""
+  info$mode <- .Call(".jetbrains_versionInfoMode", list())
+  info$edition <- NULL
+  info$version <- package_version(list(major = "1.3", minor = "1056"))
+  info$release_name <- ""
   info
 })
 
