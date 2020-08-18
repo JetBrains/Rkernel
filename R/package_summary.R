@@ -33,15 +33,16 @@ attachAndLoadNamespace <- function(pName) {
 }
 
 processPackage <- function(pName) {
-  cat(">>>RPLUGIN>>>")
   namespace <- tryCatch(attachAndLoadNamespace(pName), error = function(e) {
+    cat(">>>RPLUGIN>>>")
     cat("intellij-cannot-load-package")
-    message(e)
+    cat(gettext(e))
     cat("<<<RPLUGIN<<<")
-    quit(save = "no", status = 1, runLast = FALSE)
+    NULL
   })
+  if (is.null(namespace)) return()
 
-
+  cat(">>>RPLUGIN>>>")
   pPriority <- packageDescription(pName)$Priority  # Seems to be more efficient than looking through all installed packages
   pPriority <- if (is.null(pPriority)) {
     NA
@@ -132,7 +133,7 @@ for (i in seq.int(2, length(arguments))) {
     processPackage(arguments[[i]])
     flush(stdout())
   }, error = function(e) {
-    message(e)
+    cat(gettext(e))
     cat("<<<RPLUGIN<<<")
   })
 }
