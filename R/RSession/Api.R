@@ -633,13 +633,18 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
    filter = NULL,
    existing = TRUE)
 {
-   .Call(".jetbrains_selectFile", c(
+   filePath <- .Call(".jetbrains_selectFile", list(
          caption,
          label,
          path,
          filter,
          existing)
    )
+   homeDir <- path.expand("~")
+   if (identical(substr(filePath, 1, nchar(homeDir)), homeDir)) {
+      filePath <- file.path("~", substring(filePath, nchar(homeDir) + 2))
+   }
+   filePath
 })
 
 .rs.addApiFunction("selectDirectory", function(
@@ -647,14 +652,16 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
    label = "Select",
    path = .rs.getProjectDirectory())
 {
-   .Call("rs_openFileDialog",
-         2L,
-         caption,
-         label,
-         path,
-         NULL,
-         TRUE,
-         PACKAGE = "(embedding)")
+   filePath <- .Call(".jetbrains_selectDirectory", list(
+     caption,
+     label,
+     path)
+   )
+   homeDir <- path.expand("~")
+   if (identical(substr(filePath, 1, nchar(homeDir)), homeDir)) {
+      filePath <- file.path("~", substring(filePath, nchar(homeDir) + 2))
+   }
+   filePath
 })
 
 .rs.addApiFunction("getThemeInfo", function() {
