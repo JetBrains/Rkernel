@@ -216,7 +216,13 @@ int REagerGraphicsDevice::currentResolution() {
 double REagerGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext context) {
   auto slave = getSlave();
   if (slave != nullptr) {
-    return slave->strWidthUTF8(text, context, slave);
+    if (slave->strWidthUTF8 != nullptr) {
+      return slave->strWidthUTF8(text, context, slave);
+    } else if (slave->strWidth != nullptr) {
+      return slave->strWidth(text, context, slave);
+    } else {
+      return 0.0;
+    }
   } else {
     return 0.0;
   }
@@ -226,7 +232,11 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
   isDeviceBlank = false;
   auto slave = getSlave();
   if (slave != nullptr) {
-    slave->textUTF8(at.x, at.y, text, rotation, heightAdjustment, context, slave);
+    if (slave->textUTF8 != nullptr) {
+      slave->textUTF8(at.x, at.y, text, rotation, heightAdjustment, context, slave);
+    } else if (slave->text != nullptr) {
+      slave->text(at.x, at.y, text, rotation, heightAdjustment, context, slave);
+    }
   }
 }
 
