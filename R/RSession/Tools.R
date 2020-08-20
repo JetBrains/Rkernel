@@ -1081,5 +1081,9 @@ assign(envir = .rs.Env, ".rs.hasVar", function(name)
     txt <- elem[[2]]
     list(range=r, text=txt)
   }))
+  homeDir <- path.expand("~")
+  if (identical(substr(response[["path"]], 1, nchar(homeDir)), homeDir)) {
+    response[["path"]] <- file.path("~", substring(response[["path"]], nchar(homeDir) + 2))
+  }
   response
 })
