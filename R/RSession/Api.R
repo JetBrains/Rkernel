@@ -222,6 +222,9 @@
    if (!file.exists(filePath)) {
       stop(filePath, " does not exist.")
    }
+   if(dir.exists(filePath)) {
+      stop(filePath, " is a directory")
+   }
    
    # transform numeric line, column values to integer
    if (is.numeric(line))
