@@ -127,6 +127,10 @@ int getPrimOffset(SEXP expr) {
   return ((SEXPREC_impl*)expr)->u.primsxp.offset;
 }
 
+int getPrimVal(SEXP expr) {
+  return R_FunTab[expr->u.primsxp.offset].code;
+}
+
 int getFunTabOffset(const char* s) {
   for (int i = 0; R_FunTab[i].name; i++) {
     if (!strcmp(s, R_FunTab[i].name)) {

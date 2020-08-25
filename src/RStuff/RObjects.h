@@ -67,6 +67,7 @@ struct RObjects2 {
   PrSEXP greater = baseEnv.getVar(">");
   PrSEXP grepl = baseEnv.getVar("grepl");
   PrSEXP identical = baseEnv.getVar("identical");
+  PrSEXP identity = baseEnv.getVar("identity");
   PrSEXP in = baseEnv.getVar("%in%");
   PrSEXP isDataFrame = baseEnv.getVar("is.data.frame");
   PrSEXP isNa = baseEnv.getVar("is.na");
@@ -164,19 +165,21 @@ struct RObjects2 {
   PrSEXP srcfileAttr = Rf_install("srcfile");
   PrSEXP wholeSrcrefAttr = Rf_install("wholeSrcref");
 
-  PrSEXP stopHereFlagAttr = Rf_install("rwr_stop_here");
-  PrSEXP realEnvAttr = Rf_install("rwr_real_env");
-  PrSEXP stackBottomAttr = Rf_install("rwr_stack_bottom");
+  PrSEXP virtualFilePtrAttr = Rf_install("rwr_virtual_file");
+  PrSEXP lineOffsetAttr = Rf_install("rwr_line_offset");
+  PrSEXP firstLineOffsetAttr = Rf_install("rwr_first_line_offset");
+  PrSEXP noBreakpointFlag = Rf_install("rwr_no_breakpoint");
+  PrSEXP sendExtendedPositionFlag = Rf_install("rwr_send_extended_position");
+  PrSEXP srcProcessedFlag = Rf_install("rwr_src_processed");
 
-  PrSEXP srcfilePtrAttr = Rf_install("rwr_srcfile_ptr");
-  PrSEXP srcrefProcessedFlag = Rf_install("rwr_srcref_done");
-  PrSEXP srcfileLineOffset = Rf_install("rwr_line_offset");
-  PrSEXP breakpointInfoAttr = Rf_install("rwr_bp_info");
-  PrSEXP isPhysicalFileFlag = Rf_install("rwr_physical");
   PrSEXP doNotStopFlag = Rf_install("rwr_do_not_stop");
   PrSEXP doNotStopRecursiveFlag = Rf_install("rwr_do_not_stop_rec");
+  PrSEXP functionDebugFlag = Rf_install("rwr_debug");
+  PrSEXP functionDebugOnceFlag = Rf_install("rwr_debug_once");
+  PrSEXP generatedBlockFlag = Rf_install("rwr_gen_block");
 
-  PrSEXP linesSymbol = Rf_install("lines");
+  PrSEXP beginSymbol = Rf_install("{");
+  PrSEXP functionSymbol = Rf_install("function");
 
   PrSEXP myFilePath = evalCode(
       "function(wd, path) suppressWarnings(tryCatch({\n"
@@ -194,50 +197,17 @@ struct RObjects2 {
       baseEnv
   );
 
-  PrSEXP wrapEval = installGlobalSymbol(".jetbrains_wrapEval", evalCode(
-      "function(expr, env, isDebug) {\n"
-      "  e <- environment()\n"
-      "  if (isDebug) {\n"
-      "    .Call(\".jetbrains_debugger_enable\")\n"
-      "    attr(e, \"rwr_stop_here\") <- TRUE\n"
-      "    on.exit(.Call(\".jetbrains_debugger_disable\"))\n"
-      "  }\n"
-      "  attr(e, \"rwr_stack_bottom\") <- TRUE\n"
-      "  attr(e, \"rwr_real_env\") <- env\n"
-      "  .Internal(eval(expr, env, baseenv()))\n"
-      "}\n", baseEnv));
-
-  // print(x) is called like this in order to pass "mimicsAutoPrint" check in print.data.table
-  PrSEXP printWrapper = installGlobalSymbol(".jetbrains_printWrapper", evalCode(
-      "function(expr, value, env, isDebug = FALSE) {\n"
-      "  knit_print.default <- function() {\n"
-      "    knit_print.default <- function() {\n"
-      "      e <- environment()\n"
-      "      if (isDebug) {\n"
-      "        .Call(\".jetbrains_debugger_enable\")\n"
-      "        on.exit(.Call(\".jetbrains_debugger_disable\"))\n"
-      "      }\n"
-      "      attr(e, \"rwr_stack_bottom\") <- TRUE\n"
-      "      attr(e, \"rwr_real_env\") <- env\n"
-      "      e2 <- new.env()\n"
-      "      e2$x <- value\n"
-      "      attr(e2, \"rwr_real_env\") <- env\n"
-      "      .Internal(eval(expr, e2, baseenv()))\n"
-      "    }\n"
-      "    knit_print.default()\n"
-      "  }\n"
-      "  knit_print.default()\n"
-      "}\n", globalEnv));
-
   PrSEXP withReplExceptionHandler = evalCode(
       "function(x) withCallingHandlers(x, error = function(e) .Call(\".jetbrains_exception_handler\", e))\n",
       baseEnv);
 
   PrSEXP jetbrainsDebuggerEnable = evalCode(
       "function() .Call(\".jetbrains_debugger_enable\")", baseEnv);
+  PrSEXP jetbrainsDebuggerDisable = evalCode(
+      "function() .Call(\".jetbrains_debugger_disable\")", baseEnv);
 
-  PrSEXP jetbrainsRunFunction = evalCode(
-      "function(f) .Call(\".jetbrains_runFunction\", f)", baseEnv);
+  PrSEXP jetbrainsRunFunction = installGlobalSymbol(".jetbrains_runFunction",
+      evalCode("function(f, x) .Call(\".jetbrains_runFunction\", f, x)", baseEnv));
 
   PrSEXP printFactorSimple = evalCode(
       "function(x) {\n"
@@ -248,6 +218,10 @@ struct RObjects2 {
       "    print(xx, quote = FALSE)\n"
       "  }\n"
       "}", baseEnv);
+
+  PrSEXP xSymbol = Rf_install("x");
+  PrSEXP basePrintXExpr = mkLang("base::print(x)");
+  PrSEXP basePrintDefaultXExpr = mkLang("base::print.default(x)");
 };
 
 extern std::unique_ptr<RObjects2> RI;

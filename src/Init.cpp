@@ -160,7 +160,7 @@ static void initDfltWarn() {
         SEXP sym = CAR(ecall);
         if (TYPEOF(sym) == SYMSXP) {
           const char* name = CHAR(PRINTNAME(sym));
-          if (!strcmp(name, ".jetbrains_wrapEval")) {
+          if (!strcmp(name, ".jetbrains_runFunction")) {
             SETCADR(args, R_NilValue);
           }
         }

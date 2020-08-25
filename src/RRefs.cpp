@@ -37,7 +37,7 @@ SEXP RPIServiceImpl::dereference(RRef const& ref) {
       return currentEnvironment();
     case RRef::kSysFrameIndex: {
       int index = ref.sysframeindex();
-      auto const& stack = rDebugger.getStack();
+      auto const& stack = rDebugger.getSavedStack();
       if (index < 0 || index >= stack.size()) return R_NilValue;
       return stack[index].environment;
     }
@@ -285,26 +285,6 @@ Status RPIServiceImpl::getRMarkdownChunkOptions(ServerContext* context, const Em
     for (int i = 0; i < options.length(); ++i) {
       response->add_list(stringEltUTF8(options, i));
     }
-  }, context, true);
-  return Status::OK;
-}
-
-Status RPIServiceImpl::getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) {
-  executeOnMainThread([&] {
-    ShieldSEXP function = dereference(*request);
-    std::string suggestedFileName;
-    switch (request->ref_case()) {
-      case RRef::kMember:
-        suggestedFileName = request->member().name();
-        break;
-      case RRef::kExpression:
-        suggestedFileName = request->expression().code();
-        break;
-      default:;
-    }
-    auto position = srcrefToPosition(sourceFileManager.getFunctionSrcref(function, suggestedFileName));
-    response->set_fileid(position.first);
-    response->set_line(position.second);
   }, context, true);
   return Status::OK;
 }

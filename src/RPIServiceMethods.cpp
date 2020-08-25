@@ -251,18 +251,14 @@ void RPIServiceImpl::viewHandler(SEXP xSEXP, SEXP titleSEXP) {
   event.mutable_viewrequest()->set_persistentrefindex(persistentRefStorage.add(x));
   event.mutable_viewrequest()->set_title(title);
   getValueInfo(x, event.mutable_viewrequest()->mutable_value());
-  asyncEvents.push(event);
-  ScopedAssign<bool> with(isInClientRequest, true);
-  runEventLoop();
+  sendAsyncRequestAndWait(event);
 }
 
 void RPIServiceImpl::showFileHandler(std::string const& filePath, std::string const& title) {
   AsyncEvent event;
   event.mutable_showfilerequest()->set_filepath(filePath);
   event.mutable_showfilerequest()->set_title(title);
-  asyncEvents.push(event);
-  ScopedAssign<bool> with(isInClientRequest, true);
-  runEventLoop();
+  sendAsyncRequestAndWait(event);
 }
 
 void RPIServiceImpl::showHelpHandler(std::string const& content, std::string const& url) {

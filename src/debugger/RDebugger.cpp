@@ -19,11 +19,14 @@
 #include "../RStuff/Export.h"
 #include "../RStuff/RUtil.h"
 #include "SourceFileManager.h"
+#include "../util/ContainerUtil.h"
 
 RDebugger rDebugger;
 
+static void overrideDebuggerPrimitives();
+static void removeBlockBodyIfNotNeeded(SEXP fun);
+
 void RDebugger::init() {
-  runToPositionTarget = R_NilValue;
   beginOffset = getPrimOffset(RI->begin);
   defaultDoBegin = getFunTabFunction(beginOffset);
 
@@ -33,6 +36,8 @@ void RDebugger::init() {
   }
   Rf_setAttrib(sourceFileManager.getFunctionSrcref(RI->baseEnv["source"], "source"),
                RI->doNotStopFlag, toSEXP(true));
+
+  overrideDebuggerPrimitives();
 }
 
 static void overrideDoEval(bool enabled);
@@ -57,7 +62,7 @@ bool RDebugger::isEnabled() {
   return _isEnabled;
 }
 
-void RDebugger::clearStack() {
+void RDebugger::clearSavedStack() {
   stack.clear();
 }
 
@@ -65,123 +70,93 @@ void RDebugger::muteBreakpoints(bool mute) {
   breakpointsMuted = mute;
 }
 
-static void setBreakpointInfoAttrib(SEXP srcref, BreakpointInfo* info) {
-  if (info == nullptr) {
-    Rf_setAttrib(srcref, RI->breakpointInfoAttr, R_NilValue);
-    return;
-  }
-  Rf_setAttrib(srcref, RI->breakpointInfoAttr, R_MakeExternalPtr(info, R_NilValue, R_NilValue));
-}
+void RDebugger::addOrModifyBreakpoint(DebugAddOrModifyBreakpointRequest const& request) {
+  VirtualFileInfoPtr newFile = sourceFileManager.getVirtualFileById(request.position().fileid());
+  int newLine = request.position().line();
+  if (newFile.isNull()) return;
 
-static BreakpointInfo* getBreakpointInfoAttrib(SEXP srcref) {
-  SEXP attr = Rf_getAttrib(srcref, RI->breakpointInfoAttr);
-  if (TYPEOF(attr) != EXTPTRSXP) {
-    return nullptr;
+  int id = request.id();
+  std::unique_ptr<Breakpoint>& breakpoint = breakpoints[id];
+  if (breakpoint == nullptr) {
+    breakpoint = std::make_unique<Breakpoint>(id);
   }
-  return (BreakpointInfo*)R_ExternalPtrAddr(attr);
-}
 
-BreakpointInfo& RDebugger::addBreakpoint(std::string const& file, int line) {
-  auto result = breakpoints[file].insert({line, InternalBreakpointInfo()});
-  auto it = result.first;
-  auto inserted = result.second;
-  if (inserted) {
-    SEXP srcref = sourceFileManager.getStepSrcref(file, line);
-    it->second.srcref = srcref;
-    if (srcref != R_NilValue) {
-      SET_RDEBUG(srcref, true);
-      setBreakpointInfoAttrib(srcref, &it->second.info);
+  breakpoint->enabled = request.enabled();
+  breakpoint->suspend = request.suspend();
+  breakpoint->condition = request.condition();
+  breakpoint->evaluateAndLog = request.evaluateandlog();
+  breakpoint->hitMessage = request.hitmessage();
+  breakpoint->printStack = request.printstack();
+  breakpoint->removeAfterHit = request.removeafterhit();
+
+  VirtualFileInfoPtr oldFile = breakpoint->virtualFile;
+  int oldLine = breakpoint->line;
+  if (oldFile != newFile || oldLine != newLine) {
+    if (!oldFile.isNull()) {
+      removeFromVector(oldFile->breakpointsByLine[oldLine], breakpoint.get());
     }
-  }
-  return it->second.info;
-}
-
-void RDebugger::removeBreakpoint(std::string const& file, int line) {
-  auto it = breakpoints.find(file);
-  if (it != breakpoints.end()) {
-    auto it2 = it->second.find(line);
-    if (it2 != it->second.end()) {
-      setBreakpointInfoAttrib(it2->second.srcref, nullptr);
-      SET_RDEBUG(it2->second.srcref, false);
-      it->second.erase(it2);
+    if (newFile->breakpointsByLine.size() <= newLine) {
+      newFile->breakpointsByLine.resize(newLine + 1);
     }
+    newFile->breakpointsByLine[newLine].push_back(breakpoint.get());
+    breakpoint->virtualFile = newFile.getExtPtr();
+    breakpoint->line = newLine;
   }
 }
 
-void RDebugger::refreshBreakpoint(std::string const& file, int line) {
-  auto it = breakpoints.find(file);
-  if (it != breakpoints.end()) {
-    auto it2 = it->second.find(line);
-    if (it2 != it->second.end()) {
-      setBreakpointInfoAttrib(it2->second.srcref, nullptr);
-      SET_RDEBUG(it2->second.srcref, false);
-      SEXP srcref = sourceFileManager.getStepSrcref(file, line);
-      it2->second.srcref = srcref;
-      if (srcref != R_NilValue) {
-        SET_RDEBUG(srcref, true);
-        setBreakpointInfoAttrib(srcref, &it2->second.info);
-      }
-    }
+void RDebugger::removeBreakpointById(int id) {
+  auto it = breakpoints.find(id);
+  if (it == breakpoints.end()) return;
+  Breakpoint* breakpoint = it->second.get();
+  setMasterBreakpoint(breakpoint, nullptr, false);
+  for (Breakpoint* slave : breakpoint->slaves) {
+    setMasterBreakpoint(slave, nullptr, false);
+  }
+  VirtualFileInfoPtr file = breakpoint->virtualFile;
+  removeFromVector(file->breakpointsByLine[breakpoint->line], breakpoint);
+  breakpoints.erase(it);
+}
+
+Breakpoint* RDebugger::getBreakpointById(int id) {
+  auto it = breakpoints.find(id);
+  if (it == breakpoints.end()) return nullptr;
+  return it->second.get();
+}
+
+void RDebugger::setMasterBreakpoint(Breakpoint* breakpoint, Breakpoint* newMaster, bool leaveEnabled) {
+  breakpoint->slaveLeaveEnabled = leaveEnabled;
+  if (breakpoint->master == newMaster) return;
+  breakpoint->masterWasHit = false;
+  if (breakpoint->master != nullptr) {
+    removeFromVector(breakpoint->master->slaves, breakpoint);
+  }
+  breakpoint->master = newMaster;
+  if (newMaster != nullptr) {
+    newMaster->slaves.push_back(breakpoint);
   }
 }
 
 void RDebugger::setCommand(DebuggerCommand c) {
   currentCommand = c;
-  if (c == PAUSE) return;
-  resetRunToPositionTarget();
-  runToPositionTarget = R_NilValue;
-  std::vector<RContext*> contexts;
-  RContext* current = getGlobalContext();
-  while (current != nullptr) {
-    if (isCallContext(current)) {
-      contexts.push_back(current);
-    }
-    current = getNextContext(current);
-  }
-  if (!contexts.empty()) {
-    Rf_setAttrib(getEnvironment(contexts[0]), RI->stopHereFlagAttr, R_NilValue);
-  }
-  for (int i = (int)contexts.size() - 1; i >= 0; --i) {
-    RContext *ctx = contexts[i];
-    SEXP env = getEnvironment(ctx);
-    switch (c) {
-      case CONTINUE:
-      case STEP_INTO: {
-        Rf_setAttrib(env, RI->stopHereFlagAttr, R_NilValue);
-        break;
+  if (c == CONTINUE || c == STEP_INTO || c == ABORT || c == PAUSE) return;
+  for (auto const& p : contextsToStop) R_ReleaseObject(p.first);
+  contextsToStop.clear();
+  bool skipFirst = c == STEP_OUT;
+  for (RContext *ctx = getGlobalContext(); ctx != nullptr; ctx = getNextContext(ctx)) {
+    if (isCallContext(ctx)) {
+      if (skipFirst) {
+        skipFirst = false;
+      } else {
+        contextsToStop.insert({getEnvironment(ctx), getEvalDepth(ctx)});
       }
-      case STEP_OVER: {
-        Rf_setAttrib(env, RI->stopHereFlagAttr, toSEXP(getEvalDepth(ctx)));
-        break;
-      }
-      case STEP_OUT: {
-        if (i != 0) {
-          Rf_setAttrib(env, RI->stopHereFlagAttr, toSEXP(getEvalDepth(ctx)));
-        }
-        break;
-      }
-      default:;
     }
   }
+  for (auto const& p : contextsToStop) R_PreserveObject(p.first);
 }
 
 void RDebugger::setRunToPositionCommand(std::string const& fileId, int line) {
-  currentCommand = CONTINUE;
-  resetRunToPositionTarget();
-  ShieldSEXP srcref = sourceFileManager.getStepSrcref(fileId, line);
-  if (srcref != R_NilValue) {
-    runToPositionTarget = srcref;
-    SET_RDEBUG(srcref, true);
-  }
-}
-
-void RDebugger::resetRunToPositionTarget() {
-  if (runToPositionTarget != R_NilValue) {
-    SET_RDEBUG(runToPositionTarget, false);
-    auto position = srcrefToPosition(runToPositionTarget);
-    refreshBreakpoint(position.first, position.second);
-    runToPositionTarget = R_NilValue;
-  }
+  currentCommand = RUN_TO_POSITION;
+  runToPositionTarget = {sourceFileManager.getVirtualFileById(fileId), line};
 }
 
 static bool checkCondition(std::string const& condition, SEXP env) {
@@ -207,39 +182,10 @@ static void evaluateAndLog(std::string const& expression, SEXP env) {
   try {
     WithDebuggerEnabled with(false);
     ShieldSEXP expr = parseCode(expression);
-    RI->message(getPrintedValue(RI->evalq(expr, env)), named("appendLF", false));
+    rpiService->writeToReplOutputHandler(getPrintedValue(RI->evalq(expr, env)), STDERR);
   } catch (RError const& e) {
-    RI->message(e.what());
+    rpiService->writeToReplOutputHandler(e.what(), STDERR);
   }
-}
-
-void RDebugger::doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint, bool isStepStop, SEXP env) {
-  if (!isEnabled() || R_interrupts_pending) return;
-
-  if (currentCommand == STOP) {
-    setCommand(CONTINUE);
-    R_interrupts_pending = 1;
-    R_CheckUserInterrupt();
-    return;
-  }
-
-  CPP_BEGIN
-    bool suspend = isStepStop || (R_Srcref != R_NilValue && R_Srcref == runToPositionTarget);
-    bool isBreakpoint = false;
-    if (!breakpointsMuted && breakpoint != nullptr) {
-      if (checkCondition(breakpoint->condition, env)) {
-        isBreakpoint = true;
-        evaluateAndLog(breakpoint->evaluateAndLog, env);
-        if (breakpoint->suspend) {
-          suspend = true;
-        }
-      }
-    }
-
-    if (!suspend) return;
-    stack = buildStack(getContextDump(currentCall));
-    rpiService->debugPromptHandler(isStepStop, isBreakpoint);
-  CPP_END_VOID
 }
 
 void RDebugger::buildDebugPrompt(AsyncEvent::DebugPrompt* prompt) {
@@ -247,30 +193,147 @@ void RDebugger::buildDebugPrompt(AsyncEvent::DebugPrompt* prompt) {
   buildStackProto(stack, prompt->mutable_stack());
 }
 
-static RContext* getCurrentCallContext() {
-  RContext* ctx = getGlobalContext();
-  while (ctx != nullptr && !isCallContext(ctx)) {
-    ctx = getNextContext(ctx);
+static std::pair<VirtualFileInfo*, int> getPosition(SEXP srcref) {
+  if (srcref == R_NilValue) return {nullptr, 0};
+  SEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
+  if (srcfile == R_NilValue) return {nullptr, 0};
+  SEXP virtualFilePtr = Rf_getAttrib(srcfile, RI->virtualFilePtrAttr);
+  if (TYPEOF(virtualFilePtr) != EXTPTRSXP) return {nullptr, 0};
+  VirtualFileInfo* virtualFile = (VirtualFileInfo*)R_ExternalPtrAddr(virtualFilePtr);
+  if (virtualFile == nullptr) return {nullptr, 0};
+  int line = asInt(Rf_getAttrib(srcfile, RI->lineOffsetAttr)) + INTEGER(srcref)[0] - 1;
+  return {virtualFile, line};
+}
+
+static void printPosition(std::string const& fileId, int line) {
+  AsyncEvent e;
+  e.mutable_debugprintsourcepositiontoconsolerequest()->set_fileid(fileId);
+  e.mutable_debugprintsourcepositiontoconsolerequest()->set_line(line);
+  rpiService->sendAsyncEvent(e);
+}
+
+static void printHitMessage(VirtualFileInfo *file, int line) {
+  rpiService->writeToReplOutputHandler("\nBreakpoint hit (", STDERR);
+  printPosition(file->id, line);
+  rpiService->writeToReplOutputHandler(")\n", STDERR);
+}
+
+static void printStack(std::vector<RDebuggerStackFrame> const& stack) {
+  rpiService->writeToReplOutputHandler("\nBreakpoint hit:\n", STDERR);
+  for (int i = stack.size() - 1; i >= 0; --i) {
+    rpiService->writeToReplOutputHandler(
+        "  " + std::to_string(stack.size() - i) + ": ", STDERR);
+    if (stack[i].functionName.empty()) {
+      rpiService->writeToReplOutputHandler(i == 0 ? "[global]" : "[anonymous]",
+                                           STDERR);
+    } else {
+      rpiService->writeToReplOutputHandler(stack[i].functionName, STDERR);
+    }
+    if (!stack[i].fileId.empty()) {
+      rpiService->writeToReplOutputHandler(" (", STDERR);
+      printPosition(stack[i].fileId, stack[i].line);
+      rpiService->writeToReplOutputHandler(")\n", STDERR);
+    } else {
+      rpiService->writeToReplOutputHandler("\n", STDERR);
+    }
   }
-  return ctx;
+}
+
+void RDebugger::sendDebugPrompt(SEXP currentExpr) {
+  setCommand(CONTINUE);
+  stack = buildStack(getContextDump(currentExpr));
+  runToPositionTarget = {R_NilValue, 0};
+  rpiService->debugPromptHandler();
+}
+
+SEXP RDebugger::doStep(SEXP expr, SEXP env, SEXP srcref, bool alwaysStop, RContext *callContext) {
+  bool suspend = false;
+  if (rDebugger.isEnabled()) {
+    auto position = getPosition(srcref);
+    VirtualFileInfo* virtualFile = position.first;
+    switch (currentCommand) {
+    case CONTINUE:
+      break;
+    case PAUSE:
+      suspend = true;
+      break;
+    case STEP_INTO:
+      suspend = virtualFile != nullptr && !virtualFile->isGenerated;
+      break;
+    case ABORT:
+      setCommand(CONTINUE);
+      R_interrupts_pending = 1;
+      R_CheckUserInterrupt();
+      return R_NilValue;
+    case STEP_OVER:
+    case STEP_OUT: {
+      if (callContext == nullptr) callContext = getCurrentCallContext();
+      auto it = contextsToStop.find(getEnvironment(callContext));
+      if (it != contextsToStop.end() && it->second >= getEvalDepth(callContext)) {
+        suspend = true;
+      }
+      break;
+    }
+    case RUN_TO_POSITION:
+      suspend = virtualFile != nullptr && virtualFile->extPtr == runToPositionTarget.first && position.second == runToPositionTarget.second;
+      break;
+    }
+    int line = position.second;
+    Breakpoint* breakpoint;
+    if (virtualFile == nullptr || virtualFile->breakpointsByLine.size() <= line) {
+      breakpoint = nullptr;
+    } else {
+      auto const& vector = virtualFile->breakpointsByLine[line];
+      breakpoint = vector.empty() ? nullptr : vector[0];
+    }
+    if (!breakpointsMuted && breakpoint != nullptr && breakpoint->enabled && (breakpoint->master == nullptr || breakpoint->masterWasHit) &&
+        Rf_getAttrib(srcref, RI->noBreakpointFlag) == R_NilValue) {
+      CPP_BEGIN
+        if (checkCondition(breakpoint->condition, env)) {
+          if (!breakpoint->slaveLeaveEnabled) breakpoint->masterWasHit = false;
+          for (Breakpoint *slave : breakpoint->slaves) {
+            slave->masterWasHit = true;
+          }
+          if (breakpoint->hitMessage) {
+            printHitMessage(virtualFile, line);
+          }
+          if (breakpoint->printStack) {
+            printStack(buildStack(getContextDump(expr)));
+          }
+          evaluateAndLog(breakpoint->evaluateAndLog, env);
+          if (breakpoint->suspend) {
+            suspend = true;
+          }
+          if (breakpoint->removeAfterHit) {
+            AsyncEvent e;
+            e.set_debugremovebreakpointrequest(breakpoint->id);
+            rDebugger.removeBreakpointById(breakpoint->id);
+            rpiService->sendAsyncEvent(e);
+          }
+        }
+      CPP_END_VOID
+    }
+    if (alwaysStop) suspend = true;
+  }
+
+  if (suspend) {
+    CPP_BEGIN
+    sendDebugPrompt(expr);
+    CPP_END_VOID
+  }
+
+  return Rf_eval(expr, env);
 }
 
 SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
   SEXP s = R_NilValue;
   RContext* ctx = getCurrentCallContext();
-  SEXP function = R_NilValue, functionEnv = R_NilValue;
-  SEXP functionSrcref;
-  int currentEvalDepth = 0;
-  {
+  SEXP function = R_NilValue;
+  SEXP functionSrcref = R_NilValue;
+  if (ctx != nullptr) {
+    function = getFunction(ctx);
     CPP_BEGIN
-    std::string suggestedFunctionName;
-    if (ctx != nullptr) {
-      function = getFunction(ctx);
-      functionEnv = getEnvironment(ctx);
-      suggestedFunctionName = getCallFunctionName(getCall(ctx));
-      currentEvalDepth = getEvalDepth(ctx);
-    }
-    functionSrcref = sourceFileManager.getFunctionSrcref(function, suggestedFunctionName);
+    functionSrcref = sourceFileManager.getFunctionSrcref(function, [&] { return getCallFunctionName(getCall(ctx)); });
     CPP_END_VOID
   }
   if (Rf_getAttrib(functionSrcref, RI->doNotStopRecursiveFlag) != R_NilValue) {
@@ -281,50 +344,49 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
   if (Rf_getAttrib(functionSrcref, RI->doNotStopFlag) != R_NilValue) {
     return rDebugger.defaultDoBegin(call, op, args, rho);
   }
-  SEXP srcrefs = getBlockSrcrefs(call);
-  bool isPhysical;
-  {
-    PROTECT(R_Srcref = getSrcref(srcrefs, 0));
-    SEXP srcfile = Rf_getAttrib(R_Srcref, RI->srcfileAttr);
-    isPhysical = Rf_getAttrib(srcfile, RI->isPhysicalFileFlag) != R_NilValue;
-    if (RDEBUG(R_Srcref)) {
-      doBreakpoint(CAR(call), getBreakpointInfoAttrib(R_Srcref), false, rho);
+
+  bool stopOnFirst = false;
+  if (BODY_EXPR(function) == call) {
+    if (Rf_getAttrib(call, RI->functionDebugOnceFlag) != R_NilValue) {
+      SET_BODY(function, Rf_duplicate(call));
+      Rf_setAttrib(BODY_EXPR(function), RI->functionDebugOnceFlag, R_NilValue);
+      removeBlockBodyIfNotNeeded(function);
+      stopOnFirst = true;
+    } else {
+      stopOnFirst = Rf_getAttrib(call, RI->functionDebugFlag) != R_NilValue;
     }
-    UNPROTECT(1);
+    if (stopOnFirst && args == R_NilValue) {
+      PROTECT(R_Srcref = getSrcref(getBlockSrcrefs(call), 0));
+      CPP_BEGIN
+        rDebugger.sendDebugPrompt(R_NilValue);
+      CPP_END_VOID
+      UNPROTECT(1);
+      return R_NilValue;
+    }
   }
+
+  if (Rf_getAttrib(call, RI->generatedBlockFlag) != R_NilValue && Rf_length(call) == 2) {
+    PROTECT(R_Srcref = getSrcref(getBlockSrcrefs(call), 1));
+    if (stopOnFirst) {
+      CPP_BEGIN
+        rDebugger.sendDebugPrompt(CADR(call));
+      CPP_END_VOID
+    }
+    s = Rf_eval(CADR(call), rho);
+    UNPROTECT(1);
+    R_Srcref = R_NilValue;
+    return s;
+  }
+
   if (args != R_NilValue) {
+    SourceFileManager::preprocessSrcrefs(call);
+    SEXP srcrefs = getBlockSrcrefs(call);
     PROTECT(srcrefs);
     int i = 1;
     while (args != R_NilValue) {
       PROTECT(R_Srcref = getSrcref(srcrefs, i++));
-      bool stopHere;
-      switch (currentCommand) {
-        case STEP_INTO: {
-          stopHere = isPhysical;
-          break;
-        }
-        case FORCE_STEP_INTO:
-        case PAUSE:
-        case STOP: {
-          stopHere = true;
-          break;
-        }
-        case STEP_OVER:
-        case STEP_OUT: {
-          SEXP flag = Rf_getAttrib(functionEnv, RI->stopHereFlagAttr);
-          stopHere = flag != R_NilValue && currentEvalDepth <= asInt(flag);
-          break;
-        }
-        default: {
-          stopHere = false;
-          break;
-        }
-      }
-      bool rDebugFlag = RDEBUG(R_Srcref);
-      if ((stopHere || rDebugFlag) && Rf_getAttrib(R_Srcref, RI->doNotStopFlag) == R_NilValue) {
-        doBreakpoint(CAR(args), rDebugFlag ? getBreakpointInfoAttrib(R_Srcref) : nullptr, stopHere, rho);
-      }
-      s = Rf_eval(CAR(args), rho);
+      s = doStep(CAR(args), rho, R_Srcref, stopOnFirst);
+      stopOnFirst = false;
       UNPROTECT(1);
       args = CDR(args);
     }
@@ -335,7 +397,6 @@ SEXP RDebugger::doBegin(SEXP call, SEXP op, SEXP args, SEXP rho) {
 }
 
 void RDebugger::doHandleException(SEXP e) {
-  lastError = std::make_unique<PrSEXP>(e);
   lastErrorStackDump = getContextDumpErr();
 }
 
@@ -352,7 +413,7 @@ std::vector<RDebugger::ContextDump> RDebugger::getContextDumpErr() {
   ShieldSEXP calls = RI->sysCalls.invokeUnsafeInEnv(rho);
   ShieldSEXP frames = RI->sysFrames.invokeUnsafeInEnv(rho);
   std::vector<ContextDump> dump;
-  for (int i = 0; i < frames.length(); ++i) {
+  for (int i = frames.length() - 1; i >= 0; --i) {
     SEXP func;
     try {
       func = safeEval(Rf_lang2(RI->sysFunction, toSEXP(i + 1)), rho);
@@ -366,7 +427,16 @@ std::vector<RDebugger::ContextDump> RDebugger::getContextDumpErr() {
       frames[i]
     };
     dump.push_back(current);
+    if (ctx == nullptr || ctx == bottomContext) {
+      dump.back().environment = bottomContextRealEnv;
+      dump.back().call = nullptr;
+      break;
+    }
+    do {
+      ctx = getNextContext(ctx);
+    } while (ctx != nullptr && !isCallContext(ctx));
   }
+  std::reverse(dump.begin(), dump.end());
   return dump;
 }
 
@@ -382,6 +452,11 @@ std::vector<RDebugger::ContextDump> RDebugger::getContextDump(SEXP currentCall) 
       ContextDump currentContext { getCall(ctx), getFunction(ctx), srcref ? srcref : R_NilValue, getEnvironment(ctx) };
       dump.push_back(currentContext);
     }
+    if (ctx == bottomContext) {
+      dump.back().environment = bottomContextRealEnv ? bottomContextRealEnv : R_GlobalEnv;
+      dump.back().call = nullptr;
+      break;
+    }
     ctx = getNextContext(ctx);
   }
   std::reverse(dump.begin(), dump.end());
@@ -393,7 +468,6 @@ std::vector<RDebuggerStackFrame> RDebugger::buildStack(std::vector<ContextDump> 
   if (contexts.empty()) return stack;
   WithDebuggerEnabled with(false);
 
-  bool wasStackBottom = false;
   std::string functionName;
   SEXP frame = R_NilValue;
   SEXP functionSrcref = R_NilValue;
@@ -402,28 +476,17 @@ std::vector<RDebuggerStackFrame> RDebugger::buildStack(std::vector<ContextDump> 
     SEXP srcref = ctx.srcref;
     srcref = (srcref == nullptr) ? R_NilValue : srcref;
     if (srcref == R_NilValue) {
-      srcref = Rf_getAttrib(call, RI->srcrefAttr);
+      srcref = call ? Rf_getAttrib(call, RI->srcrefAttr) : R_NilValue;
       if (srcref == R_NilValue) {
         srcref = functionSrcref;
       }
     }
-    SEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
-    if (Rf_getAttrib(frame, RI->stackBottomAttr) != R_NilValue && ctx.environment != R_NilValue) {
-      stack.clear();
-      wasStackBottom = true;
-    } else {
-      wasStackBottom = wasStackBottom || Rf_getAttrib(srcfile, RI->isPhysicalFileFlag) != R_NilValue;
-      if (call != R_NilValue && wasStackBottom) {
-        auto position = srcrefToPosition(srcref);
-        SEXP realFrame = Rf_getAttrib(frame, RI->realEnvAttr);
-        if (realFrame != R_NilValue) {
-          frame = realFrame;
-        }
-        if (stack.empty()) functionName = "";
-        stack.push_back({position.first, position.second, frame, functionName});
-      }
+    if (call != nullptr) {
+      auto position = srcrefToPosition(srcref);
+      if (stack.empty()) functionName = "";
+      stack.push_back({position.first, position.second, frame, functionName, srcref});
+      functionName = getCallFunctionName(call);
     }
-    functionName = getCallFunctionName(call);
     if (ctx.function != R_NilValue) {
       functionSrcref = sourceFileManager.getFunctionSrcref((SEXP)ctx.function, functionName);
     }
@@ -439,10 +502,13 @@ void buildStackProto(std::vector<RDebuggerStackFrame> const& stack, StackFrameLi
     proto->mutable_position()->set_line(frame.line);
     proto->set_functionname(frame.functionName);
     proto->set_equalityobject((long long)(SEXP)frame.environment);
+    if (Rf_getAttrib(frame.srcref, RI->sendExtendedPositionFlag) != R_NilValue) {
+      getExtendedSourcePosition(frame.srcref, proto->mutable_extendedsourceposition());
+    }
   }
 }
 
-std::vector<RDebuggerStackFrame> const& RDebugger::getStack() {
+std::vector<RDebuggerStackFrame> const& RDebugger::getSavedStack() {
   return stack;
 }
 
@@ -541,7 +607,13 @@ static void overrideDoEval(bool enabled) {
     setFunTabFunction(doEvalOffset, [](SEXP call, SEXP op, SEXP args, SEXP env) {
       SEXP expr = args == R_NilValue ? R_NilValue : CAR(args);
       if (TYPEOF(expr) != EXPRSXP) return oldDoEval(call, op, args, env);
-      sourceFileManager.ensureExprProcessed(expr);
+      SourceFileManager::preprocessSrcrefs(expr);
+      CPP_BEGIN
+        ShieldSEXP srcrefs = getBlockSrcrefs(expr);
+        if (srcrefs.length() > 0) {
+          sourceFileManager.registerSrcfile(Rf_getAttrib(srcrefs[0], RI->srcfileAttr));
+        }
+      CPP_END_VOID
       SEXP srcrefs = getBlockSrcrefs(expr);
       if (srcrefs == R_NilValue) return oldDoEval(call, op, args, env);
       R_xlen_t length = Rf_xlength(expr);
@@ -554,7 +626,7 @@ static void overrideDoEval(bool enabled) {
           SET_VECTOR_ELT(newExpr, i, x);
           continue;
         }
-        x = Rf_lang2(Rf_install("{"), x);
+        x = Rf_lang2(RI->beginSymbol, x);
         SET_VECTOR_ELT(newExpr, i, x);
         SEXP newSrcrefs = Rf_allocVector(VECSXP, 2);
         PROTECT(newSrcrefs);
@@ -576,4 +648,128 @@ static void overrideDoEval(bool enabled) {
 
 bool RDebugger::isBytecodeEnabled() {
   return bytecodeEnabled;
+}
+
+static SEXP generateBlockBody(SEXP fun) {
+  CPP_BEGIN
+    ShieldSEXP block = RI->beginSymbol.lang(BODY_EXPR(fun));
+    Rf_setAttrib(block, RI->generatedBlockFlag, Rf_ScalarLogical(true));
+    ShieldSEXP srcref = sourceFileManager.getFunctionSrcref(fun);
+    if (srcref != R_NilValue) {
+      ShieldSEXP blockSrcrefs = Rf_allocVector(VECSXP, 2);
+      SET_VECTOR_ELT(blockSrcrefs, 0, srcref);
+      SET_VECTOR_ELT(blockSrcrefs, 1, srcref);
+      Rf_setAttrib(block, RI->srcrefAttr, blockSrcrefs);
+    }
+    SET_BODY(fun, block);
+    return block;
+  CPP_END
+}
+
+static void removeBlockBodyIfNotNeeded(SEXP fun) {
+  SEXP body = BODY_EXPR(fun);
+  if (TYPEOF(body) == LANGSXP && Rf_getAttrib(body, RI->generatedBlockFlag) != R_NilValue && Rf_length(body) == 2 &&
+      Rf_getAttrib(body, RI->functionDebugFlag) == R_NilValue && Rf_getAttrib(body, RI->functionDebugOnceFlag) == R_NilValue) {
+    SET_BODY(fun, CADR(body));
+  }
+}
+
+static void overrideDebuggerPrimitives() {
+  static PrSEXP browserText = toSEXP("");
+  static PrSEXP browserCondition = R_NilValue;
+
+  setFunTabFunction(getFunTabOffset("browser"), [](SEXP call, SEXP op, SEXP args, SEXP env) {
+    if (!rDebugger.isEnabled()) return R_NilValue;
+    SEXP ap, argList;
+
+    /* argument matching */
+    PROTECT(ap = list4(R_NilValue, R_NilValue, R_NilValue, R_NilValue));
+    SET_TAG(ap,  install("text"));
+    SET_TAG(CDR(ap), install("condition"));
+    SET_TAG(CDDR(ap), install("expr"));
+    SET_TAG(CDDDR(ap), install("skipCalls"));
+    argList = matchArgs(ap, args, call);
+    UNPROTECT(1);
+    PROTECT(argList);
+    /* substitute defaults */
+    if(CAR(argList) == R_MissingArg) SETCAR(argList, mkString(""));
+    if(CADR(argList) == R_MissingArg) SETCAR(CDR(argList), R_NilValue);
+    if(CADDR(argList) == R_MissingArg) SETCAR(CDDR(argList), ScalarLogical(1));
+    if(CADDDR(argList) == R_MissingArg) SETCAR(CDDDR(argList), ScalarInteger(0));
+
+    if (asLogical(CADDR(argList))) {
+      CPP_BEGIN
+        ScopedAssign<PrSEXP> withBrowserText(browserText, CAR(argList));
+        ScopedAssign<PrSEXP> withBrowserCondition(browserCondition, CADR(argList));
+        rDebugger.sendDebugPrompt(call);
+      CPP_END_VOID
+    }
+    UNPROTECT(1);
+    return R_NilValue;
+  });
+
+  setFunTabFunction(getFunTabOffset("browserText"), [](SEXP, SEXP, SEXP, SEXP) { return (SEXP)browserText; });
+  setFunTabFunction(getFunTabOffset("browserCondition"), [](SEXP, SEXP, SEXP, SEXP) { return (SEXP)browserCondition; });
+  setFunTabFunction(getFunTabOffset("browserSetDebug"), [](SEXP, SEXP, SEXP, SEXP) { return R_NilValue; });
+
+  auto myDoDebug = [](SEXP call, SEXP op, SEXP args, SEXP rho) {
+    SEXP ans = R_NilValue;
+
+    Rf_checkArityCall(op, args, call);
+    if (Rf_isValidString(CAR(args))) {
+      SEXP s = Rf_installTrChar(STRING_ELT(CAR(args), 0));
+      PROTECT(s);
+      SETCAR(args, Rf_findFun(s, rho));
+      UNPROTECT(1);
+    }
+
+    SEXP fun = CAR(args);
+    if (TYPEOF(fun) == SPECIALSXP || TYPEOF(fun) == BUILTINSXP) {
+      return getPrimVal(op) == 2 ? Rf_ScalarLogical(false) : R_NilValue;
+    }
+    if (TYPEOF(fun) != CLOSXP) {
+      Rf_error("argument must be a function");
+    }
+
+    PROTECT(fun);
+    SEXP body = BODY_EXPR(fun);
+    bool isBlock = TYPEOF(body) == LANGSXP && CAR(body) == RI->beginSymbol;
+    switch (getPrimVal(op)) {
+    case 0: // debug()
+      if (!isBlock) {
+        body = generateBlockBody(fun);
+      } else {
+        SET_BODY(fun, body = Rf_shallow_duplicate(body));
+      }
+      Rf_setAttrib(body, RI->functionDebugFlag, Rf_ScalarLogical(true));
+      break;
+    case 1: // undebug()
+      if (isBlock && Rf_getAttrib(body, RI->functionDebugFlag) != R_NilValue) {
+        Rf_setAttrib(body, RI->functionDebugFlag, R_NilValue);
+        removeBlockBodyIfNotNeeded(fun);
+      } else {
+        Rf_warning("argument is not being debugged");
+      }
+      break;
+    case 2: // isdebugged()
+      ans = Rf_ScalarLogical(isBlock && Rf_getAttrib(body, RI->functionDebugFlag) != R_NilValue);
+      break;
+    case 3: // debugonce()
+      if (!isBlock) {
+        body = generateBlockBody(fun);
+      } else {
+        SET_BODY(fun, body = Rf_shallow_duplicate(body));
+      }
+      Rf_setAttrib(body, RI->functionDebugOnceFlag, Rf_ScalarLogical(true));
+      break;
+    }
+
+    UNPROTECT(1);
+    return ans;
+  };
+
+  setFunTabFunction(getFunTabOffset("debug"), myDoDebug);
+  setFunTabFunction(getFunTabOffset("undebug"), myDoDebug);
+  setFunTabFunction(getFunTabOffset("isdebugged"), myDoDebug);
+  setFunTabFunction(getFunTabOffset("debugonce"), myDoDebug);
 }

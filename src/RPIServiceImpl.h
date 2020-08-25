@@ -51,10 +51,10 @@ public:
   Status replInterrupt(ServerContext* context, const Empty*, Empty*) override;
   Status getAsyncEvents(ServerContext* context, const Empty*, ServerWriter<AsyncEvent>* writer) override;
 
-  Status debugAddBreakpoint(ServerContext* context, const DebugAddBreakpointRequest* request, Empty*) override;
-  Status debugRemoveBreakpoint(ServerContext* context, const SourcePosition* request, Empty*) override;
+  Status debugAddOrModifyBreakpoint(ServerContext* context, const DebugAddOrModifyBreakpointRequest* request, Empty*) override;
+  Status debugSetMasterBreakpoint(ServerContext* context, const DebugSetMasterBreakpointRequest* request, Empty*) override;
+  Status debugRemoveBreakpoint(ServerContext* context, const Int32Value* request, Empty*) override;
   Status debugCommandContinue(ServerContext* context, const Empty*, Empty*) override;
-  Status debugCommandKeepPrevious(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandPause(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandStop(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandStepOver(ServerContext* context, const Empty*, Empty*) override;
@@ -147,7 +147,7 @@ public:
       bool askInput,
       std::function<void(std::string)> const& inputCallback, std::function<void()> const& interruptCallback);
   void subprocessHandlerStop();
-  void debugPromptHandler(bool isStepStop, bool isBreakpoint);
+  void debugPromptHandler();
   void viewHandler(SEXP x, SEXP title);
   void showFileHandler(std::string const& filePath, std::string const& title);
   void showHelpHandler(std::string const& content, std::string const& url);
@@ -155,6 +155,7 @@ public:
   RObject rStudioApiRequest(int32_t functionID, const RObject &args);
 
   void sendAsyncEvent(AsyncEvent const& e);
+  void sendAsyncRequestAndWait(AsyncEvent const& e);
   void setChildProcessState();
   volatile bool terminate = false;
   volatile bool terminateProceed = false;
@@ -167,6 +168,7 @@ public:
   SEXP dereference(RRef const& ref);
 
   OutputHandler replOutputHandler;
+  void writeToReplOutputHandler(std::string const& s, OutputType type);
 
 private:
   BlockingQueue<AsyncEvent> asyncEvents{8};

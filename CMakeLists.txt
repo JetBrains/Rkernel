@@ -74,6 +74,7 @@ list(APPEND RWRAPPER_SOURCES
     src/Session.cpp
     src/EventLoop.cpp
     src/CrashReport.cpp
+    src/RInternals/MatchArgs.cpp
     src/RStudioApi.cpp
     src/Timer.cpp)
 

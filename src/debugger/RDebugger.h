@@ -23,26 +23,20 @@
 #include <map>
 #include <memory>
 #undef Free
-#include "protos/service.grpc.pb.h"
 #include "../RInternals/RInternals.h"
 #include "../RStuff/MySEXP.h"
+#include "protos/service.grpc.pb.h"
 
 using namespace rplugininterop;
 
 enum DebuggerCommand {
   CONTINUE,
-  STEP_OVER,
   STEP_INTO,
-  FORCE_STEP_INTO,
+  STEP_OVER,
   STEP_OUT,
-  PAUSE,
-  STOP
-};
-
-struct BreakpointInfo {
-  bool suspend = true;
-  std::string evaluateAndLog;
-  std::string condition;
+  ABORT,
+  RUN_TO_POSITION,
+  PAUSE
 };
 
 struct RDebuggerStackFrame {
@@ -50,6 +44,28 @@ struct RDebuggerStackFrame {
   int line;
   PrSEXP environment;
   std::string functionName;
+  PrSEXP srcref;
+};
+
+struct Breakpoint {
+  int id;
+  PrSEXP virtualFile = R_NilValue;
+  int line = 0;
+
+  bool enabled = true;
+  bool suspend = true;
+  std::string evaluateAndLog;
+  std::string condition;
+  bool hitMessage = false;
+  bool printStack = false;
+  bool removeAfterHit = false;
+
+  Breakpoint* master = nullptr;
+  bool slaveLeaveEnabled = false;
+  std::vector<Breakpoint*> slaves;
+  bool masterWasHit = false;
+
+  Breakpoint(int id) : id(id) {}
 };
 
 class RDebugger {
@@ -58,27 +74,32 @@ public:
 
   void enable();
   void disable();
+  bool isEnabled();
   static void setBytecodeEnabled(bool enabled);
   static bool isBytecodeEnabled();
-  bool isEnabled();
-  void clearStack();
 
-  BreakpointInfo& addBreakpoint(std::string const& file, int line);
-  void removeBreakpoint(std::string const& file, int line);
-  void refreshBreakpoint(std::string const& file, int line);
+  void addOrModifyBreakpoint(DebugAddOrModifyBreakpointRequest const& request);
+  void removeBreakpointById(int id);
+  Breakpoint* getBreakpointById(int id);
+  void setMasterBreakpoint(Breakpoint* breakpoint, Breakpoint* newMaster, bool leaveEnabled);
   void muteBreakpoints(bool mute);
 
   SEXP doBegin(SEXP call, SEXP op, SEXP args, SEXP rho);
-  void doBreakpoint(SEXP currentCall, BreakpointInfo const* breakpoint, bool isStepStop, SEXP env);
+  SEXP doStep(SEXP expr, SEXP env, SEXP srcref, bool alwaysStop = false, RContext *callContext = nullptr);
   void doHandleException(SEXP e);
   void buildDebugPrompt(AsyncEvent::DebugPrompt* prompt);
+  void sendDebugPrompt(SEXP currentExpr);
 
-  std::vector<RDebuggerStackFrame> const& getStack();
+  std::vector<RDebuggerStackFrame> const& getSavedStack();
   std::vector<RDebuggerStackFrame> getLastErrorStack();
+  void clearSavedStack();
   void resetLastErrorStack();
 
   void setCommand(DebuggerCommand c);
   void setRunToPositionCommand(std::string const& fileId, int line);
+
+  RContext* bottomContext = nullptr;
+  SEXP bottomContextRealEnv = nullptr;
 
 private:
   volatile bool _isEnabled = false;
@@ -86,15 +107,10 @@ private:
   int beginOffset;
   FunTabFunction defaultDoBegin;
 
-  struct InternalBreakpointInfo {
-    PrSEXP srcref;
-    BreakpointInfo info;
-  };
-  std::unordered_map<std::string, std::map<int, InternalBreakpointInfo>> breakpoints;
-
   volatile DebuggerCommand currentCommand = CONTINUE;
-  SEXP runToPositionTarget;
-  void resetRunToPositionTarget();
+  std::pair<PrSEXP, int> runToPositionTarget;
+  std::unordered_map<SEXP, int> contextsToStop;
+  std::unordered_map<int, std::unique_ptr<Breakpoint>> breakpoints;
 
   struct ContextDump {
     PrSEXP call;
@@ -105,10 +121,9 @@ private:
 
   std::vector<RDebuggerStackFrame> stack;
   std::vector<ContextDump> lastErrorStackDump;
-  std::unique_ptr<PrSEXP> lastError;
 
-  static std::vector<ContextDump> getContextDump(SEXP currentCall);
-  static std::vector<ContextDump> getContextDumpErr();
+  std::vector<ContextDump> getContextDump(SEXP currentCall);
+  std::vector<ContextDump> getContextDumpErr();
   static std::vector<RDebuggerStackFrame> buildStack(std::vector<ContextDump> const& contexts);
 };
 

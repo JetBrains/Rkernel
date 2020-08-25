@@ -391,7 +391,11 @@ void TextBuilder::buildFunction(SEXP func, bool withBody) {
       buildFunctionHeader(FORMALS(func));
       if (withBody) {
         text << " ";
-        build(BODY_EXPR(func));
+        SEXP body = BODY_EXPR(func);
+        if (TYPEOF(body) == LANGSXP && Rf_getAttrib(body, RI->generatedBlockFlag) != R_NilValue && Rf_length(body) == 2) {
+          body = CADR(body);
+        }
+        build(body);
       }
       break;
     }
@@ -452,7 +456,7 @@ void TextBuilder::setSrcrefs(SEXP srcfile) {
       INTEGER(lloc)[1] = srcrefs[i].startPosition + 1;
       INTEGER(lloc)[2] = srcrefs[i].endLine + 1;
       INTEGER(lloc)[3] = srcrefs[i].endPosition;
-      SET_VECTOR_ELT(srcrefsExpr, i, safeEval(Rf_lang3(RI->srcref, srcfile, lloc), R_BaseEnv));
+      SET_VECTOR_ELT(srcrefsExpr, i, RI->srcref.invokeInEnv(R_BaseEnv, srcfile, lloc));
       currentExpr = CDR(currentExpr);
     }
     Rf_setAttrib(expr, RI->srcrefAttr, srcrefsExpr);
@@ -468,5 +472,5 @@ SEXP TextBuilder::getWholeSrcref(SEXP srcfile) {
   INTEGER(lloc)[1] = 1;
   INTEGER(lloc)[2] = currentLine + 1;
   INTEGER(lloc)[3] = currentPosition();
-  return safeEval(Rf_lang3(RI->srcref, srcfile, lloc), R_BaseEnv);
+  return RI->srcref.invokeInEnv(R_BaseEnv, srcfile, lloc);
 }

@@ -43,5 +43,8 @@
 #ifdef setVar
 # undef setVar
 #endif
+#ifdef isNull
+# undef isNull
+#endif
 
 #endif //RWRAPPER_R_STUFF_R_INCLUDE_H

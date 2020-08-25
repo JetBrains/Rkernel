@@ -18,44 +18,70 @@
 #ifndef RWRAPPER_SOURCE_FILE_MANAGER_H
 #define RWRAPPER_SOURCE_FILE_MANAGER_H
 
+#include "../RStuff/MySEXP.h"
+#include "RDebugger.h"
+#include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <memory>
-#include "../RStuff/MySEXP.h"
 
 class SourceFileManager {
 public:
-  SEXP parseSourceFile(std::string const& code, std::string fileId, int lineOffset = 0);
-  SEXP getStepSrcref(std::string const& file, int line);
-  void ensureExprProcessed(SEXP expr);
+  // Return EXTPTR that can be assigned to VirtualFileInfoPtr
+  SEXP registerSrcfile(SEXP srcfile, std::string virtualFileId = "", int lineOffset = 0, int firstLineOffset = 0);
+  SEXP getVirtualFileById(std::string const& virtualFileId);
 
-  SEXP getFunctionSrcref(SEXP func, std::string const& suggestedFileName = "");
-  std::string getSourceFileText(std::string const& fileId);
-  std::string getSourceFileName(std::string const& fileId);
-  const char* getSrcfileId(SEXP srcfile, bool alwaysRegister = false);
+  SEXP getFunctionSrcref(SEXP func, std::function<std::string()> const& suggestName = std::function<std::string()>());
+  SEXP getFunctionSrcref(SEXP func, std::string const& suggestedName);
 
   SEXP saveState();
   void loadState(SEXP obj);
 
+  static void preprocessSrcrefs(SEXP x);
+
 private:
-  struct SourceFile {
-    SEXP extPtr; // Not protected!
-    std::string fileId;
-    std::string name;
-    PrSEXP lines;
-    std::unordered_map<int, SEXP> steps; // Also not protected!
-  };
+  std::unordered_map<std::string, SEXP> virtualFiles;
+  int currentGeneratedFileId = 0;
 
-  std::unordered_map<std::string, std::unique_ptr<SourceFile>> sourceFiles;
-  int tmpFileId = 0;
+  std::string generateFileId();
+  static void createVirtualFileInfo(std::string const& id, SEXP ptr);
+};
 
-  static void putStep(std::string const& fileId, std::unordered_map<int, SEXP>& steps, int line, SEXP srcref);
-  static void setSteps(SEXP expr, std::string const& fileId, SEXP srcfile,
-                       std::unordered_map<int, SEXP>& steps, int lineOffset);
-  SourceFile *registerSourceFile(SEXP srcfile, std::string const& suggestedFileName = "");
-  std::string getNewFileId();
-  SourceFile *getSourceFileInfo(std::string const& fileId);
-  static SourceFile *getSourceFileInfo(SEXP srcfile);
+struct VirtualFileInfo {
+  const std::string id;
+  bool isGenerated = false;
+  std::string generatedName;
+  std::vector<std::vector<Breakpoint*>> breakpointsByLine;
+
+  /*
+   * Content of the file. Designed for getting text of generated files,
+   * does not work well with normal files because they can be executed by parts.
+   */
+  PrSEXP lines;
+  SEXP extPtr;
+
+  VirtualFileInfo(std::string const& id) : id(id) {}
+};
+
+/*
+ * Lifetime of VirtualFileInfo is managed by R garbage collector.
+ * This structure is referenced by EXTPTR and is destroyed in its finalizer,
+ * so it's required to protect EXTPTR while you work with VirtualFileInfo.
+ * This class does it automatically.
+ */
+class VirtualFileInfoPtr {
+public:
+  VirtualFileInfoPtr(SEXP ptr) : ptr(ptr) { assert(TYPEOF(ptr) == EXTPTRSXP || ptr == R_NilValue); }
+  VirtualFileInfoPtr(BaseSEXP const& ptr) : ptr((SEXP)ptr) { assert(TYPEOF(ptr) == EXTPTRSXP || ptr == R_NilValue); }
+  VirtualFileInfoPtr& operator = (VirtualFileInfoPtr rhs) = delete;
+  SEXP getExtPtr() { return ptr; }
+  VirtualFileInfo& operator *() { return *(VirtualFileInfo*)R_ExternalPtrAddr(ptr); }
+  VirtualFileInfo* operator ->() { return &**this; }
+  bool isNull() { return ptr == R_NilValue; }
+  bool operator == (VirtualFileInfoPtr const& rhs) const { return ptr == rhs.ptr; }
+  bool operator != (VirtualFileInfoPtr const& rhs) const { return ptr != rhs.ptr; }
+private:
+  ShieldSEXP ptr;
 };
 
 extern SourceFileManager sourceFileManager;

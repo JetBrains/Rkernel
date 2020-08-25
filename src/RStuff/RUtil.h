@@ -39,6 +39,10 @@ const int R_MAX_WIDTH_OPT = 10000;
 extern "C" {
 LibExtern int R_interrupts_pending;
 LibExtern Rboolean R_interrupts_suspended;
+
+SEXP Rf_deparse1line(SEXP, Rboolean);
+void Rf_checkArityCall(SEXP, SEXP, SEXP);
+SEXP Rf_installTrChar(SEXP);
 }
 
 class WithOption {
@@ -144,6 +148,12 @@ inline SEXP parseCode(std::string const& code, bool keepSource = false) {
 #endif
 }
 
+inline SEXP getBlockSrcrefs(SEXP expr) {
+  ShieldSEXP srcrefs = Rf_getAttrib(expr, RI->srcrefAttr);
+  if (srcrefs.type() == VECSXP) return srcrefs;
+  return R_NilValue;
+}
+
 inline SEXP getSrcref(SEXP srcrefs, int i) {
   SEXP result;
   if (!Rf_isNull(srcrefs) && Rf_xlength(srcrefs) > i
@@ -153,12 +163,6 @@ inline SEXP getSrcref(SEXP srcrefs, int i) {
   } else {
     return R_NilValue;
   }
-}
-
-inline SEXP getBlockSrcrefs(SEXP expr) {
-  ShieldSEXP srcrefs = Rf_getAttrib(expr, RI->srcrefAttr);
-  if (srcrefs.type() == VECSXP) return srcrefs;
-  return R_NilValue;
 }
 
 inline std::string getFunctionHeader(SEXP func) {
@@ -202,7 +206,7 @@ inline SEXP invokeFunction(SEXP func, std::vector<PrSEXP> const& args) {
 }
 
 inline SEXP currentEnvironment() {
-  auto const& stack = rDebugger.getStack();
+  auto const& stack = rDebugger.getSavedStack();
   ShieldSEXP env = stack.empty() ? R_NilValue : (SEXP)stack.back().environment;
   return env.type() == ENVSXP ? (SEXP)env : R_GlobalEnv;
 }
@@ -232,21 +236,28 @@ inline std::string getCallFunctionName(SEXP call) {
   return "";
 }
 
-inline std::pair<const char*, int> srcrefToPosition(SEXP _srcref) {
+inline std::pair<std::string, int> srcrefToPosition(SEXP _srcref) {
   ShieldSEXP srcref = _srcref;
-  if (srcref.type() == INTSXP && Rf_xlength(srcref) >= 1) {
-    ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
-    const char* fileId = sourceFileManager.getSrcfileId(srcfile, true);
-    if (fileId != nullptr) {
-      ShieldSEXP lineOffsetAttr = Rf_getAttrib(srcfile, RI->srcfileLineOffset);
-      int lineOffset = 0;
-      if (lineOffsetAttr.type() == INTSXP && Rf_xlength(lineOffsetAttr) == 1) {
-        lineOffset = INTEGER(lineOffsetAttr)[0];
-      }
-      return {fileId, INTEGER(srcref)[0] - 1 + lineOffset};
-    }
-  }
-  return {"", 0};
+  if (srcref.type() != INTSXP || srcref.length() == 0) return {"", 0};
+  ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
+  if (srcfile == R_NilValue) return {"", 0};
+  VirtualFileInfoPtr virtualFile = Rf_getAttrib(srcfile, RI->virtualFilePtrAttr);
+  if (virtualFile.isNull()) return {"", 0};
+  return {virtualFile->id, INTEGER(srcref)[0] - 1 + asInt(Rf_getAttrib(srcfile, RI->lineOffsetAttr))};
+}
+
+inline void getExtendedSourcePosition(SEXP _srcref, ExtendedSourcePosition *position) {
+  ShieldSEXP srcref = _srcref;
+  if (srcref.type() != INTSXP || srcref.length() < 6) return;
+  ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
+  if (srcfile == R_NilValue) return;
+  int lineOffset = asInt(Rf_getAttrib(srcfile, RI->lineOffsetAttr));
+  int firstLineOffset = asInt(Rf_getAttrib(srcfile, RI->firstLineOffsetAttr));
+  int* arr = INTEGER(srcref);
+  position->set_startline(arr[0] - 1 + lineOffset);
+  position->set_startoffset(arr[4] - 1 + (arr[0] == 1 ? firstLineOffset : 0));
+  position->set_endline(arr[2] - 1 + lineOffset);
+  position->set_endoffset(arr[5] + (arr[2] == 1 ? firstLineOffset : 0));
 }
 
 template<class Func>
@@ -349,6 +360,26 @@ inline void walkObjects(Func const& f, SEXP x) {
   SHIELD(x);
   std::unordered_set<SEXP> visited;
   walkObjectsImpl(f, visited, x);
+}
+
+template<class Func>
+inline SEXP getSafeExecCall(Func const& f) {
+  auto func = [] (void* x) {
+    if (x == nullptr) return;
+    Func const& f = *(Func const*)x;
+    f();
+  };
+  ShieldSEXP funcPtr = R_MakeExternalPtr((void*)(void(*)(void*))func, R_NilValue, R_NilValue);
+  ShieldSEXP argPtr = R_MakeExternalPtr(const_cast<void*>((void*)&f), R_NilValue, R_NilValue);
+  return RI->jetbrainsRunFunction.lang(funcPtr, argPtr);
+}
+
+inline RContext* getCurrentCallContext() {
+  RContext* ctx = getGlobalContext();
+  while (ctx != nullptr && !isCallContext(ctx)) {
+    ctx = getNextContext(ctx);
+  }
+  return ctx;
 }
 
 #endif //RWRAPPER_R_UTIL_H

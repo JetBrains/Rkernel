@@ -126,6 +126,16 @@ RPIServiceImpl::RPIServiceImpl() :
 
 RPIServiceImpl::~RPIServiceImpl() = default;
 
+void RPIServiceImpl::writeToReplOutputHandler(std::string const& s, OutputType type) {
+  replOutputHandler(s.c_str(), s.size(), type);
+}
+
+void RPIServiceImpl::sendAsyncRequestAndWait(AsyncEvent const& e) {
+  asyncEvents.push(e);
+  ScopedAssign<bool> with(isInClientRequest, true);
+  runEventLoop();
+}
+
 Status RPIServiceImpl::graphicsInit(ServerContext* context, const GraphicsInitRequest* request, ServerWriter<CommandOutput>* writer) {
   auto& parameters = request->screenparameters();
   auto sout = std::ostringstream();
@@ -341,7 +351,7 @@ void RPIServiceImpl::mainLoop() {
     }, nullptr);
     RDebugger::setBytecodeEnabled(true);
     rDebugger.disable();
-    rDebugger.clearStack();
+    rDebugger.clearSavedStack();
     if (replState != PROMPT) {
       event.mutable_prompt();
       asyncEvents.push(event);

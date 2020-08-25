@@ -14,27 +14,41 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
+#include "../EventLoop.h"
 #include "../RPIServiceImpl.h"
+#include "../RStuff/RUtil.h"
 #include "RDebugger.h"
 #include "SourceFileManager.h"
-#include "../EventLoop.h"
+#include "../RPIServiceImpl.h"
 
-Status RPIServiceImpl::debugAddBreakpoint(ServerContext*, const DebugAddBreakpointRequest* req, Empty*) {
+Status RPIServiceImpl::debugAddOrModifyBreakpoint(ServerContext*, const DebugAddOrModifyBreakpointRequest* req, Empty*) {
   auto request = *req;
   eventLoopExecute([=] {
-    BreakpointInfo& breakpoint = rDebugger.addBreakpoint(request.position().fileid(), request.position().line());
-    breakpoint.suspend = request.suspend();
-    breakpoint.evaluateAndLog = request.evaluateandlog();
-    breakpoint.condition = request.condition();
+    rDebugger.addOrModifyBreakpoint(request);
   }, true);
   return Status::OK;
 }
 
-Status RPIServiceImpl::debugRemoveBreakpoint(ServerContext*, const SourcePosition* req, Empty*) {
+Status RPIServiceImpl::debugSetMasterBreakpoint(ServerContext*, const DebugSetMasterBreakpointRequest* req, Empty*) {
   auto request = *req;
   eventLoopExecute([=] {
-    rDebugger.removeBreakpoint(request.fileid(), request.line());
+    Breakpoint* breakpoint = rDebugger.getBreakpointById(request.breakpointid());
+    if (breakpoint == nullptr) return;
+    Breakpoint* newMaster;
+    if (request.master_case() == rplugininterop::DebugSetMasterBreakpointRequest::kMasterId) {
+      newMaster = rDebugger.getBreakpointById(request.masterid());
+    } else {
+      newMaster = nullptr;
+    }
+    rDebugger.setMasterBreakpoint(breakpoint, newMaster, request.leaveenabled());
+  }, true);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::debugRemoveBreakpoint(ServerContext*, const Int32Value* request, Empty*) {
+  int id = request->value();
+  eventLoopExecute([=] {
+    rDebugger.removeBreakpointById(id);
   }, true);
   return Status::OK;
 }
@@ -49,15 +63,8 @@ Status RPIServiceImpl::debugCommandContinue(ServerContext*, const Empty*, Empty*
   return Status::OK;
 }
 
-Status RPIServiceImpl::debugCommandKeepPrevious(ServerContext*, const Empty*, Empty*) {
-  eventLoopExecute([=] {
-    if (replState == DEBUG_PROMPT) breakEventLoop("");
-  });
-  return Status::OK;
-}
-
 Status RPIServiceImpl::debugCommandPause(ServerContext*, const Empty*, Empty*) {
-  if (replState == REPL_BUSY && rDebugger.isEnabled()) {
+  if (replState == REPL_BUSY) {
     rDebugger.setCommand(PAUSE);
   }
   return Status::OK;
@@ -65,11 +72,11 @@ Status RPIServiceImpl::debugCommandPause(ServerContext*, const Empty*, Empty*) {
 
 Status RPIServiceImpl::debugCommandStop(ServerContext*, const Empty*, Empty*) {
   if (replState == REPL_BUSY && rDebugger.isEnabled()) {
-    rDebugger.setCommand(STOP);
+    rDebugger.setCommand(ABORT);
   } else {
     eventLoopExecute([=] {
       if (replState == DEBUG_PROMPT) {
-        rDebugger.setCommand(STOP);
+        rDebugger.setCommand(ABORT);
         breakEventLoop("");
       }
     });
@@ -100,7 +107,7 @@ Status RPIServiceImpl::debugCommandStepInto(ServerContext*, const Empty*, Empty*
 Status RPIServiceImpl::debugCommandForceStepInto(ServerContext*, const Empty*, Empty*) {
   eventLoopExecute([=] {
     if (replState == DEBUG_PROMPT) {
-      rDebugger.setCommand(FORCE_STEP_INTO);
+      rDebugger.setCommand(STEP_INTO);
       breakEventLoop("");
     }
   });
@@ -139,14 +146,49 @@ Status RPIServiceImpl::debugMuteBreakpoints(ServerContext*, const BoolValue* req
 
 Status RPIServiceImpl::getSourceFileText(ServerContext* context, const StringValue* request, StringValue* response) {
   executeOnMainThread([&] {
-    response->set_value(sourceFileManager.getSourceFileText(request->value()));
+    VirtualFileInfoPtr virtualFile = sourceFileManager.getVirtualFileById(request->value());
+    if (!virtualFile.isNull()) {
+      ShieldSEXP lines = virtualFile->lines;
+      if (lines.type() == STRSXP) {
+        std::string text;
+        for (int i = 0; i < lines.length(); ++i) {
+          text += stringEltUTF8(lines, i);
+          text += '\n';
+        }
+        response->set_value(text);
+      }
+    }
   }, context, true);
   return Status::OK;
 }
 
 Status RPIServiceImpl::getSourceFileName(ServerContext* context, const StringValue* request, StringValue* response) {
   executeOnMainThread([&] {
-    response->set_value(sourceFileManager.getSourceFileName(request->value()));
+    VirtualFileInfoPtr virtualFile = sourceFileManager.getVirtualFileById(request->value());
+    if (!virtualFile.isNull()) {
+      response->set_value(virtualFile->generatedName);
+    }
   }, context, true);
   return Status::OK;
 }
+
+Status RPIServiceImpl::getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) {
+  executeOnMainThread([&] {
+    ShieldSEXP function = dereference(*request);
+    std::string suggestedFileName;
+    switch (request->ref_case()) {
+    case RRef::kMember:
+      suggestedFileName = request->member().name();
+      break;
+    case RRef::kExpression:
+      suggestedFileName = request->expression().code();
+      break;
+    default:;
+    }
+    auto position = srcrefToPosition(sourceFileManager.getFunctionSrcref(function, suggestedFileName));
+    response->set_fileid(position.first);
+    response->set_line(position.second);
+  }, context, true);
+  return Status::OK;
+}
+

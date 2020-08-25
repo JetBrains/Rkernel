@@ -24,7 +24,7 @@
 typedef void (*LaterFunction)(void (*func)(void*), void*, double, int);
 static volatile LaterFunction laterFunc;
 
-static void tryRun(void (*func)()) {
+static void tryRun(void (*func)(void*)) {
   try {
     RI->jetbrainsRunFunction(R_MakeExternalPtr((void*)func, R_NilValue, R_NilValue));
   } catch (RExceptionBase const&) {
@@ -33,7 +33,7 @@ static void tryRun(void (*func)()) {
 
 void initLaterAPI() {
   laterFunc = nullptr;
-  tryRun([] {
+  tryRun([] (void*) {
     laterFunc = (LaterFunction)R_GetCCallable("later", "execLaterNative2");
   });
 }

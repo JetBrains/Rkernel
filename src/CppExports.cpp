@@ -154,11 +154,14 @@ CppExport SEXP _jetbrains_raiseSigsegv() {
   return R_NilValue;
 }
 
-CppExport SEXP _jetbrains_runFunction(SEXP f) {
+CppExport SEXP _jetbrains_runFunction(SEXP f, SEXP x) {
   PROTECT(f);
   if (TYPEOF(f) == EXTPTRSXP) {
-    void (*func)() = (void(*)())R_ExternalPtrAddr(f);
-    if (func != nullptr) func();
+    void (*func)(void*) = (void(*)(void*))R_ExternalPtrAddr(f);
+    if (func != nullptr) {
+      void* arg = TYPEOF(x) == EXTPTRSXP ? R_ExternalPtrAddr(x) : nullptr;
+      func(arg);
+    }
   }
   UNPROTECT(1);
   return R_NilValue;
@@ -359,7 +362,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_showFile", (DL_FUNC) &_jetbrains_showFile, 2},
     {".jetbrains_processBrowseURL", (DL_FUNC) &_jetbrains_processBrowseURL, 1},
     {".jetbrains_raiseSigsegv", (DL_FUNC) &_jetbrains_raiseSigsegv, 0},
-    {".jetbrains_runFunction", (DL_FUNC) &_jetbrains_runFunction, 1},
+    {".jetbrains_runFunction", (DL_FUNC) &_jetbrains_runFunction, 2},
     {".jetbrains_safeEvalHelper", (DL_FUNC) &_jetbrains_safeEvalHelper, 3},
     {".jetbrains_getSourceEditorContext", (DL_FUNC) &_jetbrains_getSourceEditorContext, 1},
     {".jetbrains_insertText", (DL_FUNC) &_jetbrains_insertText, 1},

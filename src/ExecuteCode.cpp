@@ -42,7 +42,7 @@ static void exceptionToProto(SEXP _e, ExceptionInfo *proto) {
   }
   try {
     ShieldSEXP call = RI->conditionCall(e);
-    if (call != R_NilValue && !(call.type() == LANGSXP && CAR(call) == RI->wrapEval)) {
+    if (call != R_NilValue && !(call.type() == LANGSXP && CAR(call) == RI->jetbrainsRunFunction)) {
       proto->set_call(getPrintedValue(call));
     }
   } catch (RError const&) {
@@ -62,6 +62,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
     std::string const& code = request->code();
     std::string const& sourceFileId = request->sourcefileid();
     int sourceFileLineOffset = request->sourcefilelineoffset();
+    int sourceFileFirstLineOffset = request->sourcefilefirstlineoffset();
     bool withEcho = request->withecho();
     bool streamOutput = request->streamoutput() && writer != nullptr;
     bool isRepl = request->isrepl();
@@ -87,7 +88,7 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
           event.mutable_debugprompt()->set_changed(false);
         } else {
           event.mutable_prompt();
-          rDebugger.clearStack();
+          rDebugger.clearSavedStack();
         }
         asyncEvents.push(event);
       }
@@ -111,10 +112,10 @@ Status RPIServiceImpl::executeCode(ServerContext* context, const ExecuteCodeRequ
         }
       }
       PrSEXP expressions;
+      expressions = parseCode(code, isRepl || asBool(RI->getOption("keep.source")));
       if (isRepl) {
-        expressions = sourceFileManager.parseSourceFile(code, sourceFileId, sourceFileLineOffset);
-      } else {
-        expressions = parseCode(code, asBool(RI->getOption("keep.source")));
+        sourceFileManager.registerSrcfile(Rf_getAttrib(expressions, RI->srcfileAttr), sourceFileId,
+                                          sourceFileLineOffset, sourceFileFirstLineOffset);
       }
       executeCodeImpl(expressions, currentEnvironment(), withEcho, isDebug, isRepl, setLastValue, isRepl);
     } catch (RError const& e) {
@@ -165,12 +166,10 @@ std::string RPIServiceImpl::readLineHandler(std::string const& prompt) {
   return result;
 }
 
-void RPIServiceImpl::debugPromptHandler(bool isStepStop, bool isBreakpoint) {
+void RPIServiceImpl::debugPromptHandler() {
   if (replState != REPL_BUSY) return;
   AsyncEvent event;
   rDebugger.buildDebugPrompt(event.mutable_debugprompt());
-  event.mutable_debugprompt()->set_isstep(isStepStop);
-  event.mutable_debugprompt()->set_isbreakpoint(isBreakpoint);
   asyncEvents.push(event);
   ScopedAssign<ReplState> withState(replState, DEBUG_PROMPT);
   runEventLoop();
@@ -262,26 +261,7 @@ static SEXP cloneSrcref(SEXP srcref) {
 
 extern "C" {
 void Rf_callToplevelHandlers(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible);
-}
-
-static SEXP wrapWithSrcref(PrSEXP forEval, SEXP srcref, bool isPrint = false) {
-  SHIELD(srcref);
-  if (srcref != R_NilValue) {
-    forEval = Rf_lang2(Rf_install("{"), forEval);
-    ShieldSEXP newSrcrefs = Rf_allocVector(VECSXP, 2);
-    SET_VECTOR_ELT(newSrcrefs, 0, cloneSrcref(srcref));
-    if (isPrint) {
-      ShieldSEXP newSrcref = cloneSrcref(srcref);
-      Rf_setAttrib(newSrcref, RI->doNotStopFlag, toSEXP(true));
-      SET_VECTOR_ELT(newSrcrefs, 1, newSrcref);
-    } else {
-      SET_VECTOR_ELT(newSrcrefs, 1, srcref);
-    }
-    Rf_setAttrib(forEval, RI->srcrefAttr, newSrcrefs);
-  }
-  ShieldSEXP expression = Rf_allocVector(EXPRSXP, 1);
-  SET_VECTOR_ELT(expression, 0, forEval);
-  return expression;
+extern Rboolean R_Visible;
 }
 
 static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
@@ -293,41 +273,56 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
   }
   int length = exprs.length();
   ShieldSEXP srcrefs = getBlockSrcrefs(exprs);
-  for (int i = 0; i < length; ++i) {
-    PrSEXP forEval = exprs[i];
-    ScopedAssign<std::string> with(currentExpr, stringEltUTF8(RI->deparse(RI->quote.lang(forEval)), 0));
-    ShieldSEXP srcref = getSrcref(srcrefs, i);
-    forEval = wrapWithSrcref(forEval, srcref);
-    forEval = Rf_lang4(RI->wrapEval, forEval, env, toSEXP(isDebug));
-    if (withExceptionHandler) {
-      forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
+  ScopedAssign<RContext*> with1(rDebugger.bottomContext, nullptr);
+  ScopedAssign<SEXP> with2(rDebugger.bottomContextRealEnv, env);
+  ScopedAssign<std::string> with(currentExpr, "");
+  auto func = [&] {
+    SourceFileManager::preprocessSrcrefs(exprs);
+    rDebugger.bottomContext = getCurrentCallContext();
+    if (isDebug) {
+      RI->onExit.invokeUnsafeInEnv(R_BaseEnv, RI->jetbrainsDebuggerDisable.lang());
+      rDebugger.enable();
     }
-    if (withEcho) {
-      forEval = Rf_lang2(RI->withVisible, forEval);
-    }
-    ShieldSEXP result = safeEval(forEval, R_BaseEnv, true);
-    ShieldSEXP value = result["value"];
-    bool visible = false;
-    if (withEcho && asBool(result["visible"])) {
-      visible = true;
-      ShieldSEXP quoted = Rf_lang2(RI->quote, value);
-      ShieldSEXP xSymbol = Rf_install("x");
-      ShieldSEXP baseSym = Rf_install("base");
-      ShieldSEXP namespaceAccessSym = Rf_install("::");
-      ShieldSEXP printSym = Rf_install(Rf_isFunction(value) && IS_S4_OBJECT(value) ? "print.default" : "print");
-      forEval = Rf_lang2(Rf_lang3(namespaceAccessSym, baseSym, printSym), xSymbol);
-      forEval = wrapWithSrcref(forEval, srcref, true);
-      forEval = Rf_lang5(RI->printWrapper, forEval, quoted, env, toSEXP(isDebug));
-      if (withExceptionHandler) {
-        forEval = Rf_lang2(RI->withReplExceptionHandler, forEval);
+    for (int i = 0; i < length; ++i) {
+      SEXP expr = exprs[i];
+      currentExpr = stringEltUTF8(RI->deparse.invokeUnsafeInEnv(R_BaseEnv, RI->quote.lang(expr)), 0);
+      PROTECT(R_Srcref = getSrcref(srcrefs, i));
+      SEXP value;
+      if (isDebug) {
+        value = rDebugger.doStep(expr, env, R_Srcref);
+      } else {
+        value = Rf_eval(expr, env);
       }
-      safeEval(forEval, R_BaseEnv, true);
+      PROTECT(value);
+      bool visible = false;
+      if (withEcho && R_Visible) {
+        SEXP newEnv, quoted;
+        visible = true;
+        rDebugger.disable();
+        PROTECT(newEnv = RI->newEnv.invokeUnsafeInEnv(env, named("parent", env)));
+        Rf_defineVar(RI->xSymbol, value, newEnv);
+        SEXP printExpr = Rf_isFunction(value) && IS_S4_OBJECT(value) ? RI->basePrintDefaultXExpr : RI->basePrintXExpr;
+        rDebugger.enable();
+        Rf_eval(printExpr, newEnv);
+        UNPROTECT(1);
+      }
+      if (setLastValue) {
+        SET_SYMVALUE(R_LastvalueSymbol, value);
+      }
+      if (callToplevelHandlers) {
+        Rf_callToplevelHandlers(exprs[i], value, TRUE, visible ? TRUE : FALSE);
+      }
+      UNPROTECT(2);
+      R_Srcref = R_NilValue;
     }
-    if (setLastValue) {
-      SET_SYMVALUE(R_LastvalueSymbol, value);
-    }
-    if (callToplevelHandlers) {
-      Rf_callToplevelHandlers(exprs[i], value, TRUE, visible ? TRUE : FALSE);
-    }
+  };
+  PrSEXP call = getSafeExecCall(func);
+  // This is called like that in order to pass "mimicsAutoPrint" check in print.data.table
+  call = Rf_lang2(Rf_install("knit_print.default"), call);
+  ShieldSEXP newEnv = RI->newEnv(named("parent", R_BaseEnv));
+  newEnv.assign("knit_print.default", RI->identity);
+  if (withExceptionHandler) {
+    call = RI->withReplExceptionHandler.lang(call);
   }
+  safeEval(call, newEnv, true);
 }

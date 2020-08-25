@@ -25,4 +25,10 @@ inline bool contains(C const& container, T const& value) {
   return std::find(container.begin(), container.end(), value) != container.end();
 }
 
+template<typename T>
+inline void removeFromVector(std::vector<T> &vector, T const& item) {
+  auto it = std::find(vector.begin(), vector.end(), item);
+  if (it != vector.end()) vector.erase(it);
+}
+
 #endif //RWRAPPER_CONTAINER_UTIL_H

@@ -39,6 +39,7 @@ int getEvalDepth(RContext* ctx);
 typedef SEXP (*FunTabFunction)(SEXP, SEXP, SEXP, SEXP);
 
 int getPrimOffset(SEXP expr);
+int getPrimVal(SEXP expr);
 int getFunTabOffset(const char* s);
 const char* getFunTabName(int offset);
 int getFunTabArity(int offset);
@@ -54,5 +55,7 @@ extern bool isUnwindAvailable;
 extern R_UnwindProtect_t ptr_R_UnwindProtect;
 extern R_ContinueUnwind_t ptr_R_ContinueUnwind;
 extern R_MakeUnwindCont_t ptr_R_MakeUnwindCont;
+
+SEXP matchArgs(SEXP formals, SEXP supplied, SEXP call);
 
 #endif //RWRAPPER_RINTERNALS_H
