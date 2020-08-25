@@ -486,7 +486,7 @@
       # No ID specified and no document open; succeed without meaning
       return(TRUE)
    }
-   .Call("rs_requestDocumentClose", id, save, PACKAGE = "(embedding)")
+   .Call(".jetbrains_documentClose", list(id, save))
 })
 
 .rs.addApiFunction("getConsoleHasColor", function(name) {

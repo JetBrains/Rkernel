@@ -306,6 +306,12 @@ CppExport SEXP _jetbrains_documentNew(SEXP args) {
   CPP_END
 }
 
+CppExport SEXP _jetbrains_documentClose(SEXP args) {
+  CPP_BEGIN
+    return rStudioApiHelper(args, DOCUMENT_CLOSE_ID);
+  CPP_END
+}
+
 CppExport SEXP _jetbrains_terminal(SEXP args, SEXP id) {
   CPP_BEGIN
     return rStudioApiHelper(args, asIntOrError(id));
@@ -369,6 +375,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_terminal", (DL_FUNC) &_jetbrains_terminal, 2},
     {".jetbrains_viewer", (DL_FUNC) &_jetbrains_viewer, 1},
     {".jetbrains_versionInfoMode", (DL_FUNC) &_jetbrains_versionInfoMode, 1},
+    {".jetbrains_documentClose", (DL_FUNC) &_jetbrains_documentClose, 1},
     {nullptr, nullptr, 0}
 };
 
