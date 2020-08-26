@@ -23,7 +23,7 @@
 #define ngettext(String, StringP, N) (N > 1 ? StringP : String)
 
 SEXP attribute_hidden matchArgs(SEXP formals, SEXP supplied, SEXP call) {
-  Rboolean seendots;
+  int seendots;
   int i, arg_i = 0;
   SEXP f, a, b, dots, actuals;
 
@@ -32,7 +32,7 @@ SEXP attribute_hidden matchArgs(SEXP formals, SEXP supplied, SEXP call) {
     actuals = CONS(R_MissingArg, actuals);
     SET_MISSING(actuals, 1);
   }
-  int fargused[arg_i ? arg_i : 1]; // avoid undefined behaviour
+  int fargused[1]; // avoid undefined behaviour
   memset(fargused, 0, sizeof(fargused));
 
   for (b = supplied; b != R_NilValue; b = CDR(b))
@@ -96,7 +96,7 @@ SEXP attribute_hidden matchArgs(SEXP formals, SEXP supplied, SEXP call) {
       } else {
         for (b = supplied, i = 1; b != R_NilValue; b = CDR(b), i++) {
           if (ARGUSED(b) != 2 && TAG(b) != R_NilValue &&
-              pmatch(TAG(f), TAG(b), seendots)) {
+              pmatch(TAG(f), TAG(b), (Rboolean)seendots)) {
             if (ARGUSED(b))
               errorcall(call, "argument %d matches multiple formal arguments",
                         i);
@@ -207,7 +207,7 @@ SEXP attribute_hidden matchArgs(SEXP formals, SEXP supplied, SEXP call) {
       errorcall(call /* R_GlobalContext->call */,
                 ngettext("unused argument %s", "unused arguments %s",
                          (unsigned long)Rf_length(unused)),
-                strchr(CHAR(asChar(Rf_deparse1line(unused, FALSE))), '('));
+                strchr(CHAR(asChar(Rf_deparse1line(unused, (Rboolean)FALSE))), '('));
     }
   }
   UNPROTECT(1);
