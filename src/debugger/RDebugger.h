@@ -32,6 +32,7 @@ using namespace rplugininterop;
 enum DebuggerCommand {
   CONTINUE,
   STEP_INTO,
+  STEP_INTO_MY_CODE,
   STEP_OVER,
   STEP_OUT,
   ABORT,

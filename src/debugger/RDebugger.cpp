@@ -138,7 +138,7 @@ void RDebugger::setMasterBreakpoint(Breakpoint* breakpoint, Breakpoint* newMaste
 
 void RDebugger::setCommand(DebuggerCommand c) {
   currentCommand = c;
-  if (c == CONTINUE || c == STEP_INTO || c == ABORT || c == PAUSE) return;
+  if (c == CONTINUE || c == STEP_INTO || c == STEP_INTO_MY_CODE || c == ABORT || c == PAUSE) return;
   for (auto const& p : contextsToStop) R_ReleaseObject(p.first);
   contextsToStop.clear();
   bool skipFirst = c == STEP_OUT;
@@ -258,6 +258,9 @@ SEXP RDebugger::doStep(SEXP expr, SEXP env, SEXP srcref, bool alwaysStop, RConte
       suspend = true;
       break;
     case STEP_INTO:
+      suspend = true;
+      break;
+    case STEP_INTO_MY_CODE:
       suspend = virtualFile != nullptr && !virtualFile->isGenerated;
       break;
     case ABORT:

@@ -59,7 +59,7 @@ public:
   Status debugCommandStop(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandStepOver(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandStepInto(ServerContext* context, const Empty*, Empty*) override;
-  Status debugCommandForceStepInto(ServerContext* context, const Empty*, Empty*) override;
+  Status debugCommandStepIntoMyCode(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandStepOut(ServerContext* context, const Empty*, Empty*) override;
   Status debugCommandRunToPosition(ServerContext* context, const SourcePosition* request, Empty*) override;
   Status debugMuteBreakpoints(ServerContext* context, const BoolValue* request, Empty*) override;

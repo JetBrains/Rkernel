@@ -104,10 +104,10 @@ Status RPIServiceImpl::debugCommandStepInto(ServerContext*, const Empty*, Empty*
   return Status::OK;
 }
 
-Status RPIServiceImpl::debugCommandForceStepInto(ServerContext*, const Empty*, Empty*) {
+Status RPIServiceImpl::debugCommandStepIntoMyCode(ServerContext*, const Empty*, Empty*) {
   eventLoopExecute([=] {
     if (replState == DEBUG_PROMPT) {
-      rDebugger.setCommand(STEP_INTO);
+      rDebugger.setCommand(STEP_INTO_MY_CODE);
       breakEventLoop("");
     }
   });
