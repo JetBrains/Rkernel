@@ -49,7 +49,7 @@ public:
   Status sendReadLn(ServerContext* context, const StringValue* request, Empty*) override;
   Status sendEof(ServerContext* context, const Empty*, Empty*) override;
   Status replInterrupt(ServerContext* context, const Empty*, Empty*) override;
-  Status getNextAsyncEvent(ServerContext* context, const Empty*, AsyncEvent* response) override;
+  Status getAsyncEvents(ServerContext* context, const Empty*, ServerWriter<AsyncEvent>* writer) override;
 
   Status debugAddBreakpoint(ServerContext* context, const DebugAddBreakpointRequest* request, Empty*) override;
   Status debugRemoveBreakpoint(ServerContext* context, const SourcePosition* request, Empty*) override;
