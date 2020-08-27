@@ -285,7 +285,43 @@ Status RPIServiceImpl::clientRequestFinished(ServerContext* context, const Empty
   return Status::OK;
 }
 
-Status RPIServiceImpl::getNextAsyncEvent(ServerContext*, const Empty*, AsyncEvent* response) {
-  response->CopyFrom(asyncEvents.pop());
+static const int CACHED_TEXT_LENGTH_LIMIT = 200000;
+static const auto ASYNC_EVENT_TIMEOUT = std::chrono::milliseconds(60);
+
+Status RPIServiceImpl::getAsyncEvents(ServerContext* context, const Empty*, ServerWriter<AsyncEvent>* writer) {
+  auto deadline = std::chrono::steady_clock::now() + ASYNC_EVENT_TIMEOUT;
+  std::string cachedText;
+  CommandOutput_Type cachedTextType = CommandOutput_Type_STDOUT;
+  auto flushCachedText = [&] {
+    deadline = std::chrono::steady_clock::now() + ASYNC_EVENT_TIMEOUT;
+    if (cachedText.empty()) return;
+    AsyncEvent event;
+    event.mutable_text()->set_text(std::move(cachedText));
+    event.mutable_text()->set_type(cachedTextType);
+    cachedText = "";
+    writer->Write(event);
+  };
+
+  AsyncEvent event;
+  while (!context->IsCancelled() && !terminateProceed) {
+    if (asyncEvents.popWithDeadline(deadline, event)) {
+      if (event.has_text()) {
+        if (event.text().type() != cachedTextType) {
+          flushCachedText();
+          cachedTextType = event.text().type();
+        }
+        cachedText += event.text().text();
+        if (cachedText.length() > CACHED_TEXT_LENGTH_LIMIT) {
+          flushCachedText();
+        }
+      } else {
+        flushCachedText();
+        writer->Write(event);
+      }
+    } else {
+      flushCachedText();
+    }
+  }
+  flushCachedText();
   return Status::OK;
 }

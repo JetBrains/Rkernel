@@ -54,6 +54,17 @@ public:
     return true;
   }
 
+  template<class TimePoint>
+  bool popWithDeadline(TimePoint const& deadline, T &value) {
+    std::unique_lock<std::mutex> lock(mutex);
+    condVar.wait_until(lock, deadline, [&] { return !queue.empty(); });
+    if (queue.empty()) return false;
+    value = std::move(queue.back());
+    queue.pop_back();
+    condVar.notify_one();
+    return true;
+  }
+
 private:
   std::deque<T> queue;
   std::mutex mutex;
