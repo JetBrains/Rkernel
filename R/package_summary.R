@@ -17,9 +17,18 @@
 
 #!/usr/bin/env Rscript
 
+# Some packages can assign functions with name equals to used in script
+myCat <- base::cat
+myClass <- base::class
+myLength <- base::length
+myNames <- base::names
+myPaste <- base::paste
+myPaste0 <- base::paste0
+myGet <- base::get
+
 arguments <- commandArgs(TRUE)
 
-if (length(arguments) < 2) {
+if (myLength(arguments) < 2) {
   warning("Usage: package_summary.R <extraNamedArguments_path> <package_names>...")
   quit(save = "no", status = 1, runLast = FALSE)
 }
@@ -28,61 +37,61 @@ assign(".jetbrains", new.env(), envir = baseenv())
 source(arguments[[1]]) # extraNamedArguments.R
 
 attachAndLoadNamespace <- function(pName) {
-  suppressMessages(suppressWarnings(library(pName, character.only = T))) # Attach necessary for extraNamedArgs
+  suppressMessages(suppressWarnings(base::library(pName, character.only = T))) # Attach necessary for extraNamedArgs
   loadNamespace(pName)
 }
 
 processPackage <- function(pName) {
   namespace <- tryCatch(attachAndLoadNamespace(pName), error = function(e) {
-    cat(">>>RPLUGIN>>>")
-    cat("intellij-cannot-load-package")
-    cat(gettext(e))
-    cat("<<<RPLUGIN<<<")
+    myCat(">>>RPLUGIN>>>")
+    myCat("intellij-cannot-load-package")
+    myCat(gettext(e))
+    myCat("<<<RPLUGIN<<<")
     NULL
   })
   if (is.null(namespace)) return()
 
-  cat(">>>RPLUGIN>>>")
+  myCat(">>>RPLUGIN>>>")
   pPriority <- packageDescription(pName)$Priority  # Seems to be more efficient than looking through all installed packages
   pPriority <- if (is.null(pPriority)) {
     NA
   } else {
     toupper(pPriority)
   }
-  cat(pPriority)
+  myCat(pPriority)
 
 
   exportedSymbols <- getNamespaceExports(namespace)
-  allSymbols <- unique(c(ls(envir = namespace, all.names = TRUE), exportedSymbols))
+  allSymbols <- base::unique(c(base::ls(envir = namespace, all.names = TRUE), exportedSymbols))
 
   #' some symbols are defined as functions in base.R but our parser does not like it.
   ignoreList <- if (pName == "base") c("for", "function", "if", "repeat", "while") else NULL
 
   symbolSignature <- function(symbol, types, isExported, spec = NULL) {
-    str <- c(symbol, isExported, length(types))
+    str <- c(symbol, isExported, myLength(types))
     str <- c(str, types, spec)
-    paste(str, collapse = '\001')
+    myPaste(str, collapse = '\001')
   }
 
   cache <- new.env()
   for (symbol in allSymbols) {
     if (symbol %in% ignoreList) next
-    obj <- base::get(symbol, envir = namespace)
+    obj <- myGet(symbol, envir = namespace)
 
-    types <- class(obj)
+    types <- myClass(obj)
     spec <- NULL
     isExported <- symbol %in% exportedSymbols
     if ("function" %in% types) {
       description <- args(obj)
-      if (length(description) > 0) {
+      if (myLength(description) > 0) {
         description <- deparse(description)
-        spec <- paste(description[seq_len(length(description) - 1)], collapse = "")
+        spec <- myPaste(description[seq_len(myLength(description) - 1)], collapse = "")
         # See extraNamedArguments.R#.jetbrains$findExtraNamedArgs for details
         if (isExported) {
           extraNamedArgs <- tryCatch(.jetbrains$findExtraNamedArgs(symbol, 2, package = pName, cache = cache), error = function(e) {
-            message(e)
+            base::message(e)
           })
-          if (length(extraNamedArgs) > 0) {
+          if (myLength(extraNamedArgs) > 0) {
             argNames <- NULL # Names of arguments which can be passed directly to `...`
             funNames <- NULL # Names of arguments which is function whose arguments can also be passed to `...`
             lapply(extraNamedArgs, function(x) {
@@ -93,13 +102,13 @@ processPackage <- function(pName) {
                 funNames <<- c(funNames, x[[1]])
               }
             })
-            spec <- c(spec, paste(argNames, collapse = ";"), paste(funNames, collapse = ";"))
+            spec <- c(spec, myPaste(argNames, collapse = ";"), myPaste(funNames, collapse = ";"))
           }
         }
       }
     }
-    cat("\n")
-    cat(symbolSignature(symbol, types, isExported, spec))
+    myCat("\n")
+    myCat(symbolSignature(symbol, types, isExported, spec))
   }
 
   ##
@@ -108,47 +117,47 @@ processPackage <- function(pName) {
 
   # http://stackoverflow.com/questions/27709936/how-to-get-the-list-of-data-sets-in-a-particular-package
   if (!(pName %in% c("base", "stats", "backports"))) {
-    dsets <- as.data.frame(data(package = pName)$result)
+    dsets <- as.data.frame(utils::data(package = pName)$result)
 
     ## this fails for packages like 'fields' that export data as symbol and data
     ## .. thus we rather just remove such duplicates here
     dsets <- subset(dsets, !(Item %in% allSymbols))
 
 
-    dsets <- subset(dsets, !(0:nrow(dsets) %in% grep("(", as.character(dsets$Item), fixed = TRUE))[-1])
+    dsets <- subset(dsets, !(0:nrow(dsets) %in% base::grep("(", as.character(dsets$Item), fixed = TRUE))[-1])
 
-    for (symbol in with(dsets, as.character(Item))) {
-      types <- tryCatch(class(eval(parse(text = paste0(pName, "::`", symbol, "`")))), error = function(e) {})
-      if (length(types) != 0) {
-        cat("\n")
-        cat(symbolSignature(symbol, types, TRUE))
+    for (symbol in base::with(dsets, as.character(Item))) {
+      types <- tryCatch(myClass(base::eval(parse(text = myPaste0(pName, "::`", symbol, "`")))), error = function(e) {})
+      if (myLength(types) != 0) {
+        myCat("\n")
+        myCat(symbolSignature(symbol, types, TRUE))
       }
     }
   }
 
   classTable <- methods:::.classTable
   # class_name types... <slotName, slotType>... superClasses... isVirtual
-  lapply(names(classTable), function(className) {
+  lapply(myNames(classTable), function(className) {
     class <- classTable[[className]]
     if (inherits(class, "classRepresentation") && class@package == pName) {
       spec <- NULL
-      slots <- sapply(names(class@slots), function(s) c(s, class@slots[[s]]))
-      spec <- c(spec, length(slots), unlist(slots))
+      slots <- sapply(myNames(class@slots), function(s) c(s, class@slots[[s]]))
+      spec <- c(spec, myLength(slots), unlist(slots))
       superClasses <- sapply(class@contains, function(y) y@superClass)
-      spec <- c(spec, length(superClasses), unlist(superClasses))
-      cat("\n")
-      cat(symbolSignature(className, class(class), TRUE, c(spec, class@virtual)))
+      spec <- c(spec, myLength(superClasses), unlist(superClasses))
+      myCat("\n")
+      myCat(symbolSignature(className, myClass(class), TRUE, c(spec, class@virtual)))
     }
   })
-  cat("<<<RPLUGIN<<<")
+  myCat("<<<RPLUGIN<<<")
 }
 
-for (i in seq.int(2, length(arguments))) {
+for (i in seq.int(2, myLength(arguments))) {
   tryCatch({
     processPackage(arguments[[i]])
     flush(stdout())
   }, error = function(e) {
-    cat(gettext(e))
-    cat("<<<RPLUGIN<<<")
+    myCat(gettext(e))
+    myCat("<<<RPLUGIN<<<")
   })
 }
