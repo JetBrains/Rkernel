@@ -29,6 +29,7 @@
 #define VIEWER_ID 35
 #define VERSION_INFO_MODE_ID 36
 #define DOCUMENT_CLOSE_ID 37
+#define SOURCE_MARKERS_ID 38
 
 extern std::string currentExpr;
 

@@ -189,12 +189,12 @@
          if (!is.character(marker$message))
             stop("Marker message is unspecified or invalid: ", marker$message, call. = FALSE)
 
-         marker$type <- .rs.scalar(marker$type)
-         marker$file <- .rs.scalar(.rs.normalizePath(marker$file, mustWork = TRUE))
-         marker$line <- .rs.scalar(as.numeric(marker$line))
-         marker$column <- .rs.scalar(as.numeric(marker$column))
-         marker$message <- .rs.scalar(marker$message)
-         marker$messageHTML <- .rs.scalar(inherits(marker$message, "html"))
+         marker$type <- marker$type
+         marker$file <- .rs.normalizePath(marker$file, mustWork = TRUE)
+         marker$line <- as.integer(marker$line)
+         marker$column <- as.integer(marker$column)
+         marker$message <- marker$message
+         marker$messageHTML <- inherits(marker$message, "html")
 
          marker
       })
@@ -208,7 +208,8 @@
    else if (!is.character(basePath))
       stop("basePath parameter is not of type character", call. = FALSE)
 
-   invisible(.Call("rs_sourceMarkers", name, markers, basePath, autoSelect))
+   .Call(".jetbrains_sourceMarkers", list(name, markers, basePath, autoSelect))
+   invisible(NULL)
 })
 
 .rs.addApiFunction("navigateToFile", function(filePath, line = 1L, col = 1L) {

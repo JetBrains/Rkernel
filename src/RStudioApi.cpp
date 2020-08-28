@@ -42,9 +42,9 @@ SEXP toSEXP(const RObject &rObject) {
     }
     case RObject::OBJECT_NOT_SET:
       return allocVector(VECSXP, 0);
-    case RObject::kRnull:
+    case RObject::kRNull:
       return R_NilValue;
-    case RObject::kRboolean: {
+    case RObject::kRBoolean: {
       ShieldSEXP x = Rf_allocVector(LGLSXP, rObject.rboolean().booleans_size());
       for (int i = 0; i < (int) rObject.rboolean().booleans_size(); ++i) {
         LOGICAL(x)[i] = rObject.rboolean().booleans(i);

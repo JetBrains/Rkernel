@@ -330,6 +330,12 @@ CppExport SEXP _jetbrains_versionInfoMode(SEXP args) {
   CPP_END
 }
 
+CppExport SEXP _jetbrains_sourceMarkers(SEXP args) {
+  CPP_BEGIN
+    return rStudioApiHelper(args, SOURCE_MARKERS_ID);
+  CPP_END
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -376,6 +382,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_viewer", (DL_FUNC) &_jetbrains_viewer, 1},
     {".jetbrains_versionInfoMode", (DL_FUNC) &_jetbrains_versionInfoMode, 1},
     {".jetbrains_documentClose", (DL_FUNC) &_jetbrains_documentClose, 1},
+    {".jetbrains_sourceMarkers", (DL_FUNC) &_jetbrains_sourceMarkers, 1},
     {nullptr, nullptr, 0}
 };
 
