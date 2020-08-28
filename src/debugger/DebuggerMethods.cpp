@@ -172,7 +172,7 @@ Status RPIServiceImpl::getSourceFileName(ServerContext* context, const StringVal
   return Status::OK;
 }
 
-Status RPIServiceImpl::getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) {
+Status RPIServiceImpl::getFunctionSourcePosition(ServerContext* context, const RRef* request, GetFunctionSourcePositionResponse* response) {
   executeOnMainThread([&] {
     ShieldSEXP function = dereference(*request);
     std::string suggestedFileName;
@@ -185,9 +185,14 @@ Status RPIServiceImpl::getFunctionSourcePosition(ServerContext* context, const R
       break;
     default:;
     }
-    auto position = srcrefToPosition(sourceFileManager.getFunctionSrcref(function, suggestedFileName));
-    response->set_fileid(position.first);
-    response->set_line(position.second);
+    ShieldSEXP srcref = sourceFileManager.getFunctionSrcref(function, suggestedFileName);
+    auto position = srcrefToPosition(srcref);
+    response->mutable_position()->set_fileid(position.first);
+    response->mutable_position()->set_line(position.second);
+    VirtualFileInfoPtr virtualFile = sourceFileManager.getVirtualFileById(position.first);
+    if (!virtualFile.isNull() && !virtualFile->isGenerated) {
+      response->set_sourcepositiontext(getSourcePositionText(srcref, true));
+    }
   }, context, true);
   return Status::OK;
 }

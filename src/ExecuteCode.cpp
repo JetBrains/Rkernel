@@ -278,9 +278,10 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
   ScopedAssign<std::string> with(currentExpr, "");
   auto func = [&] {
     SourceFileManager::preprocessSrcrefs(exprs);
-    rDebugger.bottomContext = getCurrentCallContext();
+    RContext *currentCallContext = getCurrentCallContext();
+    rDebugger.bottomContext = currentCallContext;
     if (isDebug) {
-      RI->onExit.invokeUnsafeInEnv(R_BaseEnv, RI->jetbrainsDebuggerDisable.lang());
+      RI->onExit.invokeUnsafeInEnv(getEnvironment(currentCallContext), RI->jetbrainsDebuggerDisable.lang());
       rDebugger.enable();
     }
     for (int i = 0; i < length; ++i) {

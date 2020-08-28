@@ -74,7 +74,7 @@ public:
   Status evaluateAsText(ServerContext* context, const RRef* request, StringOrError* response) override;
   Status evaluateAsBoolean(ServerContext* context, const RRef* request, BoolValue* response) override;
   Status getDistinctStrings(ServerContext* context, const RRef* request, StringList* response) override;
-  Status getFunctionSourcePosition(ServerContext* context, const RRef* request, SourcePosition* response) override;
+  Status getFunctionSourcePosition(ServerContext* context, const RRef* request, GetFunctionSourcePositionResponse* response) override;
   Status getSourceFileText(ServerContext* context, const StringValue* request, StringValue* response) override;
   Status getSourceFileName(ServerContext* context, const StringValue* request, StringValue* response) override;
   Status loadObjectNames(ServerContext* context, const RRef* request, StringList* response) override;

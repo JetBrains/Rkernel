@@ -19,7 +19,6 @@
 #include "RDebugger.h"
 #include "../RStuff/RUtil.h"
 #include "TextBuilder.h"
-#include "../util/StringUtil.h"
 
 SourceFileManager sourceFileManager;
 
@@ -27,7 +26,7 @@ SEXP SourceFileManager::registerSrcfile(SEXP _srcfile, std::string virtualFileId
   if (_srcfile == R_NilValue) return R_NilValue;
   ShieldSEXP srcfile = _srcfile;
   ShieldSEXP attr = Rf_getAttrib(srcfile, RI->virtualFilePtrAttr);
-  if (attr != R_NilValue) return attr;
+  if (TYPEOF(attr) == EXTPTRSXP && R_ExternalPtrAddr(attr) != nullptr) return attr;
   if (virtualFileId.empty()) {
     if (asBool(srcfile["isFile"])) {
       ShieldSEXP wd = srcfile["wd"];
@@ -83,7 +82,8 @@ static bool isSrcrefProcessed(SEXP srcref) {
   if (TYPEOF(srcref) != INTSXP) return false;
   ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
   if (srcfile == R_NilValue) return false;
-  return Rf_getAttrib(srcfile, RI->virtualFilePtrAttr) != R_NilValue;
+  VirtualFileInfoPtr file = Rf_getAttrib(srcfile, RI->virtualFilePtrAttr);
+  return !file.isNull();
 }
 
 SEXP SourceFileManager::getFunctionSrcref(SEXP func, std::string const& suggestedName) {
@@ -162,7 +162,7 @@ void SourceFileManager::loadState(SEXP _list) {
     createVirtualFileInfo(id, extPtr);
     virtualFiles[id] = extPtr;
     VirtualFileInfoPtr virtualFile(extPtr);
-    virtualFile->isGenerated = asBool(entry[2]);
+virtualFile->isGenerated = asBool(entry[2]);
     virtualFile->generatedName = asStringUTF8(entry[3]);
     virtualFile->lines = TYPEOF(entry[4]) == STRSXP ? entry[4] : R_NilValue;
   }

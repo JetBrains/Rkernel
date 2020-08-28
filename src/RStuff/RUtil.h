@@ -260,6 +260,37 @@ inline void getExtendedSourcePosition(SEXP _srcref, ExtendedSourcePosition *posi
   position->set_endoffset(arr[5] + (arr[2] == 1 ? firstLineOffset : 0));
 }
 
+inline std::string getSourcePositionText(SEXP srcref, bool onlyFirstLine) {
+  if (TYPEOF(srcref) != INTSXP || Rf_length(srcref) < 6) return "";
+  ShieldSEXP srcfile = Rf_getAttrib(srcref, RI->srcfileAttr);
+  if (srcfile == R_NilValue) return "";
+  VirtualFileInfoPtr virtualFile = Rf_getAttrib(srcfile, RI->virtualFilePtrAttr);
+  if (virtualFile.isNull() || virtualFile->isGenerated) return "";
+  ShieldSEXP lines = srcfile["lines"];
+  if (lines.type() != STRSXP) return "";
+  if (onlyFirstLine) {
+    return stringEltUTF8(lines, INTEGER(srcref)[0] - 1);
+  } else {
+    std::string first = stringEltUTF8(lines, INTEGER(srcref)[0] - 1);
+    int startLine = INTEGER(srcref)[0] - 1;
+    int endLine = INTEGER(srcref)[2] - 1;
+    int startOffset = INTEGER(srcref)[4] - 1;
+    int endOffset = INTEGER(srcref)[5] - 1;
+    std::string text;
+    for (int i = startLine; i <= endLine; ++i) {
+      int start = i == startLine ? startOffset : 0;
+      if (i == endLine) {
+        text += asStringUTF8(RI->substring(lines[i], start + 1, endOffset + 1));
+      } else {
+        text += asStringUTF8(RI->substring(lines[i], start + 1));
+      }
+      if (i != endLine) text += '\n';
+    }
+    return text;
+  }
+}
+
+
 template<class Func>
 inline SEXP createFinalizer(Func fin) {
   ShieldSEXP e = R_MakeExternalPtr(new Func(std::move(fin)), R_NilValue, R_NilValue);

@@ -77,7 +77,7 @@ public:
   SEXP getExtPtr() { return ptr; }
   VirtualFileInfo& operator *() { return *(VirtualFileInfo*)R_ExternalPtrAddr(ptr); }
   VirtualFileInfo* operator ->() { return &**this; }
-  bool isNull() { return ptr == R_NilValue; }
+  bool isNull() { return TYPEOF(ptr) != EXTPTRSXP || R_ExternalPtrAddr(ptr) == nullptr; }
   bool operator == (VirtualFileInfoPtr const& rhs) const { return ptr == rhs.ptr; }
   bool operator != (VirtualFileInfoPtr const& rhs) const { return ptr != rhs.ptr; }
 private:

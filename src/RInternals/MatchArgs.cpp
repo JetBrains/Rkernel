@@ -22,7 +22,7 @@
 #define streql(s, t) (!strcmp((s), (t)))
 #define ngettext(String, StringP, N) (N > 1 ? StringP : String)
 
-SEXP attribute_hidden matchArgs(SEXP formals, SEXP supplied, SEXP call) {
+SEXP matchArgs(SEXP formals, SEXP supplied, SEXP call) {
   int seendots;
   int i, arg_i = 0;
   SEXP f, a, b, dots, actuals;
@@ -32,8 +32,10 @@ SEXP attribute_hidden matchArgs(SEXP formals, SEXP supplied, SEXP call) {
     actuals = CONS(R_MissingArg, actuals);
     SET_MISSING(actuals, 1);
   }
-  int fargused[1]; // avoid undefined behaviour
-  memset(fargused, 0, sizeof(fargused));
+  SEXP fargusedSexp = Rf_allocVector(INTSXP, arg_i);
+  PROTECT(fargusedSexp);
+  int *fargused = INTEGER(fargusedSexp);
+  memset(fargused, 0, sizeof(int) * arg_i);
 
   for (b = supplied; b != R_NilValue; b = CDR(b))
     SET_ARGUSED(b, 0);
@@ -210,6 +212,6 @@ SEXP attribute_hidden matchArgs(SEXP formals, SEXP supplied, SEXP call) {
                 strchr(CHAR(asChar(Rf_deparse1line(unused, (Rboolean)FALSE))), '('));
     }
   }
-  UNPROTECT(1);
+  UNPROTECT(2);
   return (actuals);
 }
