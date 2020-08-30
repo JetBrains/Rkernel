@@ -567,7 +567,7 @@
    if (!is.logical(show))
      stop("'show' must be TRUE or FALSE")
 
-   .Call(".jetbrains_terminal", list(id, show), 22)
+   # .Call(".jetbrains_terminal", list(id, show), 22)
    invisible(NULL)
 })
 
