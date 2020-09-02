@@ -103,8 +103,7 @@ public:
 
   Status beforeChunkExecution(ServerContext *context, const ChunkParameters *request, ServerWriter<CommandOutput> *writer) override;
   Status afterChunkExecution(ServerContext *context, const Empty*, ServerWriter<CommandOutput> *writer) override;
-  Status pullChunkOutputRelativePaths(ServerContext *context, const Empty*, StringList* response) override;
-  Status pullChunkOutputFile(ServerContext *context, const StringValue* request, PullChunkOutputFileResponse* response) override;
+  Status pullChunkOutputPaths(ServerContext *context, const Empty*, StringList* response) override;
 
   Status repoGetPackageVersion(ServerContext* context, const StringValue* request, ServerWriter<CommandOutput>* writer) override;
   Status repoInstallPackage(ServerContext* context, const RepoInstallPackageRequest* request, Empty*) override;

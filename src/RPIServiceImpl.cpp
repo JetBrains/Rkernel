@@ -277,26 +277,14 @@ Status RPIServiceImpl::afterChunkExecution(ServerContext *context, const ::googl
   return executeCommand(context, ".jetbrains$runAfterChunk()", writer);
 }
 
-Status RPIServiceImpl::pullChunkOutputRelativePaths(ServerContext *context, const Empty*, StringList* response) {
+Status RPIServiceImpl::pullChunkOutputPaths(ServerContext *context, const Empty*, StringList* response) {
   executeOnMainThread([&] {
     graphics::ScopeProtector protector;
-    auto command = ".jetbrains$getChunkOutputRelativePaths()";
+    auto command = ".jetbrains$getChunkOutputPaths()";
     auto pathsSEXP = graphics::Evaluator::evaluate(command, &protector);
     auto length = Rf_xlength(pathsSEXP);
     for (auto i = 0; i < length; i++) {
       response->add_list(stringEltUTF8(pathsSEXP, i));
-    }
-  }, context);
-  return Status::OK;
-}
-
-Status RPIServiceImpl::pullChunkOutputFile(ServerContext *context, const StringValue* request, PullChunkOutputFileResponse* response) {
-  executeOnMainThread([&] {
-    try {
-      auto fullPath = getChunkOutputFullPath(request->value());
-      response->set_content(readWholeFile(fullPath));
-    } catch (const std::exception& e) {
-      response->set_message(e.what());
     }
   }, context);
   return Status::OK;

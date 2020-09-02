@@ -133,8 +133,9 @@ options(install.packages.compile.from.source = "always")
   unlink(.jetbrains$chunkOutputDir, recursive = TRUE)
 }
 
-.jetbrains$getChunkOutputRelativePaths <<- function() {
-  list.files(.jetbrains$chunkOutputDir, recursive = TRUE, include.dirs = FALSE, full.names = FALSE)
+.jetbrains$getChunkOutputPaths <<- function() {
+  relative.paths <- list.files(.jetbrains$chunkOutputDir, recursive = TRUE, include.dirs = FALSE, full.names = FALSE)
+  c(.jetbrains$chunkOutputDir, relative.paths)
 }
 
 .jetbrains$getChunkOutputFullPath <<- function(relative.path) {
