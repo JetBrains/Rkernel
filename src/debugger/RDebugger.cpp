@@ -244,6 +244,10 @@ void RDebugger::sendDebugPrompt(SEXP currentExpr) {
   stack = buildStack(getContextDump(currentExpr));
   runToPositionTarget = {R_NilValue, 0};
   rpiService->debugPromptHandler();
+  if (currentCommand == ABORT) {
+    setCommand(CONTINUE);
+    throw RInterruptedException();
+  }
 }
 
 SEXP RDebugger::doStep(SEXP expr, SEXP env, SEXP srcref, bool alwaysStop, RContext *callContext) {
