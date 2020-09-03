@@ -17,6 +17,8 @@
 
 #!/usr/bin/env Rscript
 
+os_name <- Sys.info()["sysname"]
+
 install_pandoc <- function(library_path) {
   find_pandoc_url <- function(os_suffix, archive_extension) {
     base_url <- "https://github.com/jgm/pandoc/releases"
@@ -64,7 +66,6 @@ install_pandoc <- function(library_path) {
     Sys.chmod(pandoc_executable_path, mode="0777")
   }
 
-  os_name <- Sys.info()["sysname"]
   os_suffix <- if (os_name == "Linux") {
     "linux(-amd64)?"
   } else {
@@ -92,7 +93,11 @@ if (length(args) != 4 && length(args) != 5) {
     quit(save = "no", status = 1, runLast = FALSE)
 }
 
-library_path <- args[1]
+if (os_name == "Windows") {
+  library_path <- paste0(Sys.getenv("USERPROFILE"),"\\AppData\\Local\\JetBrains\\RPlugin\\pandoc")
+} else {
+  library_path <- args[1]
+}
 file_path <- args[2]
 knit_root_directory <- args[3]
 output_directory <- args[4]
