@@ -187,7 +187,7 @@ Status RPIServiceImpl::graphicsPullChangedNumbers(ServerContext* context, const 
   return Status::OK;
 }
 
-Status RPIServiceImpl::graphicsPullSnapshot(ServerContext* context, const GraphicsPullSnapshotRequest* request, GraphicsPullSnapshotResponse* response) {
+Status RPIServiceImpl::graphicsGetSnapshotPath(ServerContext* context, const GraphicsGetSnapshotPathRequest* request, GraphicsGetSnapshotPathResponse* response) {
   executeOnMainThread([&] {
     try {
       std::string name;
@@ -201,33 +201,12 @@ Status RPIServiceImpl::graphicsPullSnapshot(ServerContext* context, const Graphi
           return;  // Note: requested snapshot wasn't found. Silently return an empty response
         }
       }
-      /*
-       * Note: one of the most important questions of the graphics machinery
-       * is how to keep snapshot groups (i.e. folders) consistent
-       * which means they mustn't contain different versions
-       * of the same snapshot at the same time.
-       * The most straight forward and safe approach is to insert
-       * clean up functions at every "synchronization" point
-       * which will scan folder and delete old versions
-       * (right after either rescale or dump).
-       * However, this approach has serious disadvantages:
-       *  1) It requires a big amount of additional code which is hard to maintain
-       *  2) It has a linear time complexity.
-       * The suggested solution (delete a snapshot right after it's pulled)
-       * is not the best one for sure since it makes pull request
-       * not re-entrant but it's very easy to implement
-       * and also highly computationally effective
-       */
-      auto contentPath = directory + "/" + name;
-      if (!fileExists(contentPath)) {
+      auto path = directory + "/" + name;
+      if (!fileExists(path)) {
         return;  // Note: silently return an empty response. This situation will be handled by a client side
       }
-      response->set_content(readWholeFileAndDelete(contentPath));
+      response->set_directory(directory);
       response->set_snapshotname(name);
-      if (request->withrecorded()) {
-        auto recordedPath = graphics::SnapshotUtil::makeRecordedFilePath(directory, number);
-        response->set_recorded(readWholeFile(recordedPath));
-      }
     } catch (const std::exception& e) {
       response->set_message(e.what());
     }
