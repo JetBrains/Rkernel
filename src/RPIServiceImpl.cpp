@@ -235,18 +235,6 @@ Status RPIServiceImpl::graphicsPullSnapshot(ServerContext* context, const Graphi
   return Status::OK;
 }
 
-Status RPIServiceImpl::graphicsPushSnapshot(ServerContext* context, const GraphicsPushSnapshotRequest* request, google::protobuf::StringValue* response) {
-  executeOnMainThread([&] {
-    try {
-      auto path = graphics::SnapshotUtil::makeRecordedFilePath(request->groupid(), request->snapshotnumber());
-      writeToFile(path, request->recorded());
-    } catch (const std::exception& e) {
-      response->set_value(e.what());
-    }
-  }, context);
-  return Status::OK;
-}
-
 Status RPIServiceImpl::graphicsCreateGroup(ServerContext* context, const google::protobuf::Empty* request, ServerWriter<CommandOutput>* writer) {
   return executeCommand(context, ".jetbrains$createSnapshotGroup()", writer);
 }
