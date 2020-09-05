@@ -30,6 +30,8 @@
 #define VERSION_INFO_MODE_ID 36
 #define DOCUMENT_CLOSE_ID 37
 #define SOURCE_MARKERS_ID 38
+#define TRANSLATE_LOCAL_URL_ID 39
+#define EXECUTE_COMMAND_ID 40
 
 extern std::string currentExpr;
 

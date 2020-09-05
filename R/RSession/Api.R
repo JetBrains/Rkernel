@@ -708,11 +708,12 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
 
 # translate a local URL into an externally accessible URL on RStudio Server
 .rs.addApiFunction("translateLocalUrl", function(url, absolute = FALSE) {
-  .Call(".jetbrains_translateLocalUrl", url, absolute)
+  .Call(".jetbrains_translateLocalUrl", list(url, absolute))
 })
 
 # execute an arbitrary RStudio application command (AppCommand)
 .rs.addApiFunction("executeCommand", function(commandId, quiet = FALSE) {
-  .Call("rs_executeAppCommand", commandId, quiet, PACKAGE = "(embedding)")
+  .Call(".jetbrains_executeCommand", list(commandId, quiet))
+   NULL
 })
 

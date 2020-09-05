@@ -336,6 +336,18 @@ CppExport SEXP _jetbrains_sourceMarkers(SEXP args) {
   CPP_END
 }
 
+CppExport SEXP _jetbrains_translateLocalUrl(SEXP args) {
+  CPP_BEGIN
+    return rStudioApiHelper(args, TRANSLATE_LOCAL_URL_ID);
+  CPP_END
+}
+
+CppExport SEXP _jetbrains_executeCommand(SEXP args) {
+  CPP_BEGIN
+    return rStudioApiHelper(args, EXECUTE_COMMAND_ID);
+  CPP_END
+}
+
 static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_record", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_record, 1},
     {".jetbrains_ther_device_restart", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_restart, 0},
@@ -383,6 +395,8 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_versionInfoMode", (DL_FUNC) &_jetbrains_versionInfoMode, 1},
     {".jetbrains_documentClose", (DL_FUNC) &_jetbrains_documentClose, 1},
     {".jetbrains_sourceMarkers", (DL_FUNC) &_jetbrains_sourceMarkers, 1},
+    {".jetbrains_translateLocalUrl", (DL_FUNC) &_jetbrains_translateLocalUrl, 1},
+    {".jetbrains_executeCommand", (DL_FUNC) &_jetbrains_executeCommand, 1},
     {nullptr, nullptr, 0}
 };
 
