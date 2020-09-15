@@ -19,7 +19,6 @@
 #define MASTER_DEVICE_H
 
 #include <string>
-#include <unordered_set>
 
 #include "Ptr.h"
 #include "InitHelper.h"
@@ -40,7 +39,6 @@ class MasterDevice {
   std::string currentSnapshotDirectory;
   ScreenParameters currentScreenParameters;
   std::vector<DeviceInfo> currentDeviceInfos;
-  std::unordered_set<int> latestChangedNumbers;
   int currentSnapshotNumber;
   bool isNextGgPlot;
   int deviceNumber;
@@ -53,7 +51,7 @@ class MasterDevice {
   static void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters);
   static void dumpNormal(DeviceInfo &deviceInfo);
   void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number);
-  bool commitAllLast(bool withRescale, ScreenParameters newParameters);
+  std::vector<int> commitAllLast(bool withRescale, ScreenParameters newParameters);
   bool commitByNumber(int number, bool withRescale, ScreenParameters newParameters);
 
 public:
@@ -68,11 +66,10 @@ public:
   void recordLast(bool isTriggeredByGgPlot);
   bool isOnlineRescalingEnabled();
   const std::string& getSnapshotDirectory();
-  std::unordered_set<int> pullLatestChangedNumbers();
   bool rescaleAllLast(ScreenParameters newParameters);
   bool rescaleByNumber(int number, ScreenParameters newParameters);
   bool rescaleByPath(const std::string& parentDirectory, int number, int version, ScreenParameters newParameters);
-  bool dumpAllLast();
+  std::vector<int> dumpAllLast();
   void onNewPage();
   void finalize();
   void shutdown();

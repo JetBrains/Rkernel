@@ -270,28 +270,24 @@ void MasterDevice::recordLast(bool isTriggeredByGgPlot) {
   }
 }
 
-std::unordered_set<int> MasterDevice::pullLatestChangedNumbers() {
-  return std::move(latestChangedNumbers);
-}
-
 bool MasterDevice::rescaleAllLast(ScreenParameters newParameters) {
-  return commitAllLast(true, newParameters);
+  return !commitAllLast(true, newParameters).empty();
 }
 
-bool MasterDevice::commitAllLast(bool withRescale, ScreenParameters newParameters) {
-  auto hasCommittedAtLeastOne = false;
+std::vector<int> MasterDevice::commitAllLast(bool withRescale, ScreenParameters newParameters) {
+  auto committedNumbers = std::vector<int>();
   for (auto number = currentSnapshotNumber; number >= 0; number--) {
     if (currentDeviceInfos[number].hasDumped) {
       break;
     }
     if (commitByNumber(number, withRescale, newParameters)) {
-      hasCommittedAtLeastOne = true;
+      committedNumbers.push_back(number);
     }
   }
-  if (hasCommittedAtLeastOne) {
+  if (!committedNumbers.empty()) {
     addNewDevice();
   }
-  return hasCommittedAtLeastOne;
+  return committedNumbers;
 }
 
 bool MasterDevice::rescaleByNumber(int number, ScreenParameters newParameters) {
@@ -327,7 +323,6 @@ bool MasterDevice::commitByNumber(int number, bool withRescale, ScreenParameters
     if (withRescale) {
       rescaleAndDumpIfNecessary(device, newParameters);
     }
-    latestChangedNumbers.insert(number);
     return true;
   } else {
     return false;
@@ -357,7 +352,7 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
   return true;
 }
 
-bool MasterDevice::dumpAllLast() {
+std::vector<int> MasterDevice::dumpAllLast() {
   return commitAllLast(false, ScreenParameters{});
 }
 
@@ -407,7 +402,6 @@ void MasterDevice::restart() {
   DEVICE_TRACE;
 
   shutdown();
-  latestChangedNumbers.clear();
   if (currentDeviceInfos.empty()) {
     addNewDevice();
   }

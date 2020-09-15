@@ -137,8 +137,26 @@ Status RPIServiceImpl::graphicsInit(ServerContext* context, const GraphicsInitRe
   return executeCommand(context, sout.str(), writer);
 }
 
-Status RPIServiceImpl::graphicsDump(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) {
-  return executeCommand(context, ".Call(\".jetbrains_ther_device_dump\")", writer);
+Status RPIServiceImpl::graphicsDump(ServerContext* context, const Empty*, GraphicsDumpResponse* response) {
+  executeOnMainThread([&] {
+    try {
+      auto active = getActiveDeviceOrThrow();
+      auto dumpedNumbers = active->dumpAllLast();
+      auto& number2Parameters = *response->mutable_number2parameters();
+      for (auto number : dumpedNumbers) {
+        auto device = active->getDeviceAt(number);
+        auto parameters = device->logicScreenParameters();
+        ScreenParameters parametersMessage;
+        parametersMessage.set_width(int(parameters.size.width));
+        parametersMessage.set_height(int(parameters.size.height));
+        parametersMessage.set_resolution(parameters.resolution);
+        number2Parameters[number] = parametersMessage;
+      }
+    } catch (const std::exception& e) {
+      response->set_message(e.what());
+    }
+  }, context);
+  return Status::OK;
 }
 
 Status RPIServiceImpl::graphicsRescale(ServerContext* context, const GraphicsRescaleRequest* request, ServerWriter<CommandOutput>* writer) {
@@ -170,21 +188,6 @@ Status RPIServiceImpl::graphicsRescaleStored(ServerContext* context, const Graph
   auto arguments = joinToString(std::vector<std::string> { stringArguments, numberArguments });
   auto command = buildCallCommand(".Call", arguments);
   return executeCommand(context, command, writer);
-}
-
-Status RPIServiceImpl::graphicsPullChangedNumbers(ServerContext* context, const Empty*, Int32List* response) {
-  executeOnMainThread([&] {
-    try {
-      auto active = getActiveDeviceOrThrow();
-      auto numbers = active->pullLatestChangedNumbers();
-      for (auto number : numbers) {
-        response->add_value(number);
-      }
-    } catch (const std::exception& e) {
-      response->set_message(e.what());
-    }
-  }, context);
-  return Status::OK;
 }
 
 Status RPIServiceImpl::graphicsGetSnapshotPath(ServerContext* context, const GraphicsGetSnapshotPathRequest* request, GraphicsGetSnapshotPathResponse* response) {

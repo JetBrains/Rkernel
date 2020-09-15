@@ -91,10 +91,9 @@ public:
   Status getRMarkdownChunkOptions(ServerContext* context, const Empty*, StringList* response) override;
 
   Status graphicsInit(ServerContext* context, const GraphicsInitRequest* request, ServerWriter<CommandOutput>* writer) override;
-  Status graphicsDump(ServerContext* context, const Empty*, ServerWriter<CommandOutput>* writer) override;
+  Status graphicsDump(ServerContext* context, const Empty*, GraphicsDumpResponse* response) override;
   Status graphicsRescale(ServerContext* context, const GraphicsRescaleRequest* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsRescaleStored(ServerContext* context, const GraphicsRescaleStoredRequest* request, ServerWriter<CommandOutput>* writer) override;
-  Status graphicsPullChangedNumbers(ServerContext* context, const Empty*, Int32List* response) override;
   Status graphicsGetSnapshotPath(ServerContext* context, const GraphicsGetSnapshotPathRequest* request, GraphicsGetSnapshotPathResponse* response) override;
   Status graphicsCreateGroup(ServerContext* context, const google::protobuf::Empty* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsRemoveGroup(ServerContext* context, const google::protobuf::StringValue* request, ServerWriter<CommandOutput>* writer) override;
