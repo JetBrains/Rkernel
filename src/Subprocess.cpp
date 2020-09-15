@@ -18,6 +18,7 @@
 #include "util/ScopedAssign.h"
 #include "Subprocess.h"
 #include "EventLoop.h"
+#include "Timer.h"
 #include <process.hpp>
 #include <thread>
 
@@ -25,36 +26,6 @@ extern "C" {
 typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);
 void SET_PRIMFUN(SEXP x, CCODE f);
 }
-
-class Timer {
-public:
-  Timer(std::function<void()> const& _action, int delay) : action(_action), thread([=] {
-    std::unique_lock<std::mutex> lock(mutex);
-    if (finished) return;
-    auto time = std::chrono::steady_clock::now() + std::chrono::seconds(delay);
-    condVar.wait_until(lock, time, [&] { return finished || std::chrono::steady_clock::now() >= time; });
-    if (!finished) {
-      action();
-    }
-  }) {
-  }
-
-  ~Timer() {
-    {
-      std::unique_lock<std::mutex> lock(mutex);
-      finished = true;
-      condVar.notify_one();
-    }
-    thread.join();
-  }
-
-private:
-  std::mutex mutex;
-  std::condition_variable condVar;
-  std::thread thread;
-  std::function<void()> action;
-  volatile bool finished = false;
-};
 
 DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout, bool replInput, bool ignoreStdout, bool ignoreStderr, bool background) {
   if (background) {
