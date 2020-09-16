@@ -20,6 +20,8 @@
 #include "../RStuff/RUtil.h"
 #include "TextBuilder.h"
 
+static std::string getLibraryFunctionName(SEXP _func);
+
 SourceFileManager sourceFileManager;
 
 SEXP SourceFileManager::registerSrcfile(SEXP _srcfile, std::string virtualFileId, int lineOffset, int firstLineOffset) {
@@ -110,7 +112,13 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP _func, std::function<std::string(
   }
 
   WithDebuggerEnabled with(false);
+  std::string libraryFunctionName = getLibraryFunctionName(func);
   TextBuilder builder;
+  if (!libraryFunctionName.empty()) {
+    builder.addText("# ");
+    builder.addText(libraryFunctionName);
+    builder.addText("\n");
+  }
   builder.build(func);
   ShieldSEXP lines = makeCharacterVector(splitByLines(builder.getText()));
   ShieldSEXP srcfile = RI->srcfilecopy.invokeInEnv(R_BaseEnv, "<text>", lines);
@@ -118,7 +126,11 @@ SEXP SourceFileManager::getFunctionSrcref(SEXP _func, std::function<std::string(
   Rf_setAttrib(func, RI->srcrefAttr, srcref = builder.getWholeSrcref(srcfile));
   VirtualFileInfoPtr virtualFile = registerSrcfile(srcfile);
   virtualFile->isGenerated = true;
-  if (suggestName) virtualFile->generatedName = suggestName();
+  if (!libraryFunctionName.empty()) {
+    virtualFile->generatedName = libraryFunctionName;
+  } else if (suggestName) {
+    virtualFile->generatedName = suggestName();
+  }
   if (TYPEOF(func) == CLOSXP) SourceFileManager::preprocessSrcrefs(BODY_EXPR(func));
   return srcref;
 }
@@ -223,4 +235,46 @@ void SourceFileManager::preprocessSrcrefs(SEXP x) {
   PROTECT(x);
   SrcrefPreprocessor().preprocessSrcrefs(x);
   UNPROTECT(1);
+}
+
+static std::string getLibraryFunctionName(SEXP _func) {
+  ShieldSEXP func = _func;
+  if (func.type() == BUILTINSXP || func.type() == SPECIALSXP) {
+    int offset = getPrimOffset(func);
+    const char *name = getFunTabName(offset);
+    if (strlen(name) == 0) return "";
+    return "base::" + quoteIfNeeded(name);
+  }
+  if (func.type() != CLOSXP) return "";
+
+  ShieldSEXP env = CLOENV(func);
+  std::string package;
+  PrSEXP names;
+  if (env == R_BaseEnv || env == R_BaseNamespace) {
+    package = "base";
+    names = RI->ls(R_BaseEnv, named("all.names", true));
+  } else {
+    static PrSEXP getExports = RI->evalCode(
+        "function(env) tryCatch({\n"
+        "  if (!isNamespace(env)) return(NULL)\n"
+        "  exports <- .getNamespaceInfo(env, 'exports')\n"
+        "  if (is.null(exports)) return(NULL)\n"
+        "  return(list(getNamespaceName(env), ls(exports, all.names = TRUE)))\n"
+        "}, error = function(e) { yay2 <<- env; yay <<- e })", R_BaseEnv);
+    ShieldSEXP res = getExports(env);
+    if (res == R_NilValue) return "";
+    package = asStringUTF8(res[0]);
+    names = res[1];
+  }
+
+  if (names.type() != STRSXP) return "";
+  int length = names.length();
+  for (int i = 0; i < length; ++i) {
+    SEXP var = env.getVar(stringEltNative(names, i), false);
+    if (TYPEOF(var) == PROMSXP) var = PRVALUE(var);
+    if (func == var) {
+      return quoteIfNeeded(package) + "::" + quoteIfNeeded(stringEltUTF8(names, i));
+    }
+  }
+  return "";
 }

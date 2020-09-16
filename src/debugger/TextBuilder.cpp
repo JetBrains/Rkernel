@@ -51,6 +51,11 @@ static bool isBinaryOperator(std::string const& s) {
   return false;
 }
 
+void TextBuilder::addText(std::string const& s) {
+  text << s;
+  for (char c : s) if (c == '\n') ++currentLine;
+}
+
 void TextBuilder::build(SEXP expr) {
   SHIELD(expr);
   switch (TYPEOF(expr)) {

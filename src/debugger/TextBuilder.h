@@ -26,6 +26,7 @@
 
 class TextBuilder {
 public:
+  void addText(std::string const& s);
   void build(SEXP expr);
   void buildFunction(SEXP func, bool withBody = true);
   std::string getText();
