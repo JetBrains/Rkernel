@@ -45,6 +45,7 @@ private:
   bool isPlotOnNewPage;
   bool isDeviceBlank;
   bool hasDumped;
+  bool isProxy;
   int deviceNumber;
   int snapshotNumber;
   int snapshotVersion;
@@ -60,7 +61,8 @@ private:
   void replayWithCommand(const std::string& command);
 
 public:
-  REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, int snapshotVersion, ScreenParameters parameters);
+  REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, int snapshotVersion,
+                       ScreenParameters parameters, bool isProxy);
 
   void drawCircle(Point center, double radius, pGEcontext context);
   void clip(Point from, Point to);

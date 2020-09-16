@@ -30,6 +30,7 @@ namespace graphics {
 namespace {
 
 const auto MASTER_DEVICE_NAME = "TheRPlugin_Device";
+const auto PROXY_DEVICE_NAME = "TheRPlugin_ProxyDevice";
 
 MasterDevice* masterOf(pDevDesc descriptor) {
   auto masterDevice = MasterDevice::from(descriptor);
@@ -204,10 +205,10 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
 
 } // anonymous
 
-MasterDevice::MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory)
+MasterDevice::MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory, bool isProxy)
   : currentSnapshotDirectory(std::move(snapshotDirectory)), currentScreenParameters(screenParameters),
     currentSnapshotNumber(-1), masterDeviceDescriptor(nullptr), isNextGgPlot(false),
-    deviceNumber(deviceNumber), inMemory(inMemory)
+    deviceNumber(deviceNumber), inMemory(inMemory), isProxy(isProxy)
 {
   restart();
 }
@@ -218,7 +219,8 @@ bool MasterDevice::hasCurrentDevice() {
 
 Ptr<REagerGraphicsDevice> MasterDevice::getCurrentDevice() {
   if (!hasCurrentDevice()) {
-    auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDirectory, deviceNumber, currentSnapshotNumber, 0, currentScreenParameters);
+    auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDirectory, deviceNumber, currentSnapshotNumber, 0,
+                                                   currentScreenParameters, isProxy);
     currentDeviceInfos[currentSnapshotNumber].device = newDevice;
     setMasterDeviceSize(masterDeviceDescriptor->dev, newDevice->drawingArea());
   }
@@ -345,7 +347,7 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
     return false;
   }
 
-  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version + 1, newParameters);
+  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version + 1, newParameters, isProxy);
   device->replayFromFile(parentDirectory, number);
   device->dump();
 
@@ -491,7 +493,7 @@ void MasterDevice::restart() {
   memset(masterDevDesc->reserved, 0, 64);
 
   pGEDevDesc masterDevice = GEcreateDevDesc(masterDevDesc);
-  GEaddDevice2(masterDevice, MASTER_DEVICE_NAME);
+  GEaddDevice2(masterDevice, isProxy ? PROXY_DEVICE_NAME : MASTER_DEVICE_NAME);
 
   Rf_selectDevice(Rf_ndevNumber(masterDevice->dev));
 

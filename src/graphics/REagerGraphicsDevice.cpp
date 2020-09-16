@@ -28,10 +28,10 @@
 namespace graphics {
 
 REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber,
-                                           int snapshotVersion, ScreenParameters parameters)
+                                           int snapshotVersion, ScreenParameters parameters, bool isProxy)
     : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
       snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
-      snapshotType(SnapshotType::NORMAL), hasDumped(false), isPlotOnNewPage(false) { getSlave(); }
+      snapshotType(SnapshotType::NORMAL), hasDumped(false), isProxy(isProxy), isPlotOnNewPage(false) { getSlave(); }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
@@ -83,14 +83,14 @@ pDevDesc REagerGraphicsDevice::getSlave() {
 void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->circle(center.x, center.y, radius, context, slave);
   }
 }
 
 void REagerGraphicsDevice::clip(Point from, Point to) {
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->clip(from.x, to.x, from.y, to.y, slave);
   }
 }
@@ -102,7 +102,7 @@ void REagerGraphicsDevice::close() {
 void REagerGraphicsDevice::drawLine(Point from, Point to, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->line(from.x, from.y, to.x, to.y, context, slave);
   }
 }
@@ -119,7 +119,7 @@ MetricInfo REagerGraphicsDevice::metricInfo(int character, pGEcontext context) {
 void REagerGraphicsDevice::setMode(int mode) {
   DEVICE_TRACE;
   auto slave = getSlave();
-  if (slave != nullptr && slave->mode != nullptr) {
+  if (!isProxy && slave != nullptr && slave->mode != nullptr) {
     slave->mode(mode, slave);
   }
 }
@@ -127,7 +127,7 @@ void REagerGraphicsDevice::setMode(int mode) {
 void REagerGraphicsDevice::newPage(pGEcontext context) {
   isPlotOnNewPage = true;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->newPage(context, slave);
   }
 }
@@ -135,7 +135,7 @@ void REagerGraphicsDevice::newPage(pGEcontext context) {
 void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->polygon(n, x, y, context, slave);
   }
 }
@@ -143,7 +143,7 @@ void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext c
 void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->polyline(n, x, y, context, slave);
   }
 }
@@ -151,7 +151,7 @@ void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext 
 void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->rect(from.x, from.y, to.x, to.y, context, slave);
   }
 }
@@ -160,7 +160,7 @@ void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, 
 {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->path(x, y, npoly, nper, winding, context, slave);
   }
 }
@@ -178,7 +178,7 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
 {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     slave->raster(raster, w, h, x, y, width, height, rotation, interpolate, context, slave);
   }
 }
@@ -231,7 +231,7 @@ double REagerGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext cont
 void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (slave != nullptr) {
+  if (!isProxy && slave != nullptr) {
     if (slave->textUTF8 != nullptr) {
       slave->textUTF8(at.x, at.y, text, rotation, heightAdjustment, context, slave);
     } else if (slave->text != nullptr) {

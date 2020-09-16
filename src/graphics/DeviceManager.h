@@ -27,15 +27,19 @@ namespace graphics {
 
 class DeviceManager {
 private:
+  Ptr<MasterDevice> proxyDevice;
   std::stack<Ptr<MasterDevice>> deviceStack;
   static Ptr<DeviceManager> instance;
 
-  DeviceManager() = default;
+  DeviceManager();
+  Ptr<MasterDevice> createProxyDevice();
+  void initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters, bool inMemory, bool isProxy);
 
 public:
   void initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters, bool inMemory);
   void restartLast();
   void shutdownLast();
+  Ptr<MasterDevice> getProxy();
   Ptr<MasterDevice> getActive();
 
   static Ptr<DeviceManager> getInstance();

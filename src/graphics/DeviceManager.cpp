@@ -19,13 +19,39 @@
 
 #include <iostream>
 
+#include "ScopeProtector.h"
+#include "Evaluator.h"
+#include "../RStuff/Conversion.h"
+
 namespace graphics {
+
+namespace {
+
+const auto PROXY_PARAMETERS = ScreenParameters{Size{3840, 2160}, 75};
+
+}  // anonymous
 
 Ptr<DeviceManager> DeviceManager::instance = Ptr<DeviceManager>();
 
-void DeviceManager::initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters, bool inMemory) {
-  auto newDevice = makePtr<MasterDevice>(snapshotDirectory, screenParameters, deviceStack.size(), inMemory);
+DeviceManager::DeviceManager() {
+  proxyDevice = createProxyDevice();
+}
+
+Ptr<MasterDevice> DeviceManager::createProxyDevice() {
+  ScopeProtector protector;
+  auto pathSEXP = Evaluator::evaluate(".jetbrains$createSnapshotGroup()", &protector);
+  auto proxyDirectory = stringEltUTF8(pathSEXP, 0);
+  initNew(proxyDirectory, PROXY_PARAMETERS, /* inMemory */ true, /* isProxy */ true);
+  return deviceStack.top();
+}
+
+void DeviceManager::initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters, bool inMemory, bool isProxy) {
+  auto newDevice = makePtr<MasterDevice>(snapshotDirectory, screenParameters, deviceStack.size(), inMemory, isProxy);
   deviceStack.push(newDevice);
+}
+
+void DeviceManager::initNew(const std::string &snapshotDirectory, ScreenParameters screenParameters, bool inMemory) {
+  initNew(snapshotDirectory, screenParameters, inMemory, /* isProxy */ false);
 }
 
 void DeviceManager::restartLast() {
@@ -44,6 +70,10 @@ void DeviceManager::shutdownLast() {
   } else {
     std::cerr << "DeviceManager::shutdownLast(): nothing to shutdown. Ignored\n";
   }
+}
+
+Ptr<MasterDevice> DeviceManager::getProxy() {
+  return proxyDevice;
 }
 
 Ptr<MasterDevice> DeviceManager::getActive() {

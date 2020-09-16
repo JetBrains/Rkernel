@@ -43,6 +43,7 @@ class MasterDevice {
   bool isNextGgPlot;
   int deviceNumber;
   bool inMemory;
+  bool isProxy;
 
   pGEDevDesc masterDeviceDescriptor;
 
@@ -55,7 +56,7 @@ class MasterDevice {
   bool commitByNumber(int number, bool withRescale, ScreenParameters newParameters);
 
 public:
-  MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory);
+  MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory, bool isProxy);
 
   bool hasCurrentDevice();
   Ptr<REagerGraphicsDevice> getCurrentDevice();
