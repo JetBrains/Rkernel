@@ -311,9 +311,6 @@ bool MasterDevice::commitByNumber(int number, bool withRescale, ScreenParameters
   // that's why we should re-enable it manually here
   masterDeviceDescriptor->recordGraphics = TRUE;
 
-  if (withRescale) {
-    currentScreenParameters = newParameters;
-  }
   auto& deviceInfo = currentDeviceInfos[number];
   auto device = deviceInfo.device;
   if (!device) {

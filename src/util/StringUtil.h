@@ -22,6 +22,7 @@
 #include <cstring>
 #include <vector>
 #include <sstream>
+#include <unordered_set>
 
 inline bool startsWith(std::string const& s, const char* t) {
   return !strncmp(s.c_str(), t, strlen(t));

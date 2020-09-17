@@ -27,7 +27,7 @@ namespace graphics {
 
 namespace {
 
-const auto PROXY_PARAMETERS = ScreenParameters{Size{3840, 2160}, 75};
+const auto PROXY_PARAMETERS = ScreenParameters{Size{3840, 2160}, 72};
 
 }  // anonymous
 

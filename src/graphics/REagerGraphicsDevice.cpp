@@ -25,7 +25,29 @@
 #include "InitHelper.h"
 #include "SnapshotUtil.h"
 
+#include "actions/CircleAction.h"
+#include "actions/ClipAction.h"
+#include "actions/LineAction.h"
+#include "actions/PolygonAction.h"
+#include "actions/PolylineAction.h"
+#include "actions/RectangleAction.h"
+#include "actions/TextAction.h"
+
 namespace graphics {
+
+namespace {
+
+const auto DEFAULT_RESOLUTION = 72;
+
+Stroke extractStroke(pGEcontext context) {
+  return Stroke{context->lwd / DEFAULT_RESOLUTION, Color(context->col)};
+}
+
+double extractFontSize(pGEcontext context) {
+  return context->ps * context->cex / DEFAULT_RESOLUTION;
+}
+
+}  // anonymous
 
 REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber,
                                            int snapshotVersion, ScreenParameters parameters, bool isProxy)
@@ -86,6 +108,7 @@ void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext co
   if (!isProxy && slave != nullptr) {
     slave->circle(center.x, center.y, radius, context, slave);
   }
+  record<CircleAction>(normalize(center), normalize(radius), extractStroke(context), Color(context->fill));
 }
 
 void REagerGraphicsDevice::clip(Point from, Point to) {
@@ -93,6 +116,7 @@ void REagerGraphicsDevice::clip(Point from, Point to) {
   if (!isProxy && slave != nullptr) {
     slave->clip(from.x, to.x, from.y, to.y, slave);
   }
+  record<ClipAction>(normalize(Rectangle::make(from, to)));
 }
 
 void REagerGraphicsDevice::close() {
@@ -105,6 +129,7 @@ void REagerGraphicsDevice::drawLine(Point from, Point to, pGEcontext context) {
   if (!isProxy && slave != nullptr) {
     slave->line(from.x, from.y, to.x, to.y, context, slave);
   }
+  record<LineAction>(normalize(from), normalize(to), extractStroke(context));
 }
 
 MetricInfo REagerGraphicsDevice::metricInfo(int character, pGEcontext context) {
@@ -138,6 +163,7 @@ void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext c
   if (!isProxy && slave != nullptr) {
     slave->polygon(n, x, y, context, slave);
   }
+  record<PolygonAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->fill));
 }
 
 void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext context) {
@@ -146,6 +172,7 @@ void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext 
   if (!isProxy && slave != nullptr) {
     slave->polyline(n, x, y, context, slave);
   }
+  record<PolylineAction>(createNormalizedPoints(n, x, y), extractStroke(context));
 }
 
 void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
@@ -154,6 +181,7 @@ void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
   if (!isProxy && slave != nullptr) {
     slave->rect(from.x, from.y, to.x, to.y, context, slave);
   }
+  record<RectangleAction>(normalize(Rectangle::make(from, to)), extractStroke(context), Color(context->fill));
 }
 
 void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, Rboolean winding, pGEcontext context)
@@ -163,6 +191,7 @@ void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, 
   if (!isProxy && slave != nullptr) {
     slave->path(x, y, npoly, nper, winding, context, slave);
   }
+  // TODO: record
 }
 
 void REagerGraphicsDevice::drawRaster(unsigned int *raster,
@@ -181,6 +210,7 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
   if (!isProxy && slave != nullptr) {
     slave->raster(raster, w, h, x, y, width, height, rotation, interpolate, context, slave);
   }
+  // TODO: record
 }
 
 Rectangle REagerGraphicsDevice::drawingArea() {
@@ -238,6 +268,8 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
       slave->text(at.x, at.y, text, rotation, heightAdjustment, context, slave);
     }
   }
+  record<TextAction>(text, normalize(at), rotation, heightAdjustment, context->fontfamily,
+                     extractFontSize(context), Color(context->col));
 }
 
 bool REagerGraphicsDevice::dump() {
@@ -253,6 +285,10 @@ void REagerGraphicsDevice::rescale(SnapshotType newType, ScreenParameters newPar
   parameters = newParameters;
   snapshotVersion++;
   hasDumped = false;
+}
+
+const std::vector<Ptr<Action>>& REagerGraphicsDevice::recordedActions() {
+  return actions;
 }
 
 bool REagerGraphicsDevice::isOnNewPage() {
@@ -280,6 +316,29 @@ void REagerGraphicsDevice::replayWithCommand(const std::string &command) {
     Rf_selectDevice(Rf_ndevNumber(slave));
     Evaluator::evaluate(command);
   }
+}
+
+std::vector<Point> REagerGraphicsDevice::createNormalizedPoints(int n, const double* xs, const double* ys) {
+  auto points = std::vector<Point>();
+  points.reserve(n);
+  for (auto i = 0; i < n; i++) {
+    auto point = Point{xs[i], ys[i]};
+    points.push_back(normalize(point));
+  }
+  return points;
+}
+
+Rectangle REagerGraphicsDevice::normalize(Rectangle rectangle) {
+  return Rectangle::make(normalize(rectangle.from), normalize(rectangle.to));
+}
+
+double REagerGraphicsDevice::normalize(double coordinate) {
+  auto resolution = parameters.resolution > 0 ? parameters.resolution : DEFAULT_RESOLUTION;
+  return coordinate / resolution;
+}
+
+Point REagerGraphicsDevice::normalize(Point point) {
+  return Point{normalize(point.x), normalize(point.y)};
 }
 
 }  // graphics

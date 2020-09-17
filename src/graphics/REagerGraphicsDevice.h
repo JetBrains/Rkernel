@@ -31,6 +31,7 @@
 #include "Rectangle.h"
 #include "SlaveDevice.h"
 #include "SnapshotType.h"
+#include "actions/Action.h"
 
 namespace graphics {
 
@@ -54,11 +55,22 @@ private:
   std::string snapshotDirectory;
   ScreenParameters parameters;
   Ptr<SlaveDevice> slaveDevice;
+  std::vector<Ptr<Action>> actions;
 
   Ptr<SlaveDevice> initializeSlaveDevice();
   void shutdownSlaveDevice();
   pDevDesc getSlave();
   void replayWithCommand(const std::string& command);
+  std::vector<Point> createNormalizedPoints(int n, const double* xs, const double* ys);
+  Rectangle normalize(Rectangle rectangle);
+  double normalize(double coordinate);
+  Point normalize(Point point);
+
+  template<typename TAction, typename ...TArgs>
+  void record(TArgs &&...args) {
+    auto action = makePtr<TAction>(std::forward<TArgs>(args)...);
+    actions.push_back(action);
+  }
 
 public:
   REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, int snapshotVersion,
@@ -94,6 +106,7 @@ public:
   void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context);
   bool dump();
   void rescale(SnapshotType newType, ScreenParameters newParameters);
+  const std::vector<Ptr<Action>>& recordedActions();
   bool isOnNewPage();
   bool isBlank();
   void replay();
