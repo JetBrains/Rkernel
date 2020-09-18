@@ -53,7 +53,12 @@ REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int de
                                            int snapshotVersion, ScreenParameters parameters, bool isProxy)
     : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
       snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
-      snapshotType(SnapshotType::NORMAL), hasDumped(false), isProxy(isProxy), isPlotOnNewPage(false) { getSlave(); }
+      snapshotType(SnapshotType::NORMAL), hasDumped(false), isProxy(isProxy), isPlotOnNewPage(false)
+{
+  clippingArea = normalize(Rectangle::make(Point{0.0, 0.0}, parameters.size.toPoint()));
+  record<ClipAction>(clippingArea);
+  getSlave();
+}
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
@@ -116,7 +121,11 @@ void REagerGraphicsDevice::clip(Point from, Point to) {
   if (!isProxy && slave != nullptr) {
     slave->clip(from.x, to.x, from.y, to.y, slave);
   }
-  record<ClipAction>(normalize(Rectangle::make(from, to)));
+  auto newArea = normalize(Rectangle::make(from, to));
+  if (!isClose(clippingArea, newArea)) {
+    record<ClipAction>(newArea);
+    clippingArea = newArea;
+  }
 }
 
 void REagerGraphicsDevice::close() {

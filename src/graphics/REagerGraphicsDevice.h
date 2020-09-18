@@ -56,6 +56,7 @@ private:
   ScreenParameters parameters;
   Ptr<SlaveDevice> slaveDevice;
   std::vector<Ptr<Action>> actions;
+  Rectangle clippingArea;
 
   Ptr<SlaveDevice> initializeSlaveDevice();
   void shutdownSlaveDevice();
