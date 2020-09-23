@@ -282,7 +282,6 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     rDebugger.bottomContext = currentCallContext;
     if (isDebug) {
       RI->onExit.invokeUnsafeInEnv(getEnvironment(currentCallContext), RI->jetbrainsDebuggerDisable.lang());
-      rDebugger.enable();
     }
     for (int i = 0; i < length; ++i) {
       SEXP expr = exprs[i];
@@ -290,7 +289,9 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
       PROTECT(R_Srcref = getSrcref(srcrefs, i));
       SEXP value;
       if (isDebug) {
+        rDebugger.enable();
         value = rDebugger.doStep(expr, env, R_Srcref);
+        rDebugger.disable();
       } else {
         value = Rf_eval(expr, env);
       }
@@ -299,12 +300,12 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
       if (withEcho && R_Visible) {
         SEXP newEnv, quoted;
         visible = true;
-        rDebugger.disable();
         PROTECT(newEnv = RI->newEnv.invokeUnsafeInEnv(env, named("parent", env)));
         Rf_defineVar(RI->xSymbol, value, newEnv);
         SEXP printExpr = Rf_isFunction(value) && IS_S4_OBJECT(value) ? RI->basePrintDefaultXExpr : RI->basePrintXExpr;
         rDebugger.enable();
         Rf_eval(printExpr, newEnv);
+        rDebugger.disable();
         UNPROTECT(1);
       }
       if (setLastValue) {
