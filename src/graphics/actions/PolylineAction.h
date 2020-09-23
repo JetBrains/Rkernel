@@ -6,6 +6,7 @@
 
 #include "Action.h"
 #include "../Point.h"
+#include "../Color.h"
 #include "../Stroke.h"
 #include "../../util/StringUtil.h"
 
@@ -15,9 +16,11 @@ class PolylineAction : public Action {
 private:
   std::vector<Point> points;  // inches
   Stroke stroke;
+  Color color;
 
 public:
-  PolylineAction(std::vector<Point> points, Stroke stroke) : points(std::move(points)), stroke(stroke) {}
+  PolylineAction(std::vector<Point> points, Stroke stroke, Color color)
+    : points(std::move(points)), stroke(stroke), color(color) {}
 
   ActionKind getKind() const override {
     return ActionKind::POLYLINE;
@@ -25,7 +28,7 @@ public:
 
   std::string toString() const override {
     auto sout = std::ostringstream();
-    sout << "PolylineAction(points: [" << joinToString(points) << "], stroke: " << stroke << ")";
+    sout << "PolylineAction(points: [" << joinToString(points) << "], stroke: " << stroke << ", color: " << color << ")";
     return sout.str();
   }
 
@@ -35,6 +38,10 @@ public:
 
   Stroke getStroke() const {
     return stroke;
+  }
+
+  Color getColor() const {
+    return color;
   }
 };
 

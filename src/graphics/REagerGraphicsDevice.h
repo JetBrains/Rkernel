@@ -101,6 +101,7 @@ public:
   Rectangle drawingArea();
   ScreenParameters screenParameters();
   ScreenParameters logicScreenParameters();
+  Size logicSizeInInches();
   int currentVersion();
   int currentResolution();
   double widthOfStringUtf8(const char* text, pGEcontext context);

@@ -19,7 +19,8 @@
 #define RWRAPPER_POINT_H
 
 #include <iostream>
-#include <cmath>
+
+#include "Arithmetic.h"
 
 namespace graphics {
 
@@ -61,10 +62,6 @@ inline double distance(Point from, Point to) {
   auto dx = from.x - to.x;
   auto dy = from.y - to.y;
   return sqrt(dx * dx + dy * dy);
-}
-
-inline bool isClose(double x, double y, double epsilon = 1e-3) {
-  return fabs(x - y) < epsilon;
 }
 
 inline bool isClose(Point a, Point b, double epsilon = 1e-3) {

@@ -40,11 +40,12 @@ namespace {
 const auto DEFAULT_RESOLUTION = 72;
 
 Stroke extractStroke(pGEcontext context) {
-  return Stroke{context->lwd / DEFAULT_RESOLUTION, Color(context->col)};
+  return Stroke{context->lwd / DEFAULT_RESOLUTION};
 }
 
-double extractFontSize(pGEcontext context) {
-  return context->ps * context->cex / DEFAULT_RESOLUTION;
+Font extractFont(pGEcontext context) {
+  auto fontSize = context->ps * context->cex / DEFAULT_RESOLUTION;
+  return Font{context->fontfamily, fontSize};
 }
 
 }  // anonymous
@@ -113,7 +114,7 @@ void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext co
   if (!isProxy && slave != nullptr) {
     slave->circle(center.x, center.y, radius, context, slave);
   }
-  record<CircleAction>(normalize(center), normalize(radius), extractStroke(context), Color(context->fill));
+  record<CircleAction>(normalize(center), normalize(radius), extractStroke(context), Color(context->col), Color(context->fill));
 }
 
 void REagerGraphicsDevice::clip(Point from, Point to) {
@@ -138,7 +139,7 @@ void REagerGraphicsDevice::drawLine(Point from, Point to, pGEcontext context) {
   if (!isProxy && slave != nullptr) {
     slave->line(from.x, from.y, to.x, to.y, context, slave);
   }
-  record<LineAction>(normalize(from), normalize(to), extractStroke(context));
+  record<LineAction>(normalize(from), normalize(to), extractStroke(context), Color(context->col));
 }
 
 MetricInfo REagerGraphicsDevice::metricInfo(int character, pGEcontext context) {
@@ -172,7 +173,7 @@ void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext c
   if (!isProxy && slave != nullptr) {
     slave->polygon(n, x, y, context, slave);
   }
-  record<PolygonAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->fill));
+  record<PolygonAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col), Color(context->fill));
 }
 
 void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext context) {
@@ -181,7 +182,7 @@ void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext 
   if (!isProxy && slave != nullptr) {
     slave->polyline(n, x, y, context, slave);
   }
-  record<PolylineAction>(createNormalizedPoints(n, x, y), extractStroke(context));
+  record<PolylineAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col));
 }
 
 void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
@@ -190,7 +191,7 @@ void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
   if (!isProxy && slave != nullptr) {
     slave->rect(from.x, from.y, to.x, to.y, context, slave);
   }
-  record<RectangleAction>(normalize(Rectangle::make(from, to)), extractStroke(context), Color(context->fill));
+  record<RectangleAction>(normalize(Rectangle::make(from, to)), extractStroke(context), Color(context->col), Color(context->fill));
 }
 
 void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, Rboolean winding, pGEcontext context)
@@ -244,6 +245,10 @@ ScreenParameters REagerGraphicsDevice::logicScreenParameters() {
   return parameters;
 }
 
+Size REagerGraphicsDevice::logicSizeInInches() {
+  return Size{normalize(parameters.size.width), normalize(parameters.size.height)};
+}
+
 int REagerGraphicsDevice::currentVersion() {
   return snapshotVersion;
 }
@@ -277,8 +282,7 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
       slave->text(at.x, at.y, text, rotation, heightAdjustment, context, slave);
     }
   }
-  record<TextAction>(text, normalize(at), rotation, heightAdjustment, context->fontfamily,
-                     extractFontSize(context), Color(context->col));
+  record<TextAction>(text, normalize(at), rotation, heightAdjustment, extractFont(context), Color(context->col));
 }
 
 bool REagerGraphicsDevice::dump() {

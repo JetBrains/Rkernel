@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "Action.h"
+#include "../Color.h"
 #include "../Stroke.h"
 #include "../Rectangle.h"
 
@@ -13,10 +14,12 @@ class RectangleAction : public Action {
 private:
   Rectangle rectangle;  // inches
   Stroke stroke;
+  Color color;
   Color fill;
 
 public:
-  RectangleAction(Rectangle rectangle, Stroke stroke, Color fill) : rectangle(rectangle), stroke(stroke), fill(fill) {}
+  RectangleAction(Rectangle rectangle, Stroke stroke, Color color, Color fill)
+    : rectangle(rectangle), stroke(stroke), color(color), fill(fill) {}
 
   ActionKind getKind() const override {
     return ActionKind::RECTANGLE;
@@ -24,7 +27,8 @@ public:
 
   std::string toString() const override {
     auto sout = std::ostringstream();
-    sout << "RectangleAction(rectangle: " << rectangle << ", stroke: " << stroke << ", fill: " << fill << ")";
+    sout << "RectangleAction(rectangle: " << rectangle << ", stroke: " << stroke
+         << ", color: " << color << ", fill: " << fill << ")";
     return sout.str();
   }
 
@@ -34,6 +38,10 @@ public:
 
   Stroke getStroke() const {
     return stroke;
+  }
+
+  Color getColor() const {
+    return color;
   }
 
   Color getFill() const {

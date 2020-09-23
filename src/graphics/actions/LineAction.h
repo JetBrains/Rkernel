@@ -5,6 +5,7 @@
 
 #include "Action.h"
 #include "../Point.h"
+#include "../Color.h"
 #include "../Stroke.h"
 
 namespace graphics {
@@ -14,9 +15,10 @@ private:
   Point from;  // inches
   Point to;  // inches
   Stroke stroke;
+  Color color;
 
 public:
-  LineAction(Point from, Point to, Stroke stroke) : from(from), to(to), stroke(stroke) {}
+  LineAction(Point from, Point to, Stroke stroke, Color color) : from(from), to(to), stroke(stroke), color(color) {}
 
   ActionKind getKind() const override {
     return ActionKind::LINE;
@@ -24,7 +26,7 @@ public:
 
   std::string toString() const override {
     auto sout = std::ostringstream();
-    sout << "LineAction(from: " << from << ", to: " << to << ", stroke: " << stroke << ")";
+    sout << "LineAction(from: " << from << ", to: " << to << ", stroke: " << stroke << ", color: " << color << ")";
     return sout.str();
   }
 
@@ -38,6 +40,10 @@ public:
 
   Stroke getStroke() const {
     return stroke;
+  }
+
+  Color getColor() const {
+    return color;
   }
 };
 

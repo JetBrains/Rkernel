@@ -4,7 +4,9 @@
 #include <sstream>
 
 #include "Action.h"
+#include "../Font.h"
 #include "../Point.h"
+#include "../Color.h"
 
 namespace graphics {
 
@@ -14,14 +16,13 @@ private:
   Point position;  // inches
   double angle;  // degrees
   double anchor;  // [0.0, 1.0]
-  std::string fontName;  // may be empty
-  double fontSize;  // inches (multiple by 72 to get points)
+  Font font;
   Color color;
 
 public:
-  TextAction(std::string text, Point position, double angle, double anchor, std::string fontName, double fontSize, Color color)
+  TextAction(std::string text, Point position, double angle, double anchor, Font font, Color color)
     : text(std::move(text)), position(position), angle(angle), anchor(anchor),
-      fontName(std::move(fontName)), fontSize(fontSize), color(color) {}
+      font(std::move(font)), color(color) {}
 
   ActionKind getKind() const override {
     return ActionKind::TEXT;
@@ -30,8 +31,7 @@ public:
   std::string toString() const override {
     auto sout = std::ostringstream();
     sout << "TextAction(text: '" << text << "', position: " << position << ", angle: " << angle
-         << ", anchor: " << anchor << ", fontName: '" << fontName << "'"
-         << ", fontSize: " << fontSize << ", color: " << color << ")";
+         << ", anchor: " << anchor << ", font: " << font << ", color: " << color << ")";
     return sout.str();
   }
 
@@ -51,12 +51,8 @@ public:
     return anchor;
   }
 
-  const std::string& getFontName() const {
-    return fontName;
-  }
-
-  double getFontSize() const {
-    return fontSize;
+  const Font& getFont() const {
+    return font;
   }
 
   Color getColor() const {

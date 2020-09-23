@@ -5,6 +5,7 @@
 
 #include "Action.h"
 #include "../Point.h"
+#include "../Color.h"
 #include "../Stroke.h"
 
 namespace graphics {
@@ -14,11 +15,12 @@ private:
   Point center;  // inches
   double radius;  // inches
   Stroke stroke;
+  Color color;
   Color fill;
 
 public:
-  CircleAction(Point center, double radius, Stroke stroke, Color fill)
-    : center(center), radius(radius), stroke(stroke), fill(fill) {}
+  CircleAction(Point center, double radius, Stroke stroke, Color color, Color fill)
+    : center(center), radius(radius), stroke(stroke), color(color), fill(fill) {}
 
   ActionKind getKind() const override {
     return ActionKind::CIRCLE;
@@ -27,7 +29,7 @@ public:
   std::string toString() const override {
     auto sout = std::ostringstream();
     sout << "CircleAction(center: " << center << ", radius: " << radius
-         << ", stroke: " << stroke << ", fill: " << fill << ")";
+         << ", stroke: " << stroke << ", color: " << color << ", fill: " << fill << ")";
     return sout.str();
   }
 
@@ -41,6 +43,10 @@ public:
 
   Stroke getStroke() const {
     return stroke;
+  }
+
+  Color getColor() const {
+    return color;
   }
 
   Color getFill() const {
