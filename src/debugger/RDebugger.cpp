@@ -408,6 +408,7 @@ void RDebugger::doHandleException(SEXP e) {
 }
 
 std::vector<RDebugger::ContextDump> RDebugger::getContextDumpErr() {
+  ScopedAssign<Rboolean> with(R_interrupts_suspended, TRUE);
   SEXP rho = R_GlobalEnv;
   RContext* ctx = getGlobalContext();
   while (ctx != nullptr) {

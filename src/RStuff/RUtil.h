@@ -31,6 +31,7 @@
 #include <unordered_set>
 #include "../util/StringUtil.h"
 #include "../util/Finally.h"
+#include "RInterrupt.h"
 
 const int DEFAULT_WIDTH = 80;
 const int R_MIN_WIDTH_OPT = 10;
@@ -81,13 +82,18 @@ inline std::string evalAndGetPrintedValueWithLimit(SEXP expr, int maxLength, boo
   SHIELD(expr);
   std::string result;
   trimmed = false;
+  bool wasAsyncInterrupt = false;
+  ScopedAssign<std::function<void()>> withInterruptHandler(asyncInterruptHandler, [&] {
+    R_interrupts_pending = true;
+    wasAsyncInterrupt = true;
+  }, asyncInterruptHandlerMutex);
   try {
     WithOutputHandler handler([&](const char *s, size_t c, OutputType type) {
       if (type == STDOUT) {
         if (result.size() + c > maxLength) {
           trimmed = true;
           result.insert(result.end(), s, s + (maxLength - result.size()));
-          RI->stop(RI->errorCondition("", named("class", "printedValueWithLimitOverflow")));
+          R_interrupts_pending = true;
         } else {
           result.insert(result.end(), s, s + c);
         }
@@ -95,11 +101,10 @@ inline std::string evalAndGetPrintedValueWithLimit(SEXP expr, int maxLength, boo
     });
     WithOption option("width", DEFAULT_WIDTH);
     safeEval(expr, R_GlobalEnv);
-  } catch (RError const& e) {
-    if (!Rf_inherits(e.getRError(), "printedValueWithLimitOverflow")) {
-      throw;
-    }
+  } catch (RInterruptedException const&) {
   }
+  R_interrupts_pending = false;
+  if (wasAsyncInterrupt) throw RInterruptedException();
   fixUTF8Tail(result);
   return result;
 }

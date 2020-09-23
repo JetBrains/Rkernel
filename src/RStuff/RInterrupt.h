@@ -15,37 +15,15 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#ifndef RWRAPPER_SCOPED_ASSIGN_H
-#define RWRAPPER_SCOPED_ASSIGN_H
+#ifndef RWRAPPER_R_INTERRUPT_H
+#define RWRAPPER_R_INTERRUPT_H
 
 #include <mutex>
+#include <functional>
 
-template <typename T>
-class ScopedAssign {
-public:
-  ScopedAssign(T& obj, T const& newValue, std::mutex &m) : obj(obj), oldValue(newValue), mutex(&m) {
-    std::unique_lock<std::mutex> lock(m);
-    std::swap(obj, oldValue);
-  }
+extern std::mutex asyncInterruptHandlerMutex;
+extern std::function<void()> asyncInterruptHandler;
 
-  ScopedAssign(T& obj, T const& newValue) : obj(obj), oldValue(newValue), mutex(nullptr) {
-    std::swap(obj, oldValue);
-  }
+void asyncInterrupt();
 
-  ScopedAssign(ScopedAssign const&) = delete;
-
-  ~ScopedAssign() {
-    if (mutex == nullptr) {
-      std::swap(obj, oldValue);
-    } else {
-      std::unique_lock<std::mutex> lock(*mutex);
-      std::swap(obj, oldValue);
-    }
-  }
-private:
-  T& obj;
-  T oldValue;
-  std::mutex *mutex;
-};
-
-#endif //RWRAPPER_SCOPED_ASSIGN_H
+#endif // RWRAPPER_RINTERRUPT_H

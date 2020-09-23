@@ -103,7 +103,7 @@ int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHist
   }
   strcpy((char*)buf, s.c_str());
   return s.size();
-  CPP_END_VOID
+  CPP_END_VOID_NOINTR
   return 0;
 }
 
@@ -156,7 +156,7 @@ void myWriteConsoleEx(const char* buf, int len, int type) {
   CPP_BEGIN
   std::unique_lock<std::mutex> lock(outputMutex);
   myWriteConsoleExImpl(buf, len, type);
-  CPP_END_VOID
+  CPP_END_VOID_NOINTR
 }
 
 void myWriteConsoleExToSpecificHandler(const char* buf, int len, int type, int id) {
@@ -164,7 +164,7 @@ void myWriteConsoleExToSpecificHandler(const char* buf, int len, int type, int i
   std::unique_lock<std::mutex> lock(outputMutex);
   if (id != currentHandlerId) return;
   myWriteConsoleExImpl(buf, len, type);
-  CPP_END_VOID
+  CPP_END_VOID_NOINTR
 }
 
 void mySuicide(const char* message) {

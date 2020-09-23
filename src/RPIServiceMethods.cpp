@@ -78,7 +78,7 @@ Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerW
 }
 
 Status RPIServiceImpl::quit(ServerContext*, const google::protobuf::Empty*, google::protobuf::Empty*) {
-  R_interrupts_pending = true;
+  asyncInterrupt();
   eventLoopExecute([=] {
     R_interrupts_pending = false;
     WithOutputHandler with(replOutputHandler);

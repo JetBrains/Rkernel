@@ -52,7 +52,7 @@ void initEventLoop() {
       }
     }
     runImmediateTasks();
-    CPP_END_VOID
+    CPP_END_VOID_NOINTR
   }, ACTIVITY);
 }
 

@@ -34,7 +34,7 @@ bool executeWithLater(std::function<void()> const& f);
 static LRESULT CALLBACK dummyWndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   CPP_BEGIN
   runImmediateTasks();
-  CPP_END_VOID
+  CPP_END_VOID_NOINTR
   return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
