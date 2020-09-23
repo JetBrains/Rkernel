@@ -42,7 +42,7 @@ public:
 private:
   static const char* getErrorMessage(SEXP e) {
     ShieldSEXP expr = Rf_lang2(Rf_install("conditionMessage"), e);
-    ScopedAssign<Rboolean> with(R_interrupts_suspended, TRUE);
+    ScopedAssign<Rboolean> with(R_interrupts_suspended, (Rboolean)TRUE);
     return asStringUTF8(Rf_eval(expr, R_GlobalEnv));
   }
 };
