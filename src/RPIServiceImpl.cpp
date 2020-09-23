@@ -444,7 +444,7 @@ void RPIServiceImpl::executeOnMainThread(std::function<void()> const& f, ServerC
       int expected = STATE_RUNNING;
       if (state.compare_exchange_strong(expected, STATE_INTERRUPTING)) {
         cancelled = true;
-        R_interrupts_pending = true;
+        asyncInterrupt();
         state.store(STATE_INTERRUPTED);
         condVar.notify_one();
       }
@@ -483,7 +483,7 @@ public:
           break;
         }
         if (!rpcHappened) {
-          R_interrupts_pending = 1;
+          asyncInterrupt();
           eventLoopExecute([]{ RI->q(); });
           time = std::chrono::steady_clock::now() + std::chrono::seconds(5);
           condVar.wait_until(lock, time, [&] { return termination || std::chrono::steady_clock::now() >= time; });

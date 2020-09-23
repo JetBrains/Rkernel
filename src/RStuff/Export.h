@@ -28,7 +28,7 @@ LibExtern int R_interrupts_pending;
   SEXP rwrOutValue = R_NilValue; \
   try {
 
-#define CPP_END_VOID                       \
+#define CPP_END_VOID_NOINTR                \
   } catch (RInterruptedException const&) { \
     R_interrupts_pending = 1;              \
   } catch (RError const& e) {              \
@@ -49,7 +49,9 @@ LibExtern int R_interrupts_pending;
     Rf_eval(expr, R_BaseEnv);              \
   } else if (rwrOutType == 2) {            \
     ptr_R_ContinueUnwind(rwrOutValue);     \
-  }                                        \
+  }
+
+#define CPP_END_VOID CPP_END_VOID_NOINTR \
   R_CheckUserInterrupt();
 
 #define CPP_END CPP_END_VOID \

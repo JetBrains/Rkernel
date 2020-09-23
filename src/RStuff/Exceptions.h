@@ -17,9 +17,14 @@
 #ifndef RWRAPPER_R_STUFF_EXCEPTIONS_H
 #define RWRAPPER_R_STUFF_EXCEPTIONS_H
 
+#include "../util/ScopedAssign.h"
+#include "MySEXP.h"
 #include <exception>
 #include <string>
-#include "MySEXP.h"
+
+extern "C" {
+LibExtern Rboolean R_interrupts_suspended;
+}
 
 class RExceptionBase : public std::exception {};
 
@@ -37,6 +42,7 @@ public:
 private:
   static const char* getErrorMessage(SEXP e) {
     ShieldSEXP expr = Rf_lang2(Rf_install("conditionMessage"), e);
+    ScopedAssign<Rboolean> with(R_interrupts_suspended, TRUE);
     return asStringUTF8(Rf_eval(expr, R_GlobalEnv));
   }
 };

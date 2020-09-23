@@ -73,7 +73,8 @@ list(APPEND RWRAPPER_SOURCES
     src/RStuff/Conversion.cpp
     src/Session.cpp
     src/EventLoop.cpp
-    src/CrashReport.cpp)
+    src/CrashReport.cpp
+    src/RStuff/RInterrupt.cpp)
 
 if(WIN32)
     add_definitions(-DNOMINMAX)
