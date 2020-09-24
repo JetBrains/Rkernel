@@ -36,6 +36,7 @@ struct RObjects2 {
   PrSEXP asDouble = baseEnv.getVar("as.double");
   PrSEXP asInteger = baseEnv.getVar("as.integer");
   PrSEXP asLogical = baseEnv.getVar("as.logical");
+  PrSEXP asNumeric = baseEnv.getVar("as.numeric");
   PrSEXP asPOSIXct = baseEnv.getVar("as.POSIXct");
   PrSEXP assign = baseEnv.getVar("assign");
   PrSEXP assignOperator = baseEnv.getVar("<-");
@@ -107,6 +108,7 @@ struct RObjects2 {
   PrSEXP srcfilecopy = baseEnv.getVar("srcfilecopy");
   PrSEXP srcref = baseEnv.getVar("srcref");
   PrSEXP stdErr = baseEnv.getVar("stderr");
+  PrSEXP strtoi = baseEnv.getVar("strtoi");
   PrSEXP stop = baseEnv.getVar("stop");
   PrSEXP subscript = baseEnv.getVar("[");
   PrSEXP substring = baseEnv.getVar("substring");
@@ -153,9 +155,9 @@ struct RObjects2 {
     return VECTOR_ELT(x, 0);
   }
 
-  PrSEXP dplyrAddRowNames = mkLang("dplyr::add_rownames");
+  PrSEXP tibbleRowNamesToColumn = mkLang("tibble::rownames_to_column");
+  PrSEXP tibbleAsTibble = mkLang("tibble::as_tibble");
   PrSEXP dplyrArrange = mkLang("dplyr::arrange");
-  PrSEXP dplyrAsTbl = mkLang("dplyr::as.tbl");
   PrSEXP dplyrDesc = mkLang("dplyr::desc");
   PrSEXP dplyrIsTbl = mkLang("dplyr::is.tbl");
   PrSEXP dplyrTibble = mkLang("dplyr::tibble");

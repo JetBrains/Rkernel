@@ -61,12 +61,18 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
       if (!asBool(RI->isDataFrame(dataFrame))) {
         dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
       }
-      dataFrame = RI->dplyrAsTbl(dataFrame);
+      // `rownames = NA` keep row names
+      dataFrame = RI->tibbleAsTibble(dataFrame, named("rownames", R_NaInt));
     }
-    dataFrame = RI->dplyrAddRowNames(dataFrame, ROW_NAMES_COL);
-    ShieldSEXP rowNamesAsInt = RI->asInteger(RI->doubleSubscript(dataFrame, ROW_NAMES_COL));
-    if (!asBool(RI->any(RI->isNa(rowNamesAsInt)))) {
-      dataFrame = RI->doubleSubscriptAssign(dataFrame, ROW_NAMES_COL, named("value", rowNamesAsInt));
+    dataFrame = RI->tibbleRowNamesToColumn(dataFrame, ROW_NAMES_COL);
+    ShieldSEXP rowNamesColumn = RI->doubleSubscript(dataFrame, ROW_NAMES_COL);
+    PrSEXP rowNamesAsNum = RI->strtoi(rowNamesColumn); // As integer (but not numeric)
+    if (asBool(RI->any(RI->isNa(rowNamesAsNum)))) {
+      rowNamesAsNum = RI->asNumeric(rowNamesColumn); // As numeric
+    }
+    SHIELD(rowNamesAsNum);
+    if (!asBool(RI->any(RI->isNa(rowNamesAsNum)))) {
+      dataFrame = RI->doubleSubscriptAssign(dataFrame, ROW_NAMES_COL, named("value", rowNamesAsNum));
     }
     for (int index : dataFramesCache) {
       if (asBool(RI->identical(dataFrame, persistentRefStorage[index]))) {
