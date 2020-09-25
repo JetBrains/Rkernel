@@ -25,6 +25,8 @@
 #include "SlaveDevice.h"
 #include "SnapshotUtil.h"
 #include "REagerGraphicsDevice.h"
+#include "DeviceManager.h"
+#include "PlotUtil.h"
 
 namespace graphics {
 namespace {
@@ -235,10 +237,11 @@ Ptr<REagerGraphicsDevice> MasterDevice::getDeviceAt(int number) {
   return currentDeviceInfos[number].device;
 }
 
-void MasterDevice::addNewDevice() {
+int MasterDevice::addNewDevice() {
   currentDeviceInfos.emplace_back(DeviceInfo());
   currentSnapshotNumber++;
   isNextGgPlot = false;
+  return int(currentDeviceInfos.size()) - 1;
 }
 
 int MasterDevice::getSnapshotCount() {
@@ -353,6 +356,25 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
 
 std::vector<int> MasterDevice::dumpAllLast() {
   return commitAllLast(false, ScreenParameters{});
+}
+
+Plot MasterDevice::fetchPlot(int number) {
+  const auto& firstDevice = currentDeviceInfos[number].device;
+  const auto& firstActions = firstDevice->recordedActions();
+
+  // Replay plot on the proxy device in order to extrapolate
+  auto proxy = DeviceManager::getInstance()->getProxy();
+  auto proxyNumber = proxy->addNewDevice();
+  InitHelper helper;
+  auto command = SnapshotUtil::makeReplayVariableCommand(deviceNumber, number);
+  Rf_selectDevice(Rf_ndevNumber(proxy->masterDeviceDescriptor->dev));
+  Evaluator::evaluate(command);
+  auto secondDevice = proxy->getDeviceAt(proxyNumber);
+  const auto& secondActions = secondDevice->recordedActions();
+
+  auto firstSize = firstDevice->logicSizeInInches();
+  auto secondSize = secondDevice->logicSizeInInches();
+  return PlotUtil::extrapolate(firstSize, firstActions, secondSize, secondActions);
 }
 
 void MasterDevice::onNewPage() {

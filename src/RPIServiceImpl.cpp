@@ -27,6 +27,12 @@
 #include "graphics/DeviceManager.h"
 #include "graphics/SnapshotUtil.h"
 #include "graphics/Evaluator.h"
+#include "graphics/figures/CircleFigure.h"
+#include "graphics/figures/LineFigure.h"
+#include "graphics/figures/PolygonFigure.h"
+#include "graphics/figures/PolylineFigure.h"
+#include "graphics/figures/RectangleFigure.h"
+#include "graphics/figures/TextFigure.h"
 #include <condition_variable>
 #include <cstdlib>
 #include <cstdio>
@@ -111,6 +117,162 @@ namespace {
     auto content = readWholeFile(path);
     std::remove(path.c_str());
     return content;
+  }
+
+  void fillMessage(Font* message, const graphics::Font& font) {
+    message->set_name(font.name);
+    message->set_size(font.size);
+  }
+
+  void fillMessage(Stroke* message, const graphics::Stroke& stroke) {
+    message->set_width(stroke.width);
+  }
+
+  void fillMessage(AffinePoint* message, const graphics::AffinePoint& point) {
+    message->set_xscale(point.x.scale);
+    message->set_xoffset(point.x.offset);
+    message->set_yscale(point.y.scale);
+    message->set_yoffset(point.y.offset);
+  }
+
+  AffinePoint* createMessage(const graphics::AffinePoint& point) {
+    auto message = new AffinePoint();
+    fillMessage(message, point);
+    return message;
+  }
+
+  void fillMessage(Viewport* message, const graphics::Viewport& viewport) {
+    message->set_allocated_from(createMessage(viewport.from));
+    message->set_allocated_to(createMessage(viewport.to));
+  }
+
+  CircleFigure* createMessage(const graphics::CircleFigure& circle) {
+    auto message = new CircleFigure();
+    message->set_allocated_center(createMessage(circle.getCenter()));
+    message->set_radius(circle.getRadius());
+    message->set_strokeindex(circle.getStrokeIndex());
+    message->set_colorindex(circle.getColorIndex());
+    message->set_fillindex(circle.getFillIndex());
+    return message;
+  }
+
+  LineFigure* createMessage(const graphics::LineFigure& line) {
+    auto message = new LineFigure();
+    message->set_allocated_from(createMessage(line.getFrom()));
+    message->set_allocated_to(createMessage(line.getTo()));
+    message->set_strokeindex(line.getStrokeIndex());
+    message->set_colorindex(line.getColorIndex());
+    return message;
+  }
+
+  PolygonFigure* createMessage(const graphics::PolygonFigure& polygon) {
+    auto message = new PolygonFigure();
+    for (const auto& point : polygon.getPoints()) {
+      auto pointMessage = message->add_point();
+      fillMessage(pointMessage, point);
+    }
+    message->set_strokeindex(polygon.getStrokeIndex());
+    message->set_colorindex(polygon.getColorIndex());
+    message->set_fillindex(polygon.getFillIndex());
+    return message;
+  }
+
+  PolylineFigure* createMessage(const graphics::PolylineFigure& polyline) {
+    auto message = new PolylineFigure();
+    for (const auto& point : polyline.getPoints()) {
+      auto pointMessage = message->add_point();
+      fillMessage(pointMessage, point);
+    }
+    message->set_strokeindex(polyline.getStrokeIndex());
+    message->set_colorindex(polyline.getColorIndex());
+    return message;
+  }
+
+  RectangleFigure* createMessage(const graphics::RectangleFigure& rectangle) {
+    auto message = new RectangleFigure();
+    message->set_allocated_from(createMessage(rectangle.getFrom()));
+    message->set_allocated_to(createMessage(rectangle.getTo()));
+    message->set_strokeindex(rectangle.getStrokeIndex());
+    message->set_colorindex(rectangle.getColorIndex());
+    message->set_fillindex(rectangle.getFillIndex());
+    return message;
+  }
+
+  TextFigure* createMessage(const graphics::TextFigure& text) {
+    auto message = new TextFigure();
+    message->set_text(text.getText());
+    message->set_allocated_position(createMessage(text.getPosition()));
+    message->set_angle(text.getAngle());
+    message->set_anchor(text.getAnchor());
+    message->set_fontindex(text.getFontIndex());
+    message->set_colorindex(text.getColorIndex());
+    return message;
+  }
+
+  template<typename TFigure>
+  auto createMessage(const graphics::Figure& figure) {
+    return createMessage(dynamic_cast<const TFigure&>(figure));
+  }
+
+  void fillMessage(Figure* message, const graphics::Figure& figure) {
+    switch (figure.getKind()) {
+      case graphics::FigureKind::CIRCLE: {
+        message->set_allocated_circle(createMessage<graphics::CircleFigure>(figure));
+        break;
+      }
+      case graphics::FigureKind::LINE: {
+        message->set_allocated_line(createMessage<graphics::LineFigure>(figure));
+        break;
+      }
+      case graphics::FigureKind::POLYGON: {
+        message->set_allocated_polygon(createMessage<graphics::PolygonFigure>(figure));
+        break;
+      }
+      case graphics::FigureKind::POLYLINE: {
+        message->set_allocated_polyline(createMessage<graphics::PolylineFigure>(figure));
+        break;
+      }
+      case graphics::FigureKind::RECTANGLE: {
+        message->set_allocated_rectangle(createMessage<graphics::RectangleFigure>(figure));
+        break;
+      }
+      case graphics::FigureKind::TEXT: {
+        message->set_allocated_text(createMessage<graphics::TextFigure>(figure));
+        break;
+      }
+    }
+  }
+
+  void fillMessage(Layer* message, const graphics::Layer& layer) {
+    message->set_viewportindex(layer.viewportIndex);
+    for (const auto& figure : layer.figures) {
+      auto figureMessage = message->add_figure();
+      fillMessage(figureMessage, *figure);
+    }
+  }
+
+  Plot* createMessage(const graphics::Plot& plot) {
+    auto message = new Plot();
+    for (const auto& font : plot.fonts) {
+      auto fontMessage = message->add_font();
+      fillMessage(fontMessage, font);
+    }
+    for (const auto& color : plot.colors) {
+      message->add_color(color.value);
+    }
+    for (const auto& stroke : plot.strokes) {
+      auto strokeMessage = message->add_stroke();
+      fillMessage(strokeMessage, stroke);
+    }
+    for (const auto& viewport : plot.viewports) {
+      auto viewportMessage = message->add_viewport();
+      fillMessage(viewportMessage, viewport);
+    }
+    for (const auto& layer : plot.layers) {
+      auto layerMessage = message->add_layer();
+      fillMessage(layerMessage, layer);
+    }
+    return message;
   }
 }
 
@@ -220,6 +382,19 @@ Status RPIServiceImpl::graphicsGetSnapshotPath(ServerContext* context, const Gra
       }
       response->set_directory(directory);
       response->set_snapshotname(name);
+    } catch (const std::exception& e) {
+      response->set_message(e.what());
+    }
+  }, context);
+  return Status::OK;
+}
+
+Status RPIServiceImpl::graphicsFetchPlot(ServerContext* context, const Int32Value* request, GraphicsFetchPlotResponse* response) {
+  executeOnMainThread([&] {
+    try {
+      auto active = getActiveDeviceOrThrow();
+      auto plot = active->fetchPlot(request->value());
+      response->set_allocated_plot(createMessage(plot));
     } catch (const std::exception& e) {
       response->set_message(e.what());
     }

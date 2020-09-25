@@ -21,6 +21,7 @@
 #include <string>
 
 #include "Ptr.h"
+#include "Plot.h"
 #include "InitHelper.h"
 #include "ScreenParameters.h"
 #include "REagerGraphicsDevice.h"
@@ -61,7 +62,7 @@ public:
   bool hasCurrentDevice();
   Ptr<REagerGraphicsDevice> getCurrentDevice();
   Ptr<REagerGraphicsDevice> getDeviceAt(int number);
-  void addNewDevice();
+  int addNewDevice();
 
   int getSnapshotCount();
   void recordLast(bool isTriggeredByGgPlot);
@@ -71,6 +72,7 @@ public:
   bool rescaleByNumber(int number, ScreenParameters newParameters);
   bool rescaleByPath(const std::string& parentDirectory, int number, int version, ScreenParameters newParameters);
   std::vector<int> dumpAllLast();
+  Plot fetchPlot(int number);
   void onNewPage();
   void finalize();
   void shutdown();
