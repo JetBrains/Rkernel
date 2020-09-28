@@ -218,29 +218,39 @@ Status RPIServiceImpl::getLoadedShortS4ClassInfos(ServerContext* context, const 
   return Status::OK;
 }
 
-Status RPIServiceImpl::getS4ClassInfo(ServerContext* context, const RRef* request, S4ClassInfo* response) {
+void getS4ClassInfo(const ShieldSEXP &classDef, S4ClassInfo* response) {
+  if (TYPEOF(classDef) != S4SXP) return;
+  response->set_classname(stringEltUTF8(R_do_slot(classDef, toSEXP("className")), 0));
+  response->set_packagename(stringEltUTF8(R_do_slot(classDef, toSEXP("package")), 0));
+  ShieldSEXP slotsList = R_do_slot(classDef, toSEXP("slots"));
+  ShieldSEXP slotsNames = Rf_getAttrib(slotsList, R_NamesSymbol);
+  for (int i = 0; i < slotsNames.length(); ++i) {
+    auto next_slot = response->add_slots();
+    next_slot->set_name(stringEltUTF8(slotsNames, i));
+    next_slot->set_type(stringEltUTF8(VECTOR_ELT(slotsList, i), 0));
+  }
+  ShieldSEXP containsList = R_do_slot(classDef, toSEXP("contains"));
+  for (int i = 0; i < containsList.length(); ++i) {
+    ShieldSEXP superClass = VECTOR_ELT(containsList, i);
+    response->add_superclasses(stringEltUTF8(R_do_slot(classDef, toSEXP("superClass")), 0));
+  }
+
+  response->set_isvirtual(asBool(R_do_slot(classDef, toSEXP("virtual"))));
+}
+
+Status RPIServiceImpl::getS4ClassInfoByObjectName(ServerContext* context, const RRef* request, S4ClassInfo* response) {
   executeOnMainThread([&] {
     ShieldSEXP obj = dereference(*request);
     if (TYPEOF(obj) != S4SXP) return;
     ShieldSEXP className = Rf_getAttrib(obj, R_ClassSymbol);
-    ShieldSEXP result = R_getClassDef_R(className);
-    if (TYPEOF(result) != S4SXP) return;
-    response->set_classname(stringEltUTF8(R_do_slot(result, toSEXP("className")), 0));
-    response->set_packagename(stringEltUTF8(R_do_slot(result, toSEXP("package")), 0));
-    ShieldSEXP slotsList = R_do_slot(result, toSEXP("slots"));
-    ShieldSEXP slotsNames = Rf_getAttrib(slotsList, R_NamesSymbol);
-    for (int i = 0; i < slotsNames.length(); ++i) {
-      auto next_slot = response->add_slots();
-      next_slot->set_name(stringEltUTF8(slotsNames, i));
-      next_slot->set_type(stringEltUTF8(VECTOR_ELT(slotsList, i), 0));
-    }
-    ShieldSEXP containsList = R_do_slot(result, toSEXP("contains"));
-    for (int i = 0; i < containsList.length(); ++i) {
-      ShieldSEXP superClass = VECTOR_ELT(containsList, i);
-      response->add_superclasses(stringEltUTF8(R_do_slot(result, toSEXP("superClass")), 0));
-    }
+    getS4ClassInfo(R_getClassDef_R(className), response);
+  }, context, true);
+  return Status::OK;
+}
 
-    response->set_isvirtual(asBool(R_do_slot(result, toSEXP("virtual"))));
+Status RPIServiceImpl::getS4ClassInfoByClassName(ServerContext* context, const StringValue* request, S4ClassInfo* response) {
+  executeOnMainThread([&] {
+    getS4ClassInfo(R_getClassDef_R(toSEXP(request->value())), response);
   }, context, true);
   return Status::OK;
 }
