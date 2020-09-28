@@ -261,7 +261,6 @@ static SEXP cloneSrcref(SEXP srcref) {
 
 extern "C" {
 void Rf_callToplevelHandlers(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible);
-extern Rboolean R_Visible;
 }
 
 static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
@@ -288,18 +287,20 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
       currentExpr = stringEltUTF8(RI->deparse.invokeUnsafeInEnv(R_BaseEnv, RI->quote.lang(expr)), 0);
       PROTECT(R_Srcref = getSrcref(srcrefs, i));
       SEXP value;
+      bool visible = false;
       if (isDebug) {
         rDebugger.enable();
         value = rDebugger.doStep(expr, env, R_Srcref);
+        visible = *ptr_R_Visible;
         rDebugger.disable();
       } else {
         value = Rf_eval(expr, env);
+        visible = *ptr_R_Visible;
       }
       PROTECT(value);
-      bool visible = false;
-      if (withEcho && R_Visible) {
+      visible = visible && withEcho;
+      if (visible) {
         SEXP newEnv, quoted;
-        visible = true;
         PROTECT(newEnv = RI->newEnv.invokeUnsafeInEnv(env, named("parent", env)));
         Rf_defineVar(RI->xSymbol, value, newEnv);
         SEXP printExpr = Rf_isFunction(value) && IS_S4_OBJECT(value) ? RI->basePrintDefaultXExpr : RI->basePrintXExpr;

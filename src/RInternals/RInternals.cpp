@@ -62,6 +62,9 @@ void initRInternals() {
   R_FunTab = (FUNTAB*)findSymbol("R_FunTab");
   assert(R_FunTab != nullptr);
 
+  ptr_R_Visible = (Rboolean*)findSymbol("R_Visible");
+  assert(ptr_R_Visible != nullptr);
+
   ShieldSEXP versionSymbol = Rf_install("version");
   ShieldSEXP v = Rf_findVarInFrame(R_BaseEnv, versionSymbol);
   if (v.type() != VECSXP) return;
@@ -160,5 +163,7 @@ bool isUnwindAvailable = false;
 R_UnwindProtect_t ptr_R_UnwindProtect = nullptr;
 R_ContinueUnwind_t ptr_R_ContinueUnwind = nullptr;
 R_MakeUnwindCont_t ptr_R_MakeUnwindCont = nullptr;
+
+Rboolean* ptr_R_Visible = nullptr;
 
 #pragma clang diagnostic pop

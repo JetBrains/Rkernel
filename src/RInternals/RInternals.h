@@ -56,6 +56,8 @@ extern R_UnwindProtect_t ptr_R_UnwindProtect;
 extern R_ContinueUnwind_t ptr_R_ContinueUnwind;
 extern R_MakeUnwindCont_t ptr_R_MakeUnwindCont;
 
+extern Rboolean* ptr_R_Visible;
+
 SEXP matchArgs(SEXP formals, SEXP supplied, SEXP call);
 
 #endif //RWRAPPER_RINTERNALS_H
