@@ -231,6 +231,7 @@ options(install.packages.compile.from.source = "always")
 .jetbrains$initGraphicsDevice <<- function(width, height, resolution, in.memory) {
   path <- .jetbrains$createSnapshotGroup()
   .Call(".jetbrains_ther_device_init", path, width, height, resolution, in.memory)
+  path
 }
 
 .jetbrains$findStoredSnapshot <<- function(directory, number) {
