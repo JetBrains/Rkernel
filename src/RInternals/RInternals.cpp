@@ -49,6 +49,10 @@ static void* findSymbol(const char* name) {
 static void* findSymbol(const char* name) {
   return dlsym(RTLD_NEXT, name);
 }
+
+extern "C" {
+extern Rboolean R_Visible;
+}
 #endif
 
 static FUNTAB* R_FunTab;
@@ -62,7 +66,11 @@ void initRInternals() {
   R_FunTab = (FUNTAB*)findSymbol("R_FunTab");
   assert(R_FunTab != nullptr);
 
+#ifdef Win32
   ptr_R_Visible = (Rboolean*)findSymbol("R_Visible");
+#else
+  ptr_R_Visible = &R_Visible;
+#endif
   assert(ptr_R_Visible != nullptr);
 
   ShieldSEXP versionSymbol = Rf_install("version");
