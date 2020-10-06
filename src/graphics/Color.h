@@ -11,6 +11,14 @@ struct Color {
   int value;  // ABGR
 
   explicit Color(int value) : value(value) {}
+
+  static Color getBlack() {
+    return Color(0xff000000);
+  }
+
+  static Color getWhite() {
+    return Color(0xffffffff);
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& out, Color color) {

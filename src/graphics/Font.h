@@ -12,6 +12,10 @@ struct Font {
   std::string name;  // may be empty
   double size;   // inches (multiple by 72 to get points)
   // TODO: other attributes
+
+  static Font getDefault() {
+    return Font{"", 12.0 / 72.0};
+  }
 };
 
 inline std::ostream& operator<<(std::ostream& out, const Font& font) {

@@ -239,6 +239,9 @@ public:
   DifferentialParser(Size firstSize, Size secondSize) : firstSize(firstSize), secondSize(secondSize) {
     clippingAreas.push_back(Rectangle::make(Point{0.0, 0.0}, firstSize.toPoint()));
     viewports.push_back(Viewport::getFullScreen());
+    getOrRegisterColorIndex(Color::getBlack());
+    getOrRegisterColorIndex(Color::getWhite());
+    getOrRegisterFontIndex(Font::getDefault());
   }
 
   void parse(const std::vector<Ptr<Action>>& firstActions, const std::vector<Ptr<Action>>& secondActions) {
