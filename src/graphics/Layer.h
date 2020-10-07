@@ -11,6 +11,7 @@ namespace graphics {
 struct Layer {
   int viewportIndex;
   std::vector<Ptr<Figure>> figures;
+  bool isAxisText;
 };
 
 }  // graphics

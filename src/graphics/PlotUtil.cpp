@@ -48,6 +48,12 @@ AffinePoint extrapolate(Size firstSize, Point firstPoint, Size secondSize, Point
 
 class DifferentialParser {
 private:
+  enum class State {
+    INITIAL,
+    AXIS_LINES,
+    AXIS_TEXT,
+  };
+
   Size firstSize;
   Size secondSize;
 
@@ -58,11 +64,22 @@ private:
   std::vector<Layer> layers;
   std::vector<Font> fonts;
 
+  const LineAction* currentLineAction = nullptr;
+  std::vector<const LineAction*> lineActions;
+  std::vector<int> axisTextLayerIndices;
+  State state = State::INITIAL;
+
   std::vector<Ptr<Figure>> currentFigures;
   int currentViewportIndex = 0;
 
   Ptr<Figure> extrapolate(const Ptr<Action>& firstAction, const Ptr<Action>& secondAction) {
     auto kind = firstAction->getKind();
+    if (state == State::AXIS_LINES && kind != ActionKind::LINE && kind != ActionKind::TEXT) {
+      flushAndSwitchTo(State::INITIAL);
+    }
+    if (state == State::AXIS_TEXT && kind != ActionKind::TEXT) {
+      flushAndSwitchTo(State::INITIAL);
+    }
     switch (kind) {
       case ActionKind::CIRCLE:
         return extrapolate<CircleAction>(firstAction, secondAction);
@@ -103,6 +120,13 @@ private:
   }
 
   Ptr<Figure> extrapolate(const LineAction* firstLine, const LineAction* secondLine) {
+    if (currentViewportIndex == 0 && state == State::INITIAL) {
+      flushAndSwitchTo(State::AXIS_LINES);
+      currentLineAction = firstLine;
+    }
+    if (currentViewportIndex != 0 && state == State::AXIS_LINES) {
+      flushAndSwitchTo(State::INITIAL);
+    }
     auto from = extrapolate(firstLine->getFrom(), secondLine->getFrom());
     auto to = extrapolate(firstLine->getTo(), secondLine->getTo());
     auto strokeIndex = getOrRegisterStrokeIndex(firstLine->getStroke());
@@ -135,7 +159,9 @@ private:
     // If rectangle fills the whole plot with an opaque color, there is no need
     // to paint the previously added figures
     if (currentViewportIndex == 0 && firstRectangle->getFill().isOpaque() && isClose(firstRectangle->getRectangle(), clippingAreas[0])) {
+      axisTextLayerIndices.clear();
       currentFigures.clear();
+      lineActions.clear();
       layers.clear();
     }
 
@@ -143,6 +169,12 @@ private:
   }
 
   Ptr<Figure> extrapolate(const TextAction* firstText, const TextAction* secondText) {
+    if (currentViewportIndex == 0 && state == State::AXIS_LINES) {
+      flushAndSwitchTo(State::AXIS_TEXT);
+    }
+    if (currentViewportIndex != 0 && state == State::AXIS_TEXT) {
+      flushAndSwitchTo(State::INITIAL);
+    }
     auto position = extrapolate(firstText->getPosition(), secondText->getPosition());
     auto fontIndex = getOrRegisterFontIndex(firstText->getFont());
     auto colorIndex = getOrRegisterColorIndex(firstText->getColor());
@@ -169,9 +201,39 @@ private:
     return points;
   }
 
+  bool touchesAnyClippingArea(Point point) {
+    for (const auto& area : clippingAreas) {
+      if (touchesClippingArea(point, area)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static bool touchesClippingArea(Point point, const Rectangle& area) {
+    if (isClose(point.x, area.from.x) || isClose(point.x, area.to.x)) {
+      return point.y > area.from.y && point.y < area.to.y;
+    } else if (isClose(point.y, area.from.y) || isClose(point.y, area.to.y)) {
+      return point.x > area.from.x && point.x < area.to.x;
+    } else {
+      return false;
+    }
+  }
+
+  void flushAndSwitchTo(State newState) {
+    flushCurrentLayer();
+    state = newState;
+  }
+
   void flushCurrentLayer() {
     if (!currentFigures.empty()) {
-      layers.push_back(Layer{currentViewportIndex, std::move(currentFigures)});
+      if (state == State::AXIS_TEXT) {
+        // Note: this is just a candidate.
+        // Real axis labels will be filtered later
+        axisTextLayerIndices.push_back(int(layers.size()));
+        lineActions.push_back(currentLineAction);
+      }
+      layers.push_back(Layer{currentViewportIndex, std::move(currentFigures), /* isAxisText */ false});
       currentFigures = std::vector<Ptr<Figure>>();
     }
   }
@@ -180,6 +242,17 @@ private:
     auto fillIndex = getOrRegisterColorIndex(Color::getWhite());
     auto figure = makePtr<RectangleFigure>(viewports[0].from, viewports[0].to, 0, fillIndex, fillIndex);
     currentFigures.push_back(std::move(figure));
+  }
+
+  void markAxisTextLayers() {
+    auto indexCount = int(axisTextLayerIndices.size());
+    for (auto i = 0; i < indexCount; i++) {
+      auto action = lineActions[i];
+      if (touchesAnyClippingArea(action->getFrom())) {
+        auto layerIndex = axisTextLayerIndices[i];
+        layers[layerIndex].isAxisText = true;
+      }
+    }
   }
 
   std::pair<Rectangle, Rectangle> extractClippingAreas(const Ptr<Action>& firstAction, const Ptr<Action>& secondAction) {
@@ -276,6 +349,7 @@ public:
       }
     }
     flushCurrentLayer();
+    markAxisTextLayers();
   };
 
   Plot buildPlot() {

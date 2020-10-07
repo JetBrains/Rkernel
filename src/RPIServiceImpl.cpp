@@ -245,6 +245,7 @@ namespace {
 
   void fillMessage(Layer* message, const graphics::Layer& layer) {
     message->set_viewportindex(layer.viewportIndex);
+    message->set_isaxistext(layer.isAxisText);
     for (const auto& figure : layer.figures) {
       auto figureMessage = message->add_figure();
       fillMessage(figureMessage, *figure);
