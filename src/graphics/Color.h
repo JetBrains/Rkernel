@@ -12,6 +12,10 @@ struct Color {
 
   explicit Color(int value) : value(value) {}
 
+  bool isOpaque() const {
+    return ((unsigned)value) >> 24U == 0xffU;
+  }
+
   static Color getBlack() {
     return Color(0xff000000);
   }

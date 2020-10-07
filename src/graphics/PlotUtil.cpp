@@ -131,6 +131,14 @@ private:
     auto strokeIndex = getOrRegisterStrokeIndex(firstRectangle->getStroke());
     auto colorIndex = getOrRegisterColorIndex(firstRectangle->getColor());
     auto fillIndex = getOrRegisterColorIndex(firstRectangle->getFill());
+
+    // If rectangle fills the whole plot with an opaque color, there is no need
+    // to paint the previously added figures
+    if (currentViewportIndex == 0 && firstRectangle->getFill().isOpaque() && isClose(firstRectangle->getRectangle(), clippingAreas[0])) {
+      currentFigures.clear();
+      layers.clear();
+    }
+
     return makePtr<RectangleFigure>(from, to, strokeIndex, colorIndex, fillIndex);
   }
 
@@ -166,6 +174,12 @@ private:
       layers.push_back(Layer{currentViewportIndex, std::move(currentFigures)});
       currentFigures = std::vector<Ptr<Figure>>();
     }
+  }
+
+  void addWhiteBackground() {
+    auto fillIndex = getOrRegisterColorIndex(Color::getWhite());
+    auto figure = makePtr<RectangleFigure>(viewports[0].from, viewports[0].to, 0, fillIndex, fillIndex);
+    currentFigures.push_back(std::move(figure));
   }
 
   std::pair<Rectangle, Rectangle> extractClippingAreas(const Ptr<Action>& firstAction, const Ptr<Action>& secondAction) {
@@ -242,6 +256,7 @@ public:
     getOrRegisterColorIndex(Color::getBlack());
     getOrRegisterColorIndex(Color::getWhite());
     getOrRegisterFontIndex(Font::getDefault());
+    addWhiteBackground();
   }
 
   void parse(const std::vector<Ptr<Action>>& firstActions, const std::vector<Ptr<Action>>& secondActions) {
