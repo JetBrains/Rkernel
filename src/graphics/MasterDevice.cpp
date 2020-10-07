@@ -359,22 +359,24 @@ std::vector<int> MasterDevice::dumpAllLast() {
 }
 
 Plot MasterDevice::fetchPlot(int number) {
-  const auto& firstDevice = currentDeviceInfos[number].device;
-  const auto& firstActions = firstDevice->recordedActions();
-
   // Replay plot on the proxy device in order to extrapolate
+  auto firstSize = currentScreenParameters.size;
+  auto secondSize = firstSize * 2;
+  auto firstDevice = replayOnProxy(number, firstSize);
+  auto secondDevice = replayOnProxy(number, secondSize);
+  return PlotUtil::extrapolate(firstDevice->logicSizeInInches(), firstDevice->recordedActions(),
+                               secondDevice->logicSizeInInches(), secondDevice->recordedActions());
+}
+
+Ptr<REagerGraphicsDevice> MasterDevice::replayOnProxy(int number, Size size) {
   auto proxy = DeviceManager::getInstance()->getProxy();
+  proxy->currentScreenParameters.size = size;
   auto proxyNumber = proxy->addNewDevice();
   InitHelper helper;
   auto command = SnapshotUtil::makeReplayVariableCommand(deviceNumber, number);
   Rf_selectDevice(Rf_ndevNumber(proxy->masterDeviceDescriptor->dev));
   Evaluator::evaluate(command);
-  auto secondDevice = proxy->getDeviceAt(proxyNumber);
-  const auto& secondActions = secondDevice->recordedActions();
-
-  auto firstSize = firstDevice->logicSizeInInches();
-  auto secondSize = secondDevice->logicSizeInInches();
-  return PlotUtil::extrapolate(firstSize, firstActions, secondSize, secondActions);
+  return proxy->getDeviceAt(proxyNumber);
 }
 
 void MasterDevice::onNewPage() {

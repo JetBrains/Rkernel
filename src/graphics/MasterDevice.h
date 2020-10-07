@@ -55,6 +55,7 @@ class MasterDevice {
   void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number);
   std::vector<int> commitAllLast(bool withRescale, ScreenParameters newParameters);
   bool commitByNumber(int number, bool withRescale, ScreenParameters newParameters);
+  Ptr<REagerGraphicsDevice> replayOnProxy(int number, Size size);
 
 public:
   MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory, bool isProxy);

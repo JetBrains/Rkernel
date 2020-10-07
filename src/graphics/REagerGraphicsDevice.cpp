@@ -54,10 +54,9 @@ REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int de
                                            int snapshotVersion, ScreenParameters parameters, bool isProxy)
     : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
       snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
-      snapshotType(SnapshotType::NORMAL), hasDumped(false), isProxy(isProxy), isPlotOnNewPage(false)
+      snapshotType(SnapshotType::NORMAL), hasDumped(false), isProxy(isProxy), isPlotOnNewPage(false),
+      clippingArea({-1.0, -1.0, -1.0, -1.0})
 {
-  clippingArea = normalize(Rectangle::make(Point{0.0, 0.0}, parameters.size.toPoint()));
-  record<ClipAction>(clippingArea);
   getSlave();
 }
 
