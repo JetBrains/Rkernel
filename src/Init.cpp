@@ -51,8 +51,6 @@ void initRWrapper() {
   initDfltWarn();
   rDebugger.init();
   htmlViewerInit();
-  initEventLoop();
-  initRPIService();
   sessionManager.init();
 }
 

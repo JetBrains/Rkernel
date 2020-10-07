@@ -18,6 +18,8 @@
 #include "RPIServiceImpl.h"
 #include "IO.h"
 #include <cstdlib>
+#include "RStuff/RUtil.h"
+#include "EventLoop.h"
 
 void setupForkHandler();
 
@@ -54,6 +56,17 @@ int main(int argc, char* argv[]) {
 
   initLang();
 
-  Rf_mainloop();
+  try {
+    initEventLoop();
+    initRPIService();
+  } catch (std::exception const &e) {
+    std::cerr << "Error during RWrapper startup: " << e.what() << "\n";
+    return 1;
+  }
+  {
+    WithOutputHandler withOutputHandler(rpiService->replOutputHandler);
+    setup_Rmainloop();
+  }
+  run_Rmainloop();
   return 0;
 }

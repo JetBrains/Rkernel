@@ -51,6 +51,7 @@ public:
     if (queue.empty()) return false;
     value = std::move(queue.back());
     queue.pop_back();
+    condVar.notify_one();
     return true;
   }
 
@@ -63,6 +64,12 @@ public:
     queue.pop_back();
     condVar.notify_one();
     return true;
+  }
+
+  void setMaxSize(size_t newSize) {
+    std::unique_lock<std::mutex> lock(mutex);
+    maxSize = newSize;
+    condVar.notify_one();
   }
 
 private:

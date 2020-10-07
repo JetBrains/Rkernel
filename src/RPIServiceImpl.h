@@ -172,7 +172,7 @@ public:
   void writeToReplOutputHandler(std::string const& s, OutputType type);
 
 private:
-  BlockingQueue<AsyncEvent> asyncEvents{8};
+  BlockingQueue<AsyncEvent> asyncEvents;
 
   enum ReplState {
     PROMPT, DEBUG_PROMPT, READ_LINE, REPL_BUSY, CHILD_PROCESS, SUBPROCESS_INPUT

@@ -44,6 +44,7 @@ LibExtern Rboolean R_interrupts_suspended;
 SEXP Rf_deparse1line(SEXP, Rboolean);
 void Rf_checkArityCall(SEXP, SEXP, SEXP);
 SEXP Rf_installTrChar(SEXP);
+void run_Rmainloop();
 }
 
 class WithOption {

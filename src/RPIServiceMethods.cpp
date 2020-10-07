@@ -322,6 +322,7 @@ static const int CACHED_TEXT_LENGTH_LIMIT = 200000;
 static const auto ASYNC_EVENT_TIMEOUT = std::chrono::milliseconds(60);
 
 Status RPIServiceImpl::getAsyncEvents(ServerContext* context, const Empty*, ServerWriter<AsyncEvent>* writer) {
+  asyncEvents.setMaxSize(8);
   auto deadline = std::chrono::steady_clock::now() + ASYNC_EVENT_TIMEOUT;
   std::string cachedText;
   CommandOutput_Type cachedTextType = CommandOutput_Type_STDOUT;

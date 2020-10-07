@@ -22,10 +22,8 @@
 #include <cstdlib>
 #include "IO.h"
 #include "RPIServiceImpl.h"
-
-extern "C" {
-void run_Rmainloop();
-};
+#include "RStuff/RUtil.h"
+#include "EventLoop.h"
 
 static void myCallBack() { }
 static void myShowMessage(const char* s) {
@@ -84,8 +82,20 @@ int main(int argc, char **argv) {
   FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
   GA_initapp(0, nullptr);
   readconsolecfg();
-  setup_Rmainloop();
+
+  try {
+    initEventLoop();
+    initRPIService();
+  } catch (std::exception const &e) {
+    std::cerr << "Error during RWrapper startup: " << e.what() << "\n";
+    return 1;
+  }
+  {
+    WithOutputHandler withOutputHandler(rpiService->replOutputHandler);
+    setup_Rmainloop();
+  }
   run_Rmainloop();
+
   Rf_endEmbeddedR(0);
   return 0;
 }

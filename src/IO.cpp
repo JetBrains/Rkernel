@@ -64,15 +64,20 @@ WithOutputHandler::~WithOutputHandler() {
 int myReadConsole(const char* prompt, unsigned char* buf, int len, int addToHistory) {
   static bool inited = false;
   if (!inited) {
-    inited = true;
-    try {
-      initRWrapper();
-    } catch (std::exception const& e) {
-      std::cerr << "Error during RWrapper startup: " << e.what() << "\n";
-      signal(SIGABRT, SIG_DFL);
-      abort();
+    if (addToHistory) {
+      inited = true;
+      try {
+        initRWrapper();
+      } catch (std::exception const &e) {
+        std::cerr << "Error during RWrapper startup: " << e.what() << "\n";
+        signal(SIGABRT, SIG_DFL);
+        abort();
+      }
+      rpiService->mainLoop();
+    } else {
+      buf[0] = 0;
+      return 0;
     }
-    rpiService->mainLoop();
   }
 
   CPP_BEGIN
