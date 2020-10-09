@@ -8,6 +8,7 @@ enum class FigureKind {
   LINE,
   POLYGON,
   POLYLINE,
+  RASTER,
   RECTANGLE,
   TEXT,
 };

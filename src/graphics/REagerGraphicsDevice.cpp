@@ -30,6 +30,7 @@
 #include "actions/LineAction.h"
 #include "actions/PolygonAction.h"
 #include "actions/PolylineAction.h"
+#include "actions/RasterAction.h"
 #include "actions/RectangleAction.h"
 #include "actions/TextAction.h"
 
@@ -219,7 +220,22 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
   if (!isProxy && slave != nullptr) {
     slave->raster(raster, w, h, x, y, width, height, rotation, interpolate, context, slave);
   }
-  // TODO: record
+  auto pixels = reinterpret_cast<uint32_t*>(raster);  // ensure it's exactly 4 bytes
+  auto byteCount = w * h * sizeof(uint32_t);
+  auto data = Ptr<uint8_t[]>(new uint8_t[byteCount]);
+  // Convert to little-endian uint32[] of ARGB
+  for (auto i = 0; i < w * h; i++) {
+    auto abgr = pixels[i];
+    auto byteIndex = i * sizeof(uint32_t);
+    data[byteIndex + 2U] = abgr & 0xffU;  // r
+    data[byteIndex + 1U] = (abgr >> 8U) & 0xffU;  // g
+    data[byteIndex + 0U] = (abgr >> 16U) & 0xffU;  // b
+    data[byteIndex + 3U] = abgr >> 24U;  // a
+  }
+  auto bottomLeft = Point{x, y};
+  auto topRight = bottomLeft + Point{width, height};
+  auto rectangle = Rectangle::make(bottomLeft, topRight);
+  record<RasterAction>(RasterImage{w, h, data}, normalize(rectangle), rotation, interpolate == TRUE);
 }
 
 Rectangle REagerGraphicsDevice::drawingArea() {

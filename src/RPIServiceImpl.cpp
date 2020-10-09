@@ -31,6 +31,7 @@
 #include "graphics/figures/LineFigure.h"
 #include "graphics/figures/PolygonFigure.h"
 #include "graphics/figures/PolylineFigure.h"
+#include "graphics/figures/RasterFigure.h"
 #include "graphics/figures/RectangleFigure.h"
 #include "graphics/figures/TextFigure.h"
 #include <condition_variable>
@@ -141,6 +142,14 @@ namespace {
     return message;
   }
 
+  RasterImage* createMessage(const graphics::RasterImage& image) {
+    auto message = new RasterImage();
+    message->set_width(image.width);
+    message->set_height(image.height);
+    message->set_data(image.data.get(), image.width * image.height * sizeof(uint32_t));
+    return message;
+  }
+
   void fillMessage(Viewport* message, const graphics::Viewport& viewport) {
     message->set_allocated_from(createMessage(viewport.from));
     message->set_allocated_to(createMessage(viewport.to));
@@ -188,6 +197,16 @@ namespace {
     return message;
   }
 
+  RasterFigure* createMessage(const graphics::RasterFigure& raster) {
+    auto message = new RasterFigure();
+    message->set_allocated_image(createMessage(raster.getImage()));
+    message->set_allocated_from(createMessage(raster.getFrom()));
+    message->set_allocated_to(createMessage(raster.getTo()));
+    message->set_interpolate(raster.getInterpolate());
+    message->set_angle(raster.getAngle());
+    return message;
+  }
+
   RectangleFigure* createMessage(const graphics::RectangleFigure& rectangle) {
     auto message = new RectangleFigure();
     message->set_allocated_from(createMessage(rectangle.getFrom()));
@@ -230,6 +249,10 @@ namespace {
       }
       case graphics::FigureKind::POLYLINE: {
         message->set_allocated_polyline(createMessage<graphics::PolylineFigure>(figure));
+        break;
+      }
+      case graphics::FigureKind::RASTER: {
+        message->set_allocated_raster(createMessage<graphics::RasterFigure>(figure));
         break;
       }
       case graphics::FigureKind::RECTANGLE: {

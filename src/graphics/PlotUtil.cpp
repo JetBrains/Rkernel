@@ -10,6 +10,7 @@
 #include "actions/LineAction.h"
 #include "actions/PolygonAction.h"
 #include "actions/PolylineAction.h"
+#include "actions/RasterAction.h"
 #include "actions/RectangleAction.h"
 #include "actions/TextAction.h"
 
@@ -17,6 +18,7 @@
 #include "figures/LineFigure.h"
 #include "figures/PolygonFigure.h"
 #include "figures/PolylineFigure.h"
+#include "figures/RasterFigure.h"
 #include "figures/RectangleFigure.h"
 #include "figures/TextFigure.h"
 
@@ -89,6 +91,8 @@ private:
         return extrapolate<PolygonAction>(firstAction, secondAction);
       case ActionKind::POLYLINE:
         return extrapolate<PolylineAction>(firstAction, secondAction);
+      case ActionKind::RASTER:
+        return extrapolate<RasterAction>(firstAction, secondAction);
       case ActionKind::RECTANGLE:
         return extrapolate<RectangleAction>(firstAction, secondAction);
       case ActionKind::TEXT:
@@ -147,6 +151,12 @@ private:
     auto strokeIndex = getOrRegisterStrokeIndex(firstPolyline->getStroke());
     auto colorIndex = getOrRegisterColorIndex(firstPolyline->getColor());
     return makePtr<PolylineFigure>(std::move(points), strokeIndex, colorIndex);
+  }
+
+  Ptr<Figure> extrapolate(const RasterAction* firstRaster, const RasterAction* secondRaster) {
+    auto from = extrapolate(firstRaster->getRectangle().from, secondRaster->getRectangle().from);
+    auto to = extrapolate(firstRaster->getRectangle().to, secondRaster->getRectangle().to);
+    return makePtr<RasterFigure>(firstRaster->getImage(), from, to, firstRaster->getAngle(), firstRaster->getInterpolate());
   }
 
   Ptr<Figure> extrapolate(const RectangleAction* firstRectangle, const RectangleAction* secondRectangle) {

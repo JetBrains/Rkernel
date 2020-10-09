@@ -9,6 +9,7 @@ enum class ActionKind {
   LINE,
   POLYGON,
   POLYLINE,
+  RASTER,
   RECTANGLE,
   TEXT,
 };
