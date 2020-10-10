@@ -180,10 +180,17 @@ private:
   }
 
   Ptr<Figure> extrapolate(const PolylineAction* firstPolyline, const PolylineAction* secondPolyline) {
-    auto points = extrapolate(firstPolyline->getPoints(), secondPolyline->getPoints());
     auto strokeIndex = getOrRegisterStrokeIndex(firstPolyline->getStroke());
     auto colorIndex = getOrRegisterColorIndex(firstPolyline->getColor());
-    return makePtr<PolylineFigure>(std::move(points), strokeIndex, colorIndex);
+    if (firstPolyline->getPoints().size() == 2U) {
+      // Note: for some reason GGPlot is using a 2-point polyline instead of a line
+      auto from = extrapolate(firstPolyline->getPoints()[0], secondPolyline->getPoints()[0]);
+      auto to = extrapolate(firstPolyline->getPoints()[1], secondPolyline->getPoints()[1]);
+      return makePtr<LineFigure>(from, to, strokeIndex, colorIndex);
+    } else {
+      auto points = extrapolate(firstPolyline->getPoints(), secondPolyline->getPoints());
+      return makePtr<PolylineFigure>(std::move(points), strokeIndex, colorIndex);
+    }
   }
 
   Ptr<Figure> extrapolate(const RasterAction* firstRaster, const RasterAction* secondRaster) {
