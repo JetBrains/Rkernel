@@ -127,19 +127,6 @@
    })
 })
 
-.rs.registerNotifyHook("Rprof", "utils", function(...) 
-{
-   args <- c(...)
-   if (!identical(args, NULL))
-   {
-      .rs.enqueClientEvent("rprof_started");
-   }
-   else
-   {
-      .rs.enqueClientEvent("rprof_stopped");
-   }
-}, namespace = TRUE)
-
 .rs.addFunction("profilePrint", function(x)
 {
    result <- .rs.rpc.open_profile(list(
