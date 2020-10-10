@@ -1,5 +1,6 @@
 #include "PlotUtil.h"
 
+#include <limits>
 #include <iostream>
 #include <unordered_map>
 
@@ -22,6 +23,9 @@
 #include "figures/RectangleFigure.h"
 #include "figures/TextFigure.h"
 
+#include "viewports/FixedViewport.h"
+#include "viewports/FreeViewport.h"
+
 namespace graphics {
 
 namespace {
@@ -36,9 +40,13 @@ namespace {
  *  2) z2 = scale * s2 + offset
  */
 AffineCoordinate extrapolate(double firstSide, double firstCoordinate, double secondSide, double secondCoordinate) {
-  auto scale = (firstCoordinate - secondCoordinate) / (firstSide - secondSide);
-  auto offset = firstCoordinate - scale * firstSide;
-  return AffineCoordinate{scale, offset};
+  if (!isClose(firstSide, secondSide)) {
+    auto scale = (firstCoordinate - secondCoordinate) / (firstSide - secondSide);
+    auto offset = firstCoordinate - scale * firstSide;
+    return AffineCoordinate{scale, offset};
+  } else {
+    return AffineCoordinate{0.0, firstCoordinate};
+  }
 }
 
 AffinePoint extrapolate(Size firstSize, Point firstPoint, Size secondSize, Point secondPoint) {
@@ -46,6 +54,29 @@ AffinePoint extrapolate(Size firstSize, Point firstPoint, Size secondSize, Point
   auto x = extrapolate(firstSize.width, firstPoint.x, secondSize.width, secondPoint.x);
   auto y = extrapolate(firstSize.height, firstPoint.y, secondSize.height, secondPoint.y);
   return AffinePoint{x, y};
+}
+
+AffinePoint extrapolate(const Rectangle& first, Point firstPoint, const Rectangle& second, Point secondPoint) {
+  return extrapolate(first.size(), firstPoint - first.from, second.size(), secondPoint - second.from);
+}
+
+/**
+ * Fixed ratio viewports obey the following model:
+ *  (height - dh) / (width - dw) = const = ratio
+ * where both (dh) and (dw) >= 0.
+ * Formally, it's not possible to get the values of (dh) and (dw)
+ * but there are never needed in practice.
+ * Instead the following value is calculated:
+ *  delta = height - ratio * width = dh - ratio * dw
+ * which is then can be used in order to get viewport's width and height
+ * when the parent's ones (denoted as Width and Height) are known:
+ *  1) width = min{Width, (Height - delta) / ratio}
+ *  2) height = min{Height, ratio * Width + delta}
+ */
+std::pair<double, double> extrapolateFixed(Size firstSize, Size secondSize) {
+  auto ratio = (firstSize.height - secondSize.height) / (firstSize.width - secondSize.width);
+  auto delta = firstSize.height - ratio * firstSize.width;
+  return std::make_pair(ratio, delta);
 }
 
 class DifferentialParser {
@@ -60,8 +91,9 @@ private:
   Size secondSize;
 
   std::unordered_map<int, int> color2Indices;  // The key is a `Color::value`
-  std::vector<Rectangle> clippingAreas;
-  std::vector<Viewport> viewports;
+  std::vector<Rectangle> secondClippingAreas;
+  std::vector<Rectangle> firstClippingAreas;
+  std::vector<Ptr<Viewport>> viewports;
   std::vector<Stroke> strokes;
   std::vector<Layer> layers;
   std::vector<Font> fonts;
@@ -72,6 +104,7 @@ private:
   State state = State::INITIAL;
 
   std::vector<Ptr<Figure>> currentFigures;
+  int currentClippingAreaIndex = 0;
   int currentViewportIndex = 0;
 
   Ptr<Figure> extrapolate(const Ptr<Action>& firstAction, const Ptr<Action>& secondAction) {
@@ -124,11 +157,11 @@ private:
   }
 
   Ptr<Figure> extrapolate(const LineAction* firstLine, const LineAction* secondLine) {
-    if (currentViewportIndex == 0 && state == State::INITIAL) {
+    if (currentClippingAreaIndex == 0 && state == State::INITIAL) {
       flushAndSwitchTo(State::AXIS_LINES);
       currentLineAction = firstLine;
     }
-    if (currentViewportIndex != 0 && state == State::AXIS_LINES) {
+    if (currentClippingAreaIndex != 0 && state == State::AXIS_LINES) {
       flushAndSwitchTo(State::INITIAL);
     }
     auto from = extrapolate(firstLine->getFrom(), secondLine->getFrom());
@@ -168,7 +201,7 @@ private:
 
     // If rectangle fills the whole plot with an opaque color, there is no need
     // to paint the previously added figures
-    if (currentViewportIndex == 0 && firstRectangle->getFill().isOpaque() && isClose(firstRectangle->getRectangle(), clippingAreas[0])) {
+    if (currentClippingAreaIndex == 0 && firstRectangle->getFill().isOpaque() && isClose(firstRectangle->getRectangle(), firstClippingAreas[0])) {
       axisTextLayerIndices.clear();
       currentFigures.clear();
       lineActions.clear();
@@ -179,10 +212,10 @@ private:
   }
 
   Ptr<Figure> extrapolate(const TextAction* firstText, const TextAction* secondText) {
-    if (currentViewportIndex == 0 && state == State::AXIS_LINES) {
+    if (currentClippingAreaIndex == 0 && state == State::AXIS_LINES) {
       flushAndSwitchTo(State::AXIS_TEXT);
     }
-    if (currentViewportIndex != 0 && state == State::AXIS_TEXT) {
+    if (currentClippingAreaIndex != 0 && state == State::AXIS_TEXT) {
       flushAndSwitchTo(State::INITIAL);
     }
     auto position = extrapolate(firstText->getPosition(), secondText->getPosition());
@@ -191,14 +224,30 @@ private:
     return makePtr<TextFigure>(firstText->getText(), position, firstText->getAngle(), firstText->getAnchor(), fontIndex, colorIndex);
   }
 
-  Viewport extrapolate(const Rectangle& firstClippingArea, const Rectangle& secondClippingArea) {
+  Ptr<Viewport> extrapolate(const Rectangle& firstClippingArea, const Rectangle& secondClippingArea) {
+    currentViewportIndex = findParentClippingArea(firstClippingArea, int(viewports.size()));
+    if (isFixedRatio(firstClippingArea, firstClippingAreas[currentViewportIndex])) {
+      return extrapolateFixed(firstClippingArea, secondClippingArea);
+    } else {
+      return extrapolateFree(firstClippingArea, secondClippingArea);
+    }
+  }
+
+  Ptr<Viewport> extrapolateFixed(const Rectangle& firstClippingArea, const Rectangle& secondClippingArea) {
+    auto pair = graphics::extrapolateFixed(firstClippingArea.size(), secondClippingArea.size());
+    return makePtr<FixedViewport>(pair.first, pair.second, currentViewportIndex);
+  }
+
+  Ptr<Viewport> extrapolateFree(const Rectangle& firstClippingArea, const Rectangle& secondClippingArea) {
     auto from = extrapolate(firstClippingArea.from, secondClippingArea.from);
     auto to = extrapolate(firstClippingArea.to, secondClippingArea.to);
-    return Viewport{from, to};
+    return makePtr<FreeViewport>(from, to, currentViewportIndex);
   };
 
   AffinePoint extrapolate(Point firstPoint, Point secondPoint) {
-    return graphics::extrapolate(firstSize, firstPoint, secondSize, secondPoint);
+    const auto& firstArea = firstClippingAreas[currentViewportIndex];
+    const auto& secondArea = secondClippingAreas[currentViewportIndex];
+    return graphics::extrapolate(firstArea, firstPoint, secondArea, secondPoint);
   }
 
   std::vector<AffinePoint> extrapolate(const std::vector<Point>& firstPoints, const std::vector<Point>& secondPoints) {
@@ -212,7 +261,7 @@ private:
   }
 
   bool touchesAnyClippingArea(Point point) {
-    for (const auto& area : clippingAreas) {
+    for (const auto& area : firstClippingAreas) {
       if (touchesClippingArea(point, area)) {
         return true;
       }
@@ -230,6 +279,29 @@ private:
     }
   }
 
+  static bool isFixedRatio(const Rectangle& internal, const Rectangle& external) {
+    if (isClose(internal.from.x, external.from.x) && isClose(internal.to.x, external.to.x)) {
+      return internal.from.y > external.from.y && internal.to.y < external.to.y;
+    } else if (isClose(internal.from.y, external.from.y) && isClose(internal.to.y, external.to.y)) {
+      return internal.from.x > external.from.x && internal.to.x < external.to.x;
+    } else {
+      return false;
+    }
+  }
+
+  static bool isNested(const Rectangle& internal, const Rectangle& external) {
+    if (internal.from.x < external.from.x - EPSILON) {
+      return false;
+    }
+    if (internal.to.x > external.to.x + EPSILON) {
+      return false;
+    }
+    if (internal.from.y < external.from.y - EPSILON) {
+      return false;
+    }
+    return internal.to.y < external.to.y + EPSILON;
+  }
+
   void flushAndSwitchTo(State newState) {
     flushCurrentLayer();
     state = newState;
@@ -243,14 +315,14 @@ private:
         axisTextLayerIndices.push_back(int(layers.size()));
         lineActions.push_back(currentLineAction);
       }
-      layers.push_back(Layer{currentViewportIndex, std::move(currentFigures), /* isAxisText */ false});
+      layers.push_back(Layer{currentViewportIndex, currentClippingAreaIndex, std::move(currentFigures), /* isAxisText */ false});
       currentFigures = std::vector<Ptr<Figure>>();
     }
   }
 
   void addWhiteBackground() {
     auto fillIndex = getOrRegisterColorIndex(Color::getWhite());
-    auto figure = makePtr<RectangleFigure>(viewports[0].from, viewports[0].to, 0, fillIndex, fillIndex);
+    auto figure = makePtr<RectangleFigure>(AffinePoint::getTopLeft(), AffinePoint::getBottomRight(), 0, fillIndex, fillIndex);
     currentFigures.push_back(std::move(figure));
   }
 
@@ -270,10 +342,40 @@ private:
     return std::make_pair(pair.first->getArea(), pair.second->getArea());
   }
 
+  int findParentClippingArea(const Rectangle& rectangle, int count) {
+    auto minArea = std::numeric_limits<double>::max();
+    auto parentIndex = 0;
+    for (auto i = 1; i < count; i++) {
+      const auto& candidate = firstClippingAreas[i];
+      if (isNested(rectangle, candidate)) {
+        auto area = candidate.width() * candidate.height();
+        if (area < minArea) {
+          parentIndex = i;
+          minArea = area;
+        }
+      }
+    }
+    return parentIndex;
+  }
+
+  int suggestViewport(int requestedIndex) {
+    if (requestedIndex != 0) {
+      return requestedIndex;
+    } else {
+      auto parentIndex = viewports[currentViewportIndex]->getParentIndex();
+      if (parentIndex >= 0 && viewports[parentIndex]->isFixed()) {
+        return parentIndex;
+      } else {
+        return requestedIndex;
+      }
+    }
+  }
+
   int getOrRegisterViewportIndex(const Rectangle& firstClippingArea, const Rectangle& secondClippingArea) {
-    auto index = getOrRegisterObjectIndex(firstClippingArea, clippingAreas);
-    if (clippingAreas.size() > viewports.size()) {
+    auto index = getOrRegisterObjectIndex(firstClippingArea, firstClippingAreas);
+    if (firstClippingAreas.size() > viewports.size()) {
       viewports.push_back(extrapolate(firstClippingArea, secondClippingArea));
+      secondClippingAreas.push_back(secondClippingArea);
     }
     return index;
   }
@@ -334,8 +436,9 @@ private:
 
 public:
   DifferentialParser(Size firstSize, Size secondSize) : firstSize(firstSize), secondSize(secondSize) {
-    clippingAreas.push_back(Rectangle::make(Point{0.0, 0.0}, firstSize.toPoint()));
-    viewports.push_back(Viewport::getFullScreen());
+    secondClippingAreas.push_back(Rectangle::make(Point{0.0, 0.0}, secondSize.toPoint()));
+    firstClippingAreas.push_back(Rectangle::make(Point{0.0, 0.0}, firstSize.toPoint()));
+    viewports.push_back(FreeViewport::createFullScreen());
     getOrRegisterColorIndex(Color::getBlack());
     getOrRegisterColorIndex(Color::getWhite());
     getOrRegisterFontIndex(Font::getDefault());
@@ -353,7 +456,8 @@ public:
       if (firstAction->getKind() == ActionKind::CLIP) {
         flushCurrentLayer();
         auto areas = extractClippingAreas(firstAction, secondAction);
-        currentViewportIndex = getOrRegisterViewportIndex(areas.first, areas.second);
+        currentClippingAreaIndex = getOrRegisterViewportIndex(areas.first, areas.second);
+        currentViewportIndex = suggestViewport(currentClippingAreaIndex);
       } else {
         currentFigures.push_back(extrapolate(firstAction, secondAction));
       }

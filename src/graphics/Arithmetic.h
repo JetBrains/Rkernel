@@ -5,7 +5,9 @@
 
 namespace graphics {
 
-inline bool isClose(double x, double y, double epsilon = 1e-3) {
+const auto EPSILON = 1e-3;
+
+inline bool isClose(double x, double y, double epsilon = EPSILON) {
   return fabs(x - y) < epsilon;
 }
 

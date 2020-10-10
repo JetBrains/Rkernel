@@ -34,6 +34,8 @@
 #include "graphics/figures/RasterFigure.h"
 #include "graphics/figures/RectangleFigure.h"
 #include "graphics/figures/TextFigure.h"
+#include "graphics/viewports/FixedViewport.h"
+#include "graphics/viewports/FreeViewport.h"
 #include <condition_variable>
 #include <cstdlib>
 #include <cstdio>
@@ -150,9 +152,28 @@ namespace {
     return message;
   }
 
+  FixedViewport* createMessage(const graphics::FixedViewport& viewport) {
+    auto message = new FixedViewport();
+    message->set_ratio(viewport.getRatio());
+    message->set_delta(viewport.getDelta());
+    message->set_parentindex(viewport.getParentIndex());
+    return message;
+  }
+
+  FreeViewport* createMessage(const graphics::FreeViewport& viewport) {
+    auto message = new FreeViewport();
+    message->set_allocated_from(createMessage(viewport.getFrom()));
+    message->set_allocated_to(createMessage(viewport.getTo()));
+    message->set_parentindex(viewport.getParentIndex());
+    return message;
+  }
+
   void fillMessage(Viewport* message, const graphics::Viewport& viewport) {
-    message->set_allocated_from(createMessage(viewport.from));
-    message->set_allocated_to(createMessage(viewport.to));
+    if (viewport.isFixed()) {
+      message->set_allocated_fixed(createMessage(dynamic_cast<const graphics::FixedViewport&>(viewport)));
+    } else {
+      message->set_allocated_free(createMessage(dynamic_cast<const graphics::FreeViewport&>(viewport)));
+    }
   }
 
   CircleFigure* createMessage(const graphics::CircleFigure& circle) {
@@ -267,6 +288,7 @@ namespace {
   }
 
   void fillMessage(Layer* message, const graphics::Layer& layer) {
+    message->set_clippingareaindex(layer.clippingAreaIndex);
     message->set_viewportindex(layer.viewportIndex);
     message->set_isaxistext(layer.isAxisText);
     for (const auto& figure : layer.figures) {
@@ -290,7 +312,7 @@ namespace {
     }
     for (const auto& viewport : plot.viewports) {
       auto viewportMessage = message->add_viewport();
-      fillMessage(viewportMessage, viewport);
+      fillMessage(viewportMessage, *viewport);
     }
     for (const auto& layer : plot.layers) {
       auto layerMessage = message->add_layer();

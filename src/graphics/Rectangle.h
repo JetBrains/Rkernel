@@ -21,6 +21,7 @@
 #include <algorithm>
 
 #include "Point.h"
+#include "ScreenParameters.h"
 
 namespace graphics {
 
@@ -34,6 +35,10 @@ struct Rectangle {
 
   double height() const {
     return to.y - from.y;
+  }
+
+  Size size() const {
+    return Size{width(), height()};
   }
 
   Point center() const {

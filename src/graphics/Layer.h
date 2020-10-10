@@ -10,6 +10,7 @@ namespace graphics {
 
 struct Layer {
   int viewportIndex;
+  int clippingAreaIndex;
   std::vector<Ptr<Figure>> figures;
   bool isAxisText;
 };
