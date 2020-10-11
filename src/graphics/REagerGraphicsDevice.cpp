@@ -52,11 +52,11 @@ Font extractFont(pGEcontext context) {
 }  // anonymous
 
 REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber,
-                                           int snapshotVersion, ScreenParameters parameters, bool isProxy)
+                                           int snapshotVersion, ScreenParameters parameters, bool inMemory, bool isProxy)
     : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
       snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
       snapshotType(SnapshotType::NORMAL), hasDumped(false), isProxy(isProxy), isPlotOnNewPage(false),
-      clippingArea({-1.0, -1.0, -1.0, -1.0})
+      clippingArea({-1.0, -1.0, -1.0, -1.0}), inMemory(inMemory)
 {
   getSlave();
 }
@@ -111,7 +111,7 @@ pDevDesc REagerGraphicsDevice::getSlave() {
 void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->circle(center.x, center.y, radius, context, slave);
   }
   record<CircleAction>(normalize(center), normalize(radius), extractStroke(context), Color(context->col), Color(context->fill));
@@ -119,7 +119,7 @@ void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext co
 
 void REagerGraphicsDevice::clip(Point from, Point to) {
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->clip(from.x, to.x, from.y, to.y, slave);
   }
   auto newArea = normalize(Rectangle::make(from, to));
@@ -136,7 +136,7 @@ void REagerGraphicsDevice::close() {
 void REagerGraphicsDevice::drawLine(Point from, Point to, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->line(from.x, from.y, to.x, to.y, context, slave);
   }
   record<LineAction>(normalize(from), normalize(to), extractStroke(context), Color(context->col));
@@ -154,7 +154,7 @@ MetricInfo REagerGraphicsDevice::metricInfo(int character, pGEcontext context) {
 void REagerGraphicsDevice::setMode(int mode) {
   DEVICE_TRACE;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr && slave->mode != nullptr) {
+  if (!inMemory && slave != nullptr && slave->mode != nullptr) {
     slave->mode(mode, slave);
   }
 }
@@ -162,7 +162,7 @@ void REagerGraphicsDevice::setMode(int mode) {
 void REagerGraphicsDevice::newPage(pGEcontext context) {
   isPlotOnNewPage = true;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->newPage(context, slave);
   }
 }
@@ -170,7 +170,7 @@ void REagerGraphicsDevice::newPage(pGEcontext context) {
 void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->polygon(n, x, y, context, slave);
   }
   record<PolygonAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col), Color(context->fill));
@@ -179,7 +179,7 @@ void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext c
 void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->polyline(n, x, y, context, slave);
   }
   record<PolylineAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col));
@@ -188,7 +188,7 @@ void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext 
 void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->rect(from.x, from.y, to.x, to.y, context, slave);
   }
   record<RectangleAction>(normalize(Rectangle::make(from, to)), extractStroke(context), Color(context->col), Color(context->fill));
@@ -198,7 +198,7 @@ void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, 
 {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->path(x, y, npoly, nper, winding, context, slave);
   }
   // TODO: record
@@ -217,7 +217,7 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
 {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     slave->raster(raster, w, h, x, y, width, height, rotation, interpolate, context, slave);
   }
   auto pixels = reinterpret_cast<uint32_t*>(raster);  // ensure it's exactly 4 bytes
@@ -290,7 +290,7 @@ double REagerGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext cont
 void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context) {
   isDeviceBlank = false;
   auto slave = getSlave();
-  if (!isProxy && slave != nullptr) {
+  if (!inMemory && slave != nullptr) {
     if (slave->textUTF8 != nullptr) {
       slave->textUTF8(at.x, at.y, text, rotation, heightAdjustment, context, slave);
     } else if (slave->text != nullptr) {

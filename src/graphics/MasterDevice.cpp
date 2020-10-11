@@ -222,7 +222,7 @@ bool MasterDevice::hasCurrentDevice() {
 Ptr<REagerGraphicsDevice> MasterDevice::getCurrentDevice() {
   if (!hasCurrentDevice()) {
     auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDirectory, deviceNumber, currentSnapshotNumber, 0,
-                                                   currentScreenParameters, isProxy);
+                                                   currentScreenParameters, inMemory, isProxy);
     currentDeviceInfos[currentSnapshotNumber].device = newDevice;
     setMasterDeviceSize(masterDeviceDescriptor->dev, newDevice->drawingArea());
   }
@@ -355,7 +355,7 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
     return false;
   }
 
-  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version + 1, newParameters, isProxy);
+  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version + 1, newParameters, inMemory, isProxy);
   device->replayFromFile(parentDirectory, number);
   device->dump();
 
