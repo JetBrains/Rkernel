@@ -114,7 +114,9 @@ void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext co
   if (!inMemory && slave != nullptr) {
     slave->circle(center.x, center.y, radius, context, slave);
   }
-  record<CircleAction>(normalize(center), normalize(radius), extractStroke(context), Color(context->col), Color(context->fill));
+  if (isProxy) {
+    record<CircleAction>(normalize(center), normalize(radius), extractStroke(context), Color(context->col), Color(context->fill));
+  }
 }
 
 void REagerGraphicsDevice::clip(Point from, Point to) {
@@ -122,10 +124,12 @@ void REagerGraphicsDevice::clip(Point from, Point to) {
   if (!inMemory && slave != nullptr) {
     slave->clip(from.x, to.x, from.y, to.y, slave);
   }
-  auto newArea = normalize(Rectangle::make(from, to));
-  if (!isClose(clippingArea, newArea)) {
-    record<ClipAction>(newArea);
-    clippingArea = newArea;
+  if (isProxy) {
+    auto newArea = normalize(Rectangle::make(from, to));
+    if (!isClose(clippingArea, newArea)) {
+      record<ClipAction>(newArea);
+      clippingArea = newArea;
+    }
   }
 }
 
@@ -139,7 +143,9 @@ void REagerGraphicsDevice::drawLine(Point from, Point to, pGEcontext context) {
   if (!inMemory && slave != nullptr) {
     slave->line(from.x, from.y, to.x, to.y, context, slave);
   }
-  record<LineAction>(normalize(from), normalize(to), extractStroke(context), Color(context->col));
+  if (isProxy) {
+    record<LineAction>(normalize(from), normalize(to), extractStroke(context), Color(context->col));
+  }
 }
 
 MetricInfo REagerGraphicsDevice::metricInfo(int character, pGEcontext context) {
@@ -173,7 +179,9 @@ void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext c
   if (!inMemory && slave != nullptr) {
     slave->polygon(n, x, y, context, slave);
   }
-  record<PolygonAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col), Color(context->fill));
+  if (isProxy) {
+    record<PolygonAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col), Color(context->fill));
+  }
 }
 
 void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext context) {
@@ -182,7 +190,9 @@ void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext 
   if (!inMemory && slave != nullptr) {
     slave->polyline(n, x, y, context, slave);
   }
-  record<PolylineAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col));
+  if (isProxy) {
+    record<PolylineAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col));
+  }
 }
 
 void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
@@ -191,7 +201,9 @@ void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
   if (!inMemory && slave != nullptr) {
     slave->rect(from.x, from.y, to.x, to.y, context, slave);
   }
-  record<RectangleAction>(normalize(Rectangle::make(from, to)), extractStroke(context), Color(context->col), Color(context->fill));
+  if (isProxy) {
+    record<RectangleAction>(normalize(Rectangle::make(from, to)), extractStroke(context), Color(context->col), Color(context->fill));
+  }
 }
 
 void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, Rboolean winding, pGEcontext context)
@@ -220,22 +232,24 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
   if (!inMemory && slave != nullptr) {
     slave->raster(raster, w, h, x, y, width, height, rotation, interpolate, context, slave);
   }
-  auto pixels = reinterpret_cast<uint32_t*>(raster);  // ensure it's exactly 4 bytes
-  auto byteCount = w * h * sizeof(uint32_t);
-  auto data = Ptr<uint8_t[]>(new uint8_t[byteCount]);
-  // Convert to little-endian uint32[] of ARGB
-  for (auto i = 0; i < w * h; i++) {
-    auto abgr = pixels[i];
-    auto byteIndex = i * sizeof(uint32_t);
-    data[byteIndex + 2U] = abgr & 0xffU;  // r
-    data[byteIndex + 1U] = (abgr >> 8U) & 0xffU;  // g
-    data[byteIndex + 0U] = (abgr >> 16U) & 0xffU;  // b
-    data[byteIndex + 3U] = abgr >> 24U;  // a
+  if (isProxy) {
+    auto pixels = reinterpret_cast<uint32_t*>(raster);  // ensure it's exactly 4 bytes
+    auto byteCount = w * h * sizeof(uint32_t);
+    auto data = Ptr<uint8_t[]>(new uint8_t[byteCount]);
+    // Convert to little-endian uint32[] of ARGB
+    for (auto i = 0; i < w * h; i++) {
+      auto abgr = pixels[i];
+      auto byteIndex = i * sizeof(uint32_t);
+      data[byteIndex + 2U] = abgr & 0xffU;  // r
+      data[byteIndex + 1U] = (abgr >> 8U) & 0xffU;  // g
+      data[byteIndex + 0U] = (abgr >> 16U) & 0xffU;  // b
+      data[byteIndex + 3U] = abgr >> 24U;  // a
+    }
+    auto bottomLeft = Point{x, y};
+    auto topRight = bottomLeft + Point{width, height};
+    auto rectangle = Rectangle::make(bottomLeft, topRight);
+    record<RasterAction>(RasterImage{w, h, data}, normalize(rectangle), rotation, interpolate == TRUE);
   }
-  auto bottomLeft = Point{x, y};
-  auto topRight = bottomLeft + Point{width, height};
-  auto rectangle = Rectangle::make(bottomLeft, topRight);
-  record<RasterAction>(RasterImage{w, h, data}, normalize(rectangle), rotation, interpolate == TRUE);
 }
 
 Rectangle REagerGraphicsDevice::drawingArea() {
@@ -297,7 +311,9 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
       slave->text(at.x, at.y, text, rotation, heightAdjustment, context, slave);
     }
   }
-  record<TextAction>(text, normalize(at), rotation, heightAdjustment, extractFont(context), Color(context->col));
+  if (isProxy) {
+    record<TextAction>(text, normalize(at), rotation, heightAdjustment, extractFont(context), Color(context->col));
+  }
 }
 
 bool REagerGraphicsDevice::dump() {
