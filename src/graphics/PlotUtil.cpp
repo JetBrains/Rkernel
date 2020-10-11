@@ -329,7 +329,7 @@ private:
 
   void addWhiteBackground() {
     auto fillIndex = getOrRegisterColorIndex(Color::getWhite());
-    auto figure = makePtr<RectangleFigure>(AffinePoint::getTopLeft(), AffinePoint::getBottomRight(), 0, fillIndex, fillIndex);
+    auto figure = makePtr<RectangleFigure>(AffinePoint::getTopLeft(), AffinePoint::getBottomRight(), -1, -1, fillIndex);
     currentFigures.push_back(std::move(figure));
   }
 
@@ -388,6 +388,9 @@ private:
   }
 
   int getOrRegisterColorIndex(Color color) {
+    if (color.isTransparent()) {
+      return -1;
+    }
     auto it = color2Indices.find(color.value);
     if (it == color2Indices.end()) {
       auto index = int(color2Indices.size());

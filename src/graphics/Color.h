@@ -16,6 +16,10 @@ struct Color {
     return ((unsigned)value) >> 24U == 0xffU;
   }
 
+  bool isTransparent() const {
+    return ((unsigned)value) >> 24U == 0x00U;
+  }
+
   static Color getBlack() {
     return Color(0xff000000);
   }
