@@ -63,6 +63,7 @@ public:
   bool hasCurrentDevice();
   Ptr<REagerGraphicsDevice> getCurrentDevice();
   Ptr<REagerGraphicsDevice> getDeviceAt(int number);
+  void clearAllDevices();
   int addNewDevice();
 
   int getSnapshotCount();

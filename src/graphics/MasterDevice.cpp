@@ -237,6 +237,14 @@ Ptr<REagerGraphicsDevice> MasterDevice::getDeviceAt(int number) {
   return currentDeviceInfos[number].device;
 }
 
+void MasterDevice::clearAllDevices() {
+  auto command = SnapshotUtil::makeRemoveVariablesCommand(deviceNumber, 0, currentDeviceInfos.size());
+  Evaluator::evaluate(command);
+  currentDeviceInfos.clear();
+  currentSnapshotNumber = -1;
+  addNewDevice();  // Note: prevent potential out of range errors
+}
+
 int MasterDevice::addNewDevice() {
   currentDeviceInfos.emplace_back(DeviceInfo());
   currentSnapshotNumber++;
@@ -364,8 +372,10 @@ Plot MasterDevice::fetchPlot(int number) {
   auto secondSize = firstSize * 2;
   auto firstDevice = replayOnProxy(number, firstSize);
   auto secondDevice = replayOnProxy(number, secondSize);
-  return PlotUtil::extrapolate(firstDevice->logicSizeInInches(), firstDevice->recordedActions(),
-                               secondDevice->logicSizeInInches(), secondDevice->recordedActions());
+  auto plot = PlotUtil::extrapolate(firstDevice->logicSizeInInches(), firstDevice->recordedActions(),
+                                    secondDevice->logicSizeInInches(), secondDevice->recordedActions());
+  DeviceManager::getInstance()->getProxy()->clearAllDevices();
+  return plot;
 }
 
 Ptr<REagerGraphicsDevice> MasterDevice::replayOnProxy(int number, Size size) {
