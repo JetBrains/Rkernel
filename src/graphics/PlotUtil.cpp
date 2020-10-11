@@ -490,9 +490,16 @@ public:
 Plot PlotUtil::extrapolate(Size firstSize, const std::vector<Ptr<Action>>& firstActions,
                            Size secondSize, const std::vector<Ptr<Action>>& secondActions)
 {
-  auto parser = DifferentialParser(firstSize, secondSize);
-  parser.parse(firstActions, secondActions);
-  return parser.buildPlot();
+  try {
+    auto parser = DifferentialParser(firstSize, secondSize);
+    parser.parse(firstActions, secondActions);
+    return parser.buildPlot();
+  } catch (const std::exception& e) {
+    // Note: this will return an empty (i.e. without any layers) plot
+    // but with predefined colors, fonts and global viewport which might be useful
+    // if a client side wants to display some kind of diagnostic message
+    return DifferentialParser(firstSize, secondSize).buildPlot();
+  }
 }
 
 }  // graphics
