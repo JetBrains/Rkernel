@@ -11,7 +11,7 @@ namespace graphics {
 struct RasterImage {
   int width;  // pixels
   int height;  // pixels
-  Ptr<uint8_t[]> data;   // little-endian uint32[] of ARGB
+  Ptr<uint8_t> data;   // little-endian uint32[] of ARGB
 };
 
 inline std::ostream& operator<<(std::ostream& out, const RasterImage& raster) {

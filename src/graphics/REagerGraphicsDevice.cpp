@@ -235,7 +235,8 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
   if (isProxy) {
     auto pixels = reinterpret_cast<uint32_t*>(raster);  // ensure it's exactly 4 bytes
     auto byteCount = w * h * sizeof(uint32_t);
-    auto data = Ptr<uint8_t[]>(new uint8_t[byteCount]);
+    auto dataPtr = Ptr<uint8_t>(new uint8_t[byteCount], std::default_delete<uint8_t[]>());
+    auto data = dataPtr.get();
     // Convert to little-endian uint32[] of ARGB
     for (auto i = 0; i < w * h; i++) {
       auto abgr = pixels[i];
@@ -248,7 +249,7 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
     auto bottomLeft = Point{x, y};
     auto topRight = bottomLeft + Point{width, height};
     auto rectangle = Rectangle::make(bottomLeft, topRight);
-    record<RasterAction>(RasterImage{w, h, data}, normalize(rectangle), rotation, interpolate == TRUE);
+    record<RasterAction>(RasterImage{w, h, dataPtr}, normalize(rectangle), rotation, interpolate == TRUE);
   }
 }
 
