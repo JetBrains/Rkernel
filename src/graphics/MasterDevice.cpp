@@ -34,6 +34,8 @@ namespace {
 const auto MASTER_DEVICE_NAME = "TheRPlugin_Device";
 const auto PROXY_DEVICE_NAME = "TheRPlugin_ProxyDevice";
 
+const auto FIRST_PROXY_SIZE = Size{2570, 1920};
+
 MasterDevice* masterOf(pDevDesc descriptor) {
   auto masterDevice = MasterDevice::from(descriptor);
   if (!masterDevice) {
@@ -368,10 +370,8 @@ std::vector<int> MasterDevice::dumpAllLast() {
 
 Plot MasterDevice::fetchPlot(int number) {
   // Replay plot on the proxy device in order to extrapolate
-  auto firstSize = currentScreenParameters.size;
-  auto secondSize = firstSize * 2;
-  auto firstDevice = replayOnProxy(number, firstSize);
-  auto secondDevice = replayOnProxy(number, secondSize);
+  auto firstDevice = replayOnProxy(number, FIRST_PROXY_SIZE);
+  auto secondDevice = replayOnProxy(number, FIRST_PROXY_SIZE * 2);
   auto plot = PlotUtil::extrapolate(firstDevice->logicSizeInInches(), firstDevice->recordedActions(),
                                     secondDevice->logicSizeInInches(), secondDevice->recordedActions());
   DeviceManager::getInstance()->getProxy()->clearAllDevices();
