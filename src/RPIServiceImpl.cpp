@@ -130,6 +130,10 @@ namespace {
 
   void fillMessage(Stroke* message, const graphics::Stroke& stroke) {
     message->set_width(stroke.width);
+    message->set_cap(int(stroke.cap));
+    message->set_join(int(stroke.join));
+    message->set_miterlimit(stroke.miterLimit);
+    message->set_pattern(stroke.pattern);
   }
 
   void fillMessage(AffinePoint* message, const graphics::AffinePoint& point) {

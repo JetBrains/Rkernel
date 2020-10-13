@@ -40,8 +40,30 @@ namespace {
 
 const auto DEFAULT_RESOLUTION = 72;
 
+LineCap extractLineCap(pGEcontext context) {
+  switch (context->lend) {
+    case GE_BUTT_CAP:
+      return LineCap::BUTT;
+    case GE_SQUARE_CAP:
+      return LineCap::SQUARE;
+    default:
+      return LineCap::ROUND;
+  }
+}
+
+LineJoin extractLineJoin(pGEcontext context) {
+  switch (context->ljoin) {
+    case GE_BEVEL_JOIN:
+      return LineJoin::BEVEL;
+    case GE_MITRE_JOIN:
+      return LineJoin::MITER;
+    default:
+      return LineJoin::ROUND;
+  }
+}
+
 Stroke extractStroke(pGEcontext context) {
-  return Stroke{context->lwd / DEFAULT_RESOLUTION};
+  return Stroke{context->lwd / DEFAULT_RESOLUTION, extractLineCap(context), extractLineJoin(context), context->lmitre, context->lty};
 }
 
 FontStyle extractFontStyle(pGEcontext context) {
