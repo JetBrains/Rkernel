@@ -150,10 +150,11 @@ private:
 
   Ptr<Figure> extrapolate(const CircleAction* firstCircle, const CircleAction* secondCircle) {
     auto center = extrapolate(firstCircle->getCenter(), secondCircle->getCenter());
+    auto radius = extrapolateRadius(firstCircle->getRadius(), secondCircle->getRadius());  // Note: radius may depend on viewport's height
     auto strokeIndex = getOrRegisterStrokeIndex(firstCircle->getStroke());
     auto colorIndex = getOrRegisterColorIndex(firstCircle->getColor());
     auto fillIndex = getOrRegisterColorIndex(firstCircle->getFill());
-    return makePtr<CircleFigure>(center, firstCircle->getRadius(), strokeIndex, colorIndex, fillIndex);
+    return makePtr<CircleFigure>(center, radius, strokeIndex, colorIndex, fillIndex);
   }
 
   Ptr<Figure> extrapolate(const LineAction* firstLine, const LineAction* secondLine) {
@@ -255,6 +256,12 @@ private:
     const auto& firstArea = firstClippingAreas[currentViewportIndex];
     const auto& secondArea = secondClippingAreas[currentViewportIndex];
     return graphics::extrapolate(firstArea, firstPoint, secondArea, secondPoint);
+  }
+
+  AffineCoordinate extrapolateRadius(double firstRadius, double secondRadius) {
+    const auto& firstArea = firstClippingAreas[currentViewportIndex];
+    const auto& secondArea = secondClippingAreas[currentViewportIndex];
+    return graphics::extrapolate(firstArea.height(), firstRadius, secondArea.height(), secondRadius);
   }
 
   std::vector<AffinePoint> extrapolate(const std::vector<Point>& firstPoints, const std::vector<Point>& secondPoints) {

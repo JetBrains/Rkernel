@@ -184,7 +184,8 @@ namespace {
   CircleFigure* createMessage(const graphics::CircleFigure& circle) {
     auto message = new CircleFigure();
     message->set_allocated_center(createMessage(circle.getCenter()));
-    message->set_radius(circle.getRadius());
+    message->set_radiusscale(circle.getRadius().scale);
+    message->set_radiusoffset(circle.getRadius().offset);
     message->set_strokeindex(circle.getStrokeIndex());
     message->set_colorindex(circle.getColorIndex());
     message->set_fillindex(circle.getFillIndex());

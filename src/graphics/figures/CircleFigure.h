@@ -11,13 +11,13 @@ namespace graphics {
 class CircleFigure : public Figure {
 private:
   AffinePoint center;
-  double radius;  // inches
+  AffineCoordinate radius;
   int strokeIndex;
   int colorIndex;
   int fillIndex;
 
 public:
-  CircleFigure(AffinePoint center, double radius, int strokeIndex, int colorIndex, int fillIndex)
+  CircleFigure(AffinePoint center, AffineCoordinate radius, int strokeIndex, int colorIndex, int fillIndex)
     : center(center), radius(radius), strokeIndex(strokeIndex), colorIndex(colorIndex), fillIndex(fillIndex) {}
 
   FigureKind getKind() const override {
@@ -35,7 +35,7 @@ public:
     return center;
   }
 
-  double getRadius() const {
+  AffineCoordinate getRadius() const {
     return radius;
   }
 
