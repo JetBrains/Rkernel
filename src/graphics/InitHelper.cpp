@@ -16,12 +16,17 @@
 
 
 #include "InitHelper.h"
+#include "DeviceManager.h"
 
 namespace graphics {
 
 InitHelper::InitHelper() : previousDevice(nullptr) {
   if (!Rf_NoDevices()) {
     previousDevice = GEcurrentDevice();
+    auto proxy = DeviceManager::getInstance()->getProxy();
+    if (proxy != nullptr && previousDevice == proxy->getGeDescriptor()) {
+      previousDevice = nullptr;
+    }
   }
 }
 

@@ -33,7 +33,7 @@ const auto PROXY_PARAMETERS = ScreenParameters{Size{3840, 2160}, 72};
 
 Ptr<DeviceManager> DeviceManager::instance = Ptr<DeviceManager>();
 
-DeviceManager::DeviceManager() {
+DeviceManager::DeviceManager() : proxyDevice(nullptr) {
   proxyDevice = createProxyDevice();
 }
 

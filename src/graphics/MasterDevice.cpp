@@ -262,6 +262,10 @@ int MasterDevice::getSnapshotCount() {
   }
 }
 
+pGEDevDesc MasterDevice::getGeDescriptor() {
+  return masterDeviceDescriptor;
+}
+
 // Called by hooks "before.plot.new" for vanilla plots (`isTriggeredByGgPlot = false`)
 // and "before.grid.newpage" for ggplot2 (`isTriggeredByGgPlot = true`)
 // (see "init.R")

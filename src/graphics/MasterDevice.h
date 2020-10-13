@@ -67,6 +67,7 @@ public:
   int addNewDevice();
 
   int getSnapshotCount();
+  pGEDevDesc getGeDescriptor();
   void recordLast(bool isTriggeredByGgPlot);
   bool isOnlineRescalingEnabled();
   const std::string& getSnapshotDirectory();
