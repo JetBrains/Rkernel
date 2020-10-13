@@ -123,6 +123,7 @@ namespace {
   }
 
   void fillMessage(Font* message, const graphics::Font& font) {
+    message->set_style(int(font.style));
     message->set_name(font.name);
     message->set_size(font.size);
   }

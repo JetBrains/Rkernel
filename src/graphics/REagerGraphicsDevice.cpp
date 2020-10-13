@@ -44,9 +44,22 @@ Stroke extractStroke(pGEcontext context) {
   return Stroke{context->lwd / DEFAULT_RESOLUTION};
 }
 
+FontStyle extractFontStyle(pGEcontext context) {
+  switch (context->fontface) {
+    case 2:
+      return FontStyle::BOLD;
+    case 3:
+      return FontStyle::ITALIC;
+    case 4:
+      return FontStyle::BOLD_ITALIC;
+    default:
+      return FontStyle::PLAIN;
+  }
+}
+
 Font extractFont(pGEcontext context) {
   auto fontSize = context->ps * context->cex / DEFAULT_RESOLUTION;
-  return Font{context->fontfamily, fontSize};
+  return Font{context->fontfamily, fontSize, extractFontStyle(context)};
 }
 
 }  // anonymous
