@@ -20,8 +20,6 @@
 
 #include <memory>
 
-#include "Common.h"
-
 namespace graphics {
 
 template<typename T>
