@@ -214,6 +214,12 @@ MasterDevice::MasterDevice(std::string snapshotDirectory, ScreenParameters scree
     currentSnapshotNumber(-1), masterDeviceDescriptor(nullptr), isNextGgPlot(false),
     deviceNumber(deviceNumber), inMemory(inMemory), isProxy(isProxy)
 {
+  if (!isProxy) {
+    auto proxy = DeviceManager::getInstance()->getProxy();
+    if (proxy != nullptr && initHelper.getPreviousDevice() == proxy->masterDeviceDescriptor) {
+      initHelper.release();
+    }
+  }
   restart();
 }
 

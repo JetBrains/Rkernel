@@ -30,6 +30,7 @@ private:
 public:
   InitHelper();
   pGEDevDesc getPreviousDevice();
+  void release();
   ~InitHelper();
 };
 

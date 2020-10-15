@@ -33,10 +33,6 @@ const auto PROXY_PARAMETERS = ScreenParameters{Size{3840, 2160}, 72};
 
 Ptr<DeviceManager> DeviceManager::instance = Ptr<DeviceManager>();
 
-DeviceManager::DeviceManager() : proxyDevice(nullptr) {
-  proxyDevice = createProxyDevice();
-}
-
 Ptr<MasterDevice> DeviceManager::createProxyDevice() {
   ScopeProtector protector;
   auto pathSEXP = Evaluator::evaluate(".jetbrains$createSnapshotGroup()", &protector);
@@ -46,6 +42,9 @@ Ptr<MasterDevice> DeviceManager::createProxyDevice() {
 }
 
 void DeviceManager::initNew(const std::string& snapshotDirectory, ScreenParameters screenParameters, bool inMemory, bool isProxy) {
+  if (!isProxy && proxyDevice == nullptr) {
+    proxyDevice = createProxyDevice();
+  }
   auto newDevice = makePtr<MasterDevice>(snapshotDirectory, screenParameters, deviceStack.size(), inMemory, isProxy);
   deviceStack.push(newDevice);
 }

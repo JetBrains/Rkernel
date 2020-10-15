@@ -15,7 +15,6 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#include "DeviceManager.h"
 #include "InitHelper.h"
 
 namespace graphics {
@@ -23,10 +22,6 @@ namespace graphics {
 InitHelper::InitHelper() : previousDevice(nullptr) {
   if (!Rf_NoDevices()) {
     previousDevice = GEcurrentDevice();
-    auto proxy = DeviceManager::getInstance()->getProxy();
-    if (proxy != nullptr && previousDevice == proxy->getGeDescriptor()) {
-      previousDevice = nullptr;
-    }
   }
 }
 
@@ -39,6 +34,10 @@ InitHelper::~InitHelper() {
 
 pGEDevDesc InitHelper::getPreviousDevice() {
   return previousDevice;
+}
+
+void InitHelper::release() {
+  previousDevice = nullptr;
 }
 
 }  // graphics
