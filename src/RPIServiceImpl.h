@@ -95,6 +95,7 @@ public:
   Status graphicsDump(ServerContext* context, const Empty*, GraphicsDumpResponse* response) override;
   Status graphicsRescale(ServerContext* context, const GraphicsRescaleRequest* request, ServerWriter<CommandOutput>* writer) override;
   Status graphicsRescaleStored(ServerContext* context, const GraphicsRescaleStoredRequest* request, ServerWriter<CommandOutput>* writer) override;
+  Status graphicsSetParameters(ServerContext* context, const ScreenParameters* request, Empty*) override;
   Status graphicsGetSnapshotPath(ServerContext* context, const GraphicsGetSnapshotPathRequest* request, GraphicsGetSnapshotPathResponse* response) override;
   Status graphicsFetchPlot(ServerContext* context, const Int32Value* request, GraphicsFetchPlotResponse* response) override;
   Status graphicsCreateGroup(ServerContext* context, const google::protobuf::Empty* request, ServerWriter<CommandOutput>* writer) override;

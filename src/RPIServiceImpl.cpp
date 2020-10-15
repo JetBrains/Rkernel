@@ -414,6 +414,18 @@ Status RPIServiceImpl::graphicsRescaleStored(ServerContext* context, const Graph
   return executeCommand(context, command, writer);
 }
 
+Status RPIServiceImpl::graphicsSetParameters(ServerContext* context, const ScreenParameters* request, Empty*) {
+  executeOnMainThread([&] {
+    auto active = graphics::DeviceManager::getInstance()->getActive();
+    if (active != nullptr && active->isOnlineRescalingEnabled()) {
+      auto size = graphics::Size{double(request->width()), double(request->height())};
+      auto parameters = graphics::ScreenParameters{size, request->resolution()};
+      active->setParameters(parameters);
+    }
+  }, context);
+  return Status::OK;
+}
+
 Status RPIServiceImpl::graphicsGetSnapshotPath(ServerContext* context, const GraphicsGetSnapshotPathRequest* request, GraphicsGetSnapshotPathResponse* response) {
   executeOnMainThread([&] {
     try {

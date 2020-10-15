@@ -34,6 +34,7 @@ class MasterDevice {
     bool hasRecorded = false;
     bool hasDumped = false;
     bool hasGgPlot = false;
+    bool hasRescaled = false;
   };
 
   InitHelper initHelper;  // Rollback to previous active GD when this is closed (used in device dtor)
@@ -50,7 +51,7 @@ class MasterDevice {
 
   void record(DeviceInfo& deviceInfo, int number);
   static void rescaleAndDump(const Ptr<REagerGraphicsDevice>& device, SnapshotType type, ScreenParameters newParameters);
-  static void rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters);
+  static void rescaleAndDumpIfNecessary(DeviceInfo& deviceInfo, ScreenParameters newParameters);
   static void dumpNormal(DeviceInfo &deviceInfo);
   void recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number);
   std::vector<int> commitAllLast(bool withRescale, ScreenParameters newParameters);
@@ -71,6 +72,7 @@ public:
   void recordLast(bool isTriggeredByGgPlot);
   bool isOnlineRescalingEnabled();
   const std::string& getSnapshotDirectory();
+  void setParameters(ScreenParameters newParameters);
   bool rescaleAllLast(ScreenParameters newParameters);
   bool rescaleByNumber(int number, ScreenParameters newParameters);
   bool rescaleByPath(const std::string& parentDirectory, int number, int version, ScreenParameters newParameters);

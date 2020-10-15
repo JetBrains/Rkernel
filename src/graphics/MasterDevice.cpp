@@ -295,6 +295,10 @@ void MasterDevice::recordLast(bool isTriggeredByGgPlot) {
   }
 }
 
+void MasterDevice::setParameters(ScreenParameters newParameters) {
+  currentScreenParameters = newParameters;
+}
+
 bool MasterDevice::rescaleAllLast(ScreenParameters newParameters) {
   return !commitAllLast(true, newParameters).empty();
 }
@@ -343,7 +347,7 @@ bool MasterDevice::commitByNumber(int number, bool withRescale, ScreenParameters
   if (!device->isBlank()) {
     recordAndDumpIfNecessary(deviceInfo, number);
     if (withRescale) {
-      rescaleAndDumpIfNecessary(device, newParameters);
+      rescaleAndDumpIfNecessary(deviceInfo, newParameters);
     }
     return true;
   } else {
@@ -581,10 +585,11 @@ void MasterDevice::recordAndDumpIfNecessary(DeviceInfo &deviceInfo, int number) 
   }
 }
 
-void MasterDevice::rescaleAndDumpIfNecessary(const Ptr<REagerGraphicsDevice>& device, ScreenParameters newParameters) {
-  auto previousParameters = device->logicScreenParameters();
-  if (!isClose(previousParameters, newParameters)) {
-    rescaleAndDump(device, SnapshotType::NORMAL, newParameters);
+void MasterDevice::rescaleAndDumpIfNecessary(DeviceInfo& deviceInfo, ScreenParameters newParameters) {
+  auto previousParameters = deviceInfo.device->logicScreenParameters();
+  if (!deviceInfo.hasRescaled || !isClose(previousParameters, newParameters)) {
+    rescaleAndDump(deviceInfo.device, SnapshotType::NORMAL, newParameters);
+    deviceInfo.hasRescaled = true;
   }
 }
 
@@ -625,7 +630,6 @@ void MasterDevice::record(DeviceInfo& deviceInfo, int number) {
 }
 
 MasterDevice::~MasterDevice() {
-  rescaleAllLast(currentScreenParameters);
   if (!inMemory) {
     auto command = SnapshotUtil::makeRemoveVariablesCommand(deviceNumber, 0, currentDeviceInfos.size());
     Evaluator::evaluate(command);
