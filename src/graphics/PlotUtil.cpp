@@ -504,14 +504,14 @@ public:
   };
 };
 
-Plot createPlotWithError(Size firstSize, Size secondSize, PlotError error) {
+}  // anonymous
+
+Plot PlotUtil::createPlotWithError(PlotError error) {
   // Note: this will return an empty (i.e. without any layers) plot
   // but with predefined colors, fonts and global viewport which might be useful
   // if a client side wants to display some kind of diagnostic message
-  return DifferentialParser(firstSize, secondSize).buildPlot(error);
+  return DifferentialParser(Size{0.0, 0.0}, Size{0.0, 0.0}).buildPlot(error);
 }
-
-}  // anonymous
 
 Plot PlotUtil::extrapolate(Size firstSize, const std::vector<Ptr<Action>>& firstActions,
                            Size secondSize, const std::vector<Ptr<Action>>& secondActions)
@@ -521,9 +521,9 @@ Plot PlotUtil::extrapolate(Size firstSize, const std::vector<Ptr<Action>>& first
     parser.parse(firstActions, secondActions);
     return parser.buildPlot();
   } catch (const ParsingError& e) {
-    return createPlotWithError(firstSize, secondSize, e.getError());
+    return createPlotWithError(e.getError());
   } catch (const std::exception& e) {
-    return createPlotWithError(firstSize, secondSize, PlotError::UNKNOWN);
+    return createPlotWithError(PlotError::UNKNOWN);
   }
 }
 

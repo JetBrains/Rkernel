@@ -14,6 +14,7 @@ class PlotUtil {
 public:
   PlotUtil() = delete;
 
+  static Plot createPlotWithError(PlotError error);
   static Plot extrapolate(/* inches */ Size firstSize, const std::vector<Ptr<Action>>& firstActions,
                           /* inches */ Size secondSize, const std::vector<Ptr<Action>>& secondActions);
 };

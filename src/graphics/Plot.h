@@ -14,6 +14,7 @@ namespace graphics {
 enum class PlotError {
   NONE,
   UNKNOWN,
+  TOO_COMPLEX,
   UNSUPPORTED_ACTION,
   MISMATCHING_ACTIONS,
 };

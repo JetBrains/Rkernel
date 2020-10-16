@@ -36,6 +36,8 @@ const auto PROXY_DEVICE_NAME = "TheRPlugin_ProxyDevice";
 
 const auto FIRST_PROXY_SIZE = Size{2570, 1920};
 
+const auto MAX_COMPLEXITY = 250000;  // 250k
+
 MasterDevice* masterOf(pDevDesc descriptor) {
   auto masterDevice = MasterDevice::from(descriptor);
   if (!masterDevice) {
@@ -383,6 +385,12 @@ std::vector<int> MasterDevice::dumpAllLast() {
 }
 
 Plot MasterDevice::fetchPlot(int number) {
+  // Make sure this plot is not too complex
+  // (otherwise it won't be possible to pass it via gRPC)
+  if (getDeviceAt(number)->estimatedComplexity() > MAX_COMPLEXITY) {
+    return PlotUtil::createPlotWithError(PlotError::TOO_COMPLEX);
+  }
+
   // Replay plot on the proxy device in order to extrapolate
   auto firstDevice = replayOnProxy(number, FIRST_PROXY_SIZE);
   auto secondDevice = replayOnProxy(number, FIRST_PROXY_SIZE * 2);

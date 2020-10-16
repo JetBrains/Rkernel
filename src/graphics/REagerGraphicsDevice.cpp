@@ -152,6 +152,7 @@ void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext co
   if (isProxy) {
     record<CircleAction>(normalize(center), normalize(radius), extractStroke(context), Color(context->col), Color(context->fill));
   }
+  complexity++;
 }
 
 void REagerGraphicsDevice::clip(Point from, Point to) {
@@ -181,6 +182,7 @@ void REagerGraphicsDevice::drawLine(Point from, Point to, pGEcontext context) {
   if (isProxy) {
     record<LineAction>(normalize(from), normalize(to), extractStroke(context), Color(context->col));
   }
+  complexity += 2;
 }
 
 MetricInfo REagerGraphicsDevice::metricInfo(int character, pGEcontext context) {
@@ -217,6 +219,7 @@ void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext c
   if (isProxy) {
     record<PolygonAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col), Color(context->fill));
   }
+  complexity += n;
 }
 
 void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext context) {
@@ -228,6 +231,7 @@ void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext 
   if (isProxy) {
     record<PolylineAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col));
   }
+  complexity += n;
 }
 
 void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
@@ -239,6 +243,7 @@ void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
   if (isProxy) {
     record<RectangleAction>(normalize(Rectangle::make(from, to)), extractStroke(context), Color(context->col), Color(context->fill));
   }
+  complexity += 2;
 }
 
 void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, Rboolean winding, pGEcontext context)
@@ -286,6 +291,7 @@ void REagerGraphicsDevice::drawRaster(unsigned int *raster,
     auto rectangle = Rectangle::make(bottomLeft, topRight);
     record<RasterAction>(RasterImage{w, h, dataPtr}, normalize(rectangle), rotation, interpolate == TRUE);
   }
+  complexity += w * h / 8;
 }
 
 Rectangle REagerGraphicsDevice::drawingArea() {
@@ -322,6 +328,10 @@ int REagerGraphicsDevice::currentResolution() {
   return parameters.resolution;
 }
 
+int64_t REagerGraphicsDevice::estimatedComplexity() {
+  return complexity;
+}
+
 double REagerGraphicsDevice::widthOfStringUtf8(const char* text, pGEcontext context) {
   auto slave = getSlave();
   if (slave != nullptr) {
@@ -350,6 +360,7 @@ void REagerGraphicsDevice::drawTextUtf8(const char* text, Point at, double rotat
   if (isProxy) {
     record<TextAction>(text, normalize(at), rotation, heightAdjustment, extractFont(context), Color(context->col));
   }
+  complexity += 10;
 }
 
 bool REagerGraphicsDevice::dump() {

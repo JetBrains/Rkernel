@@ -24,6 +24,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 
 #include "Ptr.h"
 #include "ScreenParameters.h"
@@ -58,6 +59,7 @@ private:
   Ptr<SlaveDevice> slaveDevice;
   std::vector<Ptr<Action>> actions;
   Rectangle clippingArea;
+  int64_t complexity = 0;
 
   Ptr<SlaveDevice> initializeSlaveDevice();
   void shutdownSlaveDevice();
@@ -105,6 +107,7 @@ public:
   Size logicSizeInInches();
   int currentVersion();
   int currentResolution();
+  int64_t estimatedComplexity();
   double widthOfStringUtf8(const char* text, pGEcontext context);
   void drawTextUtf8(const char* text, Point at, double rotation, double heightAdjustment, pGEcontext context);
   bool dump();
