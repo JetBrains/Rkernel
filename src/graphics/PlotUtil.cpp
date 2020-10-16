@@ -30,6 +30,18 @@ namespace graphics {
 
 namespace {
 
+class ParsingError : public std::exception {
+private:
+  PlotError error;
+
+public:
+  explicit ParsingError(PlotError error) : error(error) {}
+
+  PlotError getError() const {
+    return error;
+  }
+};
+
 /**
  * The plot's coordinates obey the linear model:
  *   z(s) = scale * s + offset,
@@ -131,7 +143,7 @@ private:
       case ActionKind::TEXT:
         return extrapolate<TextAction>(firstAction, secondAction);
       default:
-        throw std::runtime_error("Unsupported action kind: " + std::to_string(int(kind)));
+        throw ParsingError(PlotError::UNSUPPORTED_ACTION);
     }
   }
 
@@ -468,7 +480,7 @@ public:
       const auto& firstAction = firstActions[i];
       const auto& secondAction = secondActions[i];
       if (firstAction->getKind() != secondAction->getKind()) {
-        throw std::runtime_error("Mismatching action kinds");
+        throw ParsingError(PlotError::MISMATCHING_ACTIONS);
       }
       if (firstAction->getKind() == ActionKind::CLIP) {
         flushCurrentLayer();
@@ -483,14 +495,21 @@ public:
     markAxisTextLayers();
   };
 
-  Plot buildPlot() {
+  Plot buildPlot(PlotError error = PlotError::NONE) {
     auto colors = std::vector<Color>(color2Indices.size(), Color(0x00));
     for (auto pair : color2Indices) {
       colors[pair.second] = Color(pair.first);
     }
-    return Plot{std::move(fonts), std::move(colors), std::move(strokes), std::move(viewports), std::move(layers)};
+    return Plot{std::move(fonts), std::move(colors), std::move(strokes), std::move(viewports), std::move(layers), error};
   };
 };
+
+Plot createPlotWithError(Size firstSize, Size secondSize, PlotError error) {
+  // Note: this will return an empty (i.e. without any layers) plot
+  // but with predefined colors, fonts and global viewport which might be useful
+  // if a client side wants to display some kind of diagnostic message
+  return DifferentialParser(firstSize, secondSize).buildPlot(error);
+}
 
 }  // anonymous
 
@@ -501,11 +520,10 @@ Plot PlotUtil::extrapolate(Size firstSize, const std::vector<Ptr<Action>>& first
     auto parser = DifferentialParser(firstSize, secondSize);
     parser.parse(firstActions, secondActions);
     return parser.buildPlot();
+  } catch (const ParsingError& e) {
+    return createPlotWithError(firstSize, secondSize, e.getError());
   } catch (const std::exception& e) {
-    // Note: this will return an empty (i.e. without any layers) plot
-    // but with predefined colors, fonts and global viewport which might be useful
-    // if a client side wants to display some kind of diagnostic message
-    return DifferentialParser(firstSize, secondSize).buildPlot();
+    return createPlotWithError(firstSize, secondSize, PlotError::UNKNOWN);
   }
 }
 

@@ -324,6 +324,7 @@ namespace {
       auto layerMessage = message->add_layer();
       fillMessage(layerMessage, layer);
     }
+    message->set_error(int(plot.error));
     return message;
   }
 }

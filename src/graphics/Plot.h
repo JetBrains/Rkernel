@@ -11,12 +11,20 @@
 
 namespace graphics {
 
+enum class PlotError {
+  NONE,
+  UNKNOWN,
+  UNSUPPORTED_ACTION,
+  MISMATCHING_ACTIONS,
+};
+
 struct Plot {
   std::vector<Font> fonts;
   std::vector<Color> colors;
   std::vector<Stroke> strokes;
   std::vector<Ptr<Viewport>> viewports;
   std::vector<Layer> layers;
+  PlotError error;
 };
 
 }  // graphics
