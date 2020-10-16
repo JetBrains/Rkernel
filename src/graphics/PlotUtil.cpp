@@ -238,6 +238,9 @@ private:
     if (currentClippingAreaIndex != 0 && state == State::AXIS_TEXT) {
       flushAndSwitchTo(State::INITIAL);
     }
+    if (!isClose(firstText->getFont().size, secondText->getFont().size)) {
+      throw ParsingError(PlotError::GROWING_TEXT);
+    }
     auto position = extrapolate(firstText->getPosition(), secondText->getPosition());
     auto fontIndex = getOrRegisterFontIndex(firstText->getFont());
     auto colorIndex = getOrRegisterColorIndex(firstText->getColor());
