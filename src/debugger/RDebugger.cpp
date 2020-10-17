@@ -147,7 +147,8 @@ void RDebugger::setCommand(DebuggerCommand c) {
       if (skipFirst) {
         skipFirst = false;
       } else {
-        contextsToStop.insert({getEnvironment(ctx), getEvalDepth(ctx)});
+        SEXP callEnv = ctx == bottomContext ? bottomContextRealEnv : getEnvironment(ctx);
+        contextsToStop.insert({callEnv, getEvalDepth(ctx)});
       }
     }
   }
@@ -275,7 +276,8 @@ SEXP RDebugger::doStep(SEXP expr, SEXP env, SEXP srcref, bool alwaysStop, RConte
     case STEP_OVER:
     case STEP_OUT: {
       if (callContext == nullptr) callContext = getCurrentCallContext();
-      auto it = contextsToStop.find(getEnvironment(callContext));
+      SEXP callEnv = callContext == bottomContext ? bottomContextRealEnv : getEnvironment(callContext);
+      auto it = contextsToStop.find(callEnv);
       if (it != contextsToStop.end() && it->second >= getEvalDepth(callContext)) {
         suspend = true;
       }
