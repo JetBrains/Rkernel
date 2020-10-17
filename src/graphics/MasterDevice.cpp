@@ -496,7 +496,7 @@ void MasterDevice::restart() {
 
   masterDevDesc->deviceSpecific = this;  // OOP confirmed
 
-  masterDevDesc->displayListOn = TRUE;
+  masterDevDesc->displayListOn = isProxy ? FALSE : TRUE;
 
   masterDevDesc->canGenMouseDown = FALSE;
   masterDevDesc->canGenMouseMove = FALSE;
