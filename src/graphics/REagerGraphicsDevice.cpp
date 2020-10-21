@@ -28,6 +28,7 @@
 #include "actions/CircleAction.h"
 #include "actions/ClipAction.h"
 #include "actions/LineAction.h"
+#include "actions/NewPageAction.h"
 #include "actions/PolygonAction.h"
 #include "actions/PolylineAction.h"
 #include "actions/RasterAction.h"
@@ -207,6 +208,9 @@ void REagerGraphicsDevice::newPage(pGEcontext context) {
   auto slave = getSlave();
   if (!inMemory && slave != nullptr) {
     slave->newPage(context, slave);
+  }
+  if (isProxy) {
+    record<NewPageAction>(Color(context->fill));
   }
 }
 

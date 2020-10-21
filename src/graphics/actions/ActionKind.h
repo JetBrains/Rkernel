@@ -7,6 +7,7 @@ enum class ActionKind {
   CIRCLE,
   CLIP,
   LINE,
+  NEW_PAGE,
   POLYGON,
   POLYLINE,
   RASTER,
