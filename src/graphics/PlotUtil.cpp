@@ -9,6 +9,7 @@
 #include "actions/CircleAction.h"
 #include "actions/ClipAction.h"
 #include "actions/LineAction.h"
+#include "actions/NewPageAction.h"
 #include "actions/PolygonAction.h"
 #include "actions/PolylineAction.h"
 #include "actions/RasterAction.h"
@@ -132,6 +133,8 @@ private:
         return extrapolate<CircleAction>(firstAction, secondAction);
       case ActionKind::LINE:
         return extrapolate<LineAction>(firstAction, secondAction);
+      case ActionKind::NEW_PAGE:
+        return extrapolate<NewPageAction>(firstAction, secondAction);
       case ActionKind::POLYGON:
         return extrapolate<PolygonAction>(firstAction, secondAction);
       case ActionKind::POLYLINE:
@@ -182,6 +185,11 @@ private:
     auto strokeIndex = getOrRegisterStrokeIndex(firstLine->getStroke());
     auto colorIndex = getOrRegisterColorIndex(firstLine->getColor());
     return makePtr<LineFigure>(from, to, strokeIndex, colorIndex);
+  }
+
+  Ptr<Figure> extrapolate(const NewPageAction* firstNewPage, const NewPageAction*) {
+    auto fillIndex = getOrRegisterColorIndex(firstNewPage->getFill());
+    return makePtr<RectangleFigure>(AffinePoint::getTopLeft(), AffinePoint::getBottomRight(), -1, -1, fillIndex);
   }
 
   Ptr<Figure> extrapolate(const PolygonAction* firstPolygon, const PolygonAction* secondPolygon) {
@@ -349,12 +357,6 @@ private:
     }
   }
 
-  void addWhiteBackground() {
-    auto fillIndex = getOrRegisterColorIndex(Color::getWhite());
-    auto figure = makePtr<RectangleFigure>(AffinePoint::getTopLeft(), AffinePoint::getBottomRight(), -1, -1, fillIndex);
-    currentFigures.push_back(std::move(figure));
-  }
-
   void markAxisTextLayers() {
     auto indexCount = int(axisTextLayerIndices.size());
     for (auto i = 0; i < indexCount; i++) {
@@ -474,7 +476,6 @@ public:
     getOrRegisterColorIndex(Color::getBlack());
     getOrRegisterColorIndex(Color::getWhite());
     getOrRegisterFontIndex(Font::getDefault());
-    addWhiteBackground();
   }
 
   void parse(const std::vector<Ptr<Action>>& firstActions, const std::vector<Ptr<Action>>& secondActions) {
