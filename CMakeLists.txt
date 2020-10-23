@@ -49,6 +49,7 @@ list(APPEND RWRAPPER_SOURCES
     src/graphics/InitHelper.cpp
     src/graphics/MasterDevice.cpp
     src/graphics/DeviceManager.cpp
+    src/graphics/FontUtil.cpp
     src/graphics/PlotUtil.cpp
     src/graphics/ScopeProtector.cpp
     src/graphics/SlaveDevice.cpp
