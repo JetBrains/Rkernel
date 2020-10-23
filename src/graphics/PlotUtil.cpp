@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unordered_map>
 
+#include "FontUtil.h"
 #include "AffinePoint.h"
 
 #include "actions/CircleAction.h"
@@ -503,6 +504,9 @@ public:
     auto colors = std::vector<Color>(color2Indices.size(), Color(0x00));
     for (auto pair : color2Indices) {
       colors[pair.second] = Color(pair.first);
+    }
+    for (auto& font : fonts) {
+      font.name = FontUtil::matchName(font.name);
     }
     return Plot{std::move(fonts), std::move(colors), std::move(strokes), std::move(viewports), std::move(layers), error};
   };
