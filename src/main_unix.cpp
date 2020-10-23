@@ -44,8 +44,11 @@ int main(int argc, char* argv[]) {
 #endif
 
   R_running_as_main_program = 1;
-  const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save", "--no-restore"};
-  Rf_initialize_R(sizeof(rArgv) / sizeof(rArgv[0]), (char**)rArgv);
+  std::vector<const char*> rArgv = {"rwrapper", "--quiet", "--interactive", "--no-save", "--no-restore"};
+  if (commandLineOptions.disableRprofile) {
+    rArgv.push_back("--no-init-file");
+  }
+  Rf_initialize_R(rArgv.size(), (char**)rArgv.data());
 
   R_Outputfile = nullptr;
   R_Consolefile = nullptr;

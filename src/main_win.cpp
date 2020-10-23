@@ -77,8 +77,11 @@ int main(int argc, char **argv) {
   Rs->RestoreAction = SA_NORESTORE;
   Rs->SaveAction = SA_NOSAVE;
   R_SetParams(Rs);
-  const char* rArgv[] = {"rwrapper", "--quiet", "--interactive", "--no-save", "--no-restore"};
-  R_set_command_line_arguments(sizeof(rArgv) / sizeof(rArgv[0]), (char**)rArgv);
+  std::vector<const char*> rArgv = {"rwrapper", "--quiet", "--interactive", "--no-save", "--no-restore"};
+  if (commandLineOptions.disableRprofile) {
+    rArgv.push_back("--no-init-file");
+  }
+  R_set_command_line_arguments(rArgv.size(), (char**)rArgv.data());
   FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
   GA_initapp(0, nullptr);
   readconsolecfg();
