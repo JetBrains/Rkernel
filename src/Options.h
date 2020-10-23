@@ -23,6 +23,7 @@ struct CommandLineOptions {
   bool withTimeout = false;
   std::string crashReportFile;
   bool isRemote = false;
+  bool disableRprofile = false;
 
   void parse(int argc, char* argv[]);
 };
