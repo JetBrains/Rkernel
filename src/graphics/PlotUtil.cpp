@@ -11,6 +11,7 @@
 #include "actions/ClipAction.h"
 #include "actions/LineAction.h"
 #include "actions/NewPageAction.h"
+#include "actions/PathAction.h"
 #include "actions/PolygonAction.h"
 #include "actions/PolylineAction.h"
 #include "actions/RasterAction.h"
@@ -19,6 +20,7 @@
 
 #include "figures/CircleFigure.h"
 #include "figures/LineFigure.h"
+#include "figures/PathFigure.h"
 #include "figures/PolygonFigure.h"
 #include "figures/PolylineFigure.h"
 #include "figures/RasterFigure.h"
@@ -136,6 +138,8 @@ private:
         return extrapolate<LineAction>(firstAction, secondAction);
       case ActionKind::NEW_PAGE:
         return extrapolate<NewPageAction>(firstAction, secondAction);
+      case ActionKind::PATH:
+        return extrapolate<PathAction>(firstAction, secondAction);
       case ActionKind::POLYGON:
         return extrapolate<PolygonAction>(firstAction, secondAction);
       case ActionKind::POLYLINE:
@@ -191,6 +195,19 @@ private:
   Ptr<Figure> extrapolate(const NewPageAction* firstNewPage, const NewPageAction*) {
     auto fillIndex = getOrRegisterColorIndex(firstNewPage->getFill());
     return makePtr<RectangleFigure>(AffinePoint::getTopLeft(), AffinePoint::getBottomRight(), -1, -1, fillIndex);
+  }
+
+  Ptr<Figure> extrapolate(const PathAction* firstPath, const PathAction* secondPath) {
+    auto subPaths = std::vector<std::vector<AffinePoint>>();
+    auto subPathCount = int(firstPath->getSubPaths().size());
+    subPaths.reserve(subPathCount);
+    for (auto i = 0; i < subPathCount; i++) {
+      subPaths.push_back(extrapolate(firstPath->getSubPaths()[i], secondPath->getSubPaths()[i]));
+    }
+    auto strokeIndex = getOrRegisterStrokeIndex(firstPath->getStroke());
+    auto colorIndex = getOrRegisterColorIndex(firstPath->getColor());
+    auto fillIndex = getOrRegisterColorIndex(firstPath->getFill());
+    return makePtr<PathFigure>(std::move(subPaths), firstPath->getWinding(), strokeIndex, colorIndex, fillIndex);
   }
 
   Ptr<Figure> extrapolate(const PolygonAction* firstPolygon, const PolygonAction* secondPolygon) {

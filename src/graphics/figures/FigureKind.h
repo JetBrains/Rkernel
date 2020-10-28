@@ -6,6 +6,7 @@ namespace graphics {
 enum class FigureKind {
   CIRCLE,
   LINE,
+  PATH,
   POLYGON,
   POLYLINE,
   RASTER,
