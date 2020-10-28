@@ -29,6 +29,7 @@
 #include "graphics/Evaluator.h"
 #include "graphics/figures/CircleFigure.h"
 #include "graphics/figures/LineFigure.h"
+#include "graphics/figures/PathFigure.h"
 #include "graphics/figures/PolygonFigure.h"
 #include "graphics/figures/PolylineFigure.h"
 #include "graphics/figures/RasterFigure.h"
@@ -201,6 +202,22 @@ namespace {
     return message;
   }
 
+  PathFigure* createMessage(const graphics::PathFigure& path) {
+    auto message = new PathFigure();
+    for (const auto& subPath : path.getSubPaths()) {
+      auto subPathMessage = message->add_subpath();
+      for (const auto& point : subPath) {
+        auto pointMessage = subPathMessage->add_point();
+        fillMessage(pointMessage, point);
+      }
+    }
+    message->set_winding(path.getWinding());
+    message->set_strokeindex(path.getStrokeIndex());
+    message->set_colorindex(path.getColorIndex());
+    message->set_fillindex(path.getFillIndex());
+    return message;
+  }
+
   PolygonFigure* createMessage(const graphics::PolygonFigure& polygon) {
     auto message = new PolygonFigure();
     for (const auto& point : polygon.getPoints()) {
@@ -268,6 +285,10 @@ namespace {
       }
       case graphics::FigureKind::LINE: {
         message->set_allocated_line(createMessage<graphics::LineFigure>(figure));
+        break;
+      }
+      case graphics::FigureKind::PATH: {
+        message->set_allocated_path(createMessage<graphics::PathFigure>(figure));
         break;
       }
       case graphics::FigureKind::POLYGON: {

@@ -8,6 +8,7 @@ enum class ActionKind {
   CLIP,
   LINE,
   NEW_PAGE,
+  PATH,
   POLYGON,
   POLYLINE,
   RASTER,

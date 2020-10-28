@@ -29,6 +29,7 @@
 #include "actions/ClipAction.h"
 #include "actions/LineAction.h"
 #include "actions/NewPageAction.h"
+#include "actions/PathAction.h"
 #include "actions/PolygonAction.h"
 #include "actions/PolylineAction.h"
 #include "actions/RasterAction.h"
@@ -257,7 +258,19 @@ void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, 
   if (!inMemory && slave != nullptr) {
     slave->path(x, y, npoly, nper, winding, context, slave);
   }
-  // TODO: record
+  if (isProxy) {
+    auto subPaths = std::vector<std::vector<Point>>();
+    subPaths.reserve(npoly);
+    auto pointIndex = 0;
+    for (auto polyIndex = 0; polyIndex < npoly; polyIndex++) {
+      subPaths.push_back(createNormalizedPoints(nper[polyIndex], &x[pointIndex], &y[pointIndex]));
+      pointIndex += nper[polyIndex];
+    }
+    record<PathAction>(std::move(subPaths), winding == TRUE, extractStroke(context), Color(context->col), Color(context->fill));
+  }
+  for (auto i = 0; i < npoly; i++) {
+    complexity += nper[i];
+  }
 }
 
 void REagerGraphicsDevice::drawRaster(unsigned int *raster,
