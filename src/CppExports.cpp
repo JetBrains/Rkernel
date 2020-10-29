@@ -103,9 +103,9 @@ CPP_BEGIN
 CPP_END
 }
 
-CppExport SEXP _jetbrains_View(SEXP x, SEXP title) {
+CppExport SEXP _jetbrains_View(SEXP expr, SEXP env, SEXP title) {
   CPP_BEGIN
-    rpiService->viewHandler(x, title);
+    rpiService->viewHandler(expr, env, title);
   CPP_END
 }
 
@@ -354,7 +354,7 @@ static const R_CallMethodDef CallEntries[] = {
     {".jetbrains_ther_device_rescale", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_rescale, 4},
     {".jetbrains_ther_device_rescale_stored", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_rescale_stored, 6},
     {".jetbrains_ther_device_shutdown", (DL_FUNC) &_rplugingraphics_jetbrains_ther_device_shutdown, 0},
-    {".jetbrains_View", (DL_FUNC) &_jetbrains_View, 2},
+    {".jetbrains_View", (DL_FUNC) &_jetbrains_View, 3},
     {".jetbrains_debugger_enable", (DL_FUNC) &_jetbrains_debugger_enable, 0},
     {".jetbrains_debugger_disable", (DL_FUNC) &_jetbrains_debugger_disable, 0},
     {".jetbrains_exception_handler", (DL_FUNC) &_jetbrains_exception_handler, 1},

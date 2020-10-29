@@ -419,4 +419,13 @@ inline RContext* getCurrentCallContext() {
   return ctx;
 }
 
+template <typename T>
+inline SEXP rAlloc() {
+  ShieldSEXP e = R_MakeExternalPtr(new T(), R_NilValue, R_NilValue);
+  R_RegisterCFinalizer(e, [](SEXP e) {
+    delete (T*)R_ExternalPtrAddr(e);
+  });
+  return e;
+}
+
 #endif //RWRAPPER_R_UTIL_H

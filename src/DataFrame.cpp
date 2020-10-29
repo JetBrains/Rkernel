@@ -19,6 +19,7 @@
 #include <grpcpp/server_builder.h>
 #include "IO.h"
 #include "RStuff/RUtil.h"
+#include "DataFrame.h"
 
 const char* ROW_NAMES_COL = "rwr_rownames_column";
 
@@ -32,56 +33,163 @@ static bool initDplyr() {
   }
 }
 
+bool isSupportedDataFrame(SEXP x) {
+  return Rf_isMatrix(x) || isDataFrame(x);
+}
+
+static PrSEXP& getDataFrameStorageEnv() {
+  static PrSEXP env = RI->newEnv();
+  return env;
+}
+
+static std::unordered_map<SEXP, DataFrameInfo*> dataFrameCache;
+
+DataFrameInfo::~DataFrameInfo() {
+  getDataFrameStorageEnv().assign(std::to_string(index), R_NilValue);
+  dataFrameCache.erase(initialDataFrame);
+  if (finalizer) finalizer();
+}
+
+static void initDataFrame(DataFrameInfo *info) {
+  PrSEXP dataFrame = info->initialDataFrame;
+  dataFrameCache[info->initialDataFrame] = info;
+  getDataFrameStorageEnv().assign(std::to_string(info->index), dataFrame);
+  if (Rf_isMatrix(dataFrame)) {
+    dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
+  }
+  if (!isDataFrame(dataFrame)) {
+    RI->stop("Object is not a valid data frame");
+  }
+
+  int ncol = asInt(RI->ncol(dataFrame));
+  dataFrame = Rf_duplicate(dataFrame);
+  for (int i = 0; i < ncol; ++i) {
+    if (Rf_inherits(dataFrame[i], "POSIXlt")) {
+      SET_VECTOR_ELT(dataFrame, i, RI->asPOSIXct(dataFrame[i]));
+    }
+  }
+  ShieldSEXP namesList = RI->names(dataFrame);
+  std::vector<std::string> names(ncol);
+  for (int i = 0; i < ncol; ++i) {
+    names[i] = i < namesList.length() && !namesList.isNA(i) ? stringEltUTF8(namesList, i) : "";
+    if (names[i].empty()) names[i] = "Column " + std::to_string(i + 1);
+  }
+  dataFrame = RI->namesAssign(dataFrame, names);
+  if (asBool(RI->dplyrIsTbl(dataFrame))) {
+    dataFrame = RI->dplyrUngroup(dataFrame);
+  } else {
+    if (!asBool(RI->isDataFrame(dataFrame))) {
+      dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
+    }
+    // `rownames = NA` keep row names
+    dataFrame = RI->tibbleAsTibble(dataFrame, named("rownames", R_NaInt));
+  }
+  dataFrame = RI->tibbleRowNamesToColumn(dataFrame, ROW_NAMES_COL);
+  ShieldSEXP rowNamesColumn = RI->doubleSubscript(dataFrame, ROW_NAMES_COL);
+  PrSEXP rowNamesAsNum = RI->strtoi(rowNamesColumn); // As integer (but not numeric)
+  if (asBool(RI->any(RI->isNa(rowNamesAsNum)))) {
+    rowNamesAsNum = RI->asNumeric(rowNamesColumn); // As numeric
+  }
+  if (!asBool(RI->any(RI->isNa(rowNamesAsNum)))) {
+    dataFrame = RI->doubleSubscriptAssign(dataFrame, ROW_NAMES_COL, named("value", rowNamesAsNum));
+  }
+
+  info->dataFrame = dataFrame;
+}
+
+static DataFrameInfo *getDataFrameByRef(RRef const* ref) {
+  ShieldSEXP ptr = rpiService->dereference(*ref);
+  if (ptr.type() != EXTPTRSXP) return nullptr;
+  return (DataFrameInfo*)R_ExternalPtrAddr(ptr);
+}
+
+static DataFrameInfo *getDataFrameByIndex(int index) {
+  if (!rpiService->persistentRefStorage.has(index)) return nullptr;
+  ShieldSEXP ptr = rpiService->persistentRefStorage[index];
+  if (ptr.type() != EXTPTRSXP) return nullptr;
+  return (DataFrameInfo*)R_ExternalPtrAddr(ptr);
+}
+
+DataFrameInfo *registerDataFrame(SEXP x, bool isTemporary) {
+  SHIELD(x);
+  if (!isTemporary && dataFrameCache.count(x)) {
+    DataFrameInfo *info = dataFrameCache[x];
+    if (info == getDataFrameByIndex(info->index)) return info;
+  }
+  ShieldSEXP extPtr = rAlloc<DataFrameInfo>();
+  DataFrameInfo *info = (DataFrameInfo*)R_ExternalPtrAddr(extPtr);
+
+  info->initialDataFrame = x;
+  if (isTemporary) {
+    info->dataFrame = info->initialDataFrame;
+  } else {
+    initDataFrame(info);
+  }
+
+  info->index = rpiService->persistentRefStorage.add(extPtr);
+  return info;
+}
+
+static void createRefresher(DataFrameInfo *info, const RRef* _ref) {
+  RRef ref;
+  ref.CopyFrom(*_ref);
+  RRef* current = &ref;
+  bool dereferenceIt = false;
+  for (bool done = false; !done;) {
+    switch (current->ref_case()) {
+    case RRef::kPersistentIndex:
+      return;
+    case RRef::kGlobalEnv:
+      done = true;
+      break;
+    case RRef::kCurrentEnv:
+    case RRef::kSysFrameIndex:
+    case RRef::kErrorStackSysFrameIndex:
+      dereferenceIt = true;
+      done = true;
+      break;
+    case RRef::kMember:
+      current = current->mutable_member()->mutable_env();
+      dereferenceIt = true;
+      done = true;
+      break;
+    case RRef::kParentEnv:
+      current = current->mutable_parentenv()->mutable_env();
+      dereferenceIt = true;
+      done = true;
+      break;
+    case RRef::kExpression:
+      current = current->mutable_expression()->mutable_env();
+      dereferenceIt = true;
+      done = true;
+      break;
+    case RRef::kListElement:
+      current = current->mutable_listelement()->mutable_list();
+      break;
+    case RRef::kAttributes:
+      current = current->mutable_attributes();
+      break;
+    default:
+      return;
+    }
+  }
+
+  if (dereferenceIt) {
+    int index = rpiService->persistentRefStorage.add(rpiService->dereference(*current));
+    current->set_persistentindex(index);
+    info->finalizer = [=] { rpiService->persistentRefStorage.remove(index); };
+  }
+  info->refresher = [=] { return rpiService->dereference(ref); };
+}
+
 Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* request, Int32Value* response) {
   response->set_value(-1);
   executeOnMainThread([&] {
     if (!initDplyr()) return;
     PrSEXP dataFrame = dereference(*request);
-    if (Rf_isMatrix(dataFrame)) {
-      dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
-    }
-    if (!isDataFrame(dataFrame)) return;
-    dataFrame = Rf_duplicate(dataFrame);
-    int ncol = asInt(RI->ncol(dataFrame));
-    for (int i = 0; i < ncol; ++i) {
-      if (Rf_inherits(dataFrame[i], "POSIXlt")) {
-        SET_VECTOR_ELT(dataFrame, i, RI->asPOSIXct(dataFrame[i]));
-      }
-    }
-    ShieldSEXP namesList = RI->names(dataFrame);
-    std::vector<std::string> names(ncol);
-    for (int i = 0; i < ncol; ++i) {
-      names[i] = i < namesList.length() && !namesList.isNA(i) ? stringEltUTF8(namesList, i) : "";
-      if (names[i].empty()) names[i] = "Column " + std::to_string(i + 1);
-    }
-    dataFrame = RI->namesAssign(dataFrame, names);
-    if (asBool(RI->dplyrIsTbl(dataFrame))) {
-      dataFrame = RI->dplyrUngroup(dataFrame);
-    } else {
-      if (!asBool(RI->isDataFrame(dataFrame))) {
-        dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
-      }
-      // `rownames = NA` keep row names
-      dataFrame = RI->tibbleAsTibble(dataFrame, named("rownames", R_NaInt));
-    }
-    dataFrame = RI->tibbleRowNamesToColumn(dataFrame, ROW_NAMES_COL);
-    ShieldSEXP rowNamesColumn = RI->doubleSubscript(dataFrame, ROW_NAMES_COL);
-    PrSEXP rowNamesAsNum = RI->strtoi(rowNamesColumn); // As integer (but not numeric)
-    if (asBool(RI->any(RI->isNa(rowNamesAsNum)))) {
-      rowNamesAsNum = RI->asNumeric(rowNamesColumn); // As numeric
-    }
-    SHIELD(rowNamesAsNum);
-    if (!asBool(RI->any(RI->isNa(rowNamesAsNum)))) {
-      dataFrame = RI->doubleSubscriptAssign(dataFrame, ROW_NAMES_COL, named("value", rowNamesAsNum));
-    }
-    for (int index : dataFramesCache) {
-      if (asBool(RI->identical(dataFrame, persistentRefStorage[index]))) {
-        response->set_value(index);
-        return;
-      }
-    }
-    response->set_value(persistentRefStorage.add(dataFrame));
-    dataFramesCache.insert(response->value());
+    DataFrameInfo *info = registerDataFrame(dataFrame);
+    createRefresher(info, request);
+    response->set_value(info->index);
   }, context, true);
   return Status::OK;
 }
@@ -94,7 +202,10 @@ static std::string getClasses(SEXP obj) {
 Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* request, DataFrameInfoResponse* response) {
   executeOnMainThread([&] {
     if (!initDplyr()) return;
-    ShieldSEXP dataFrame = dereference(*request);
+    DataFrameInfo *info = getDataFrameByRef(request);
+    if (info == nullptr) return;
+    ShieldSEXP dataFrame = info->dataFrame;
+    response->set_canrefresh(bool(info->refresher));
     response->set_nrows(asInt(RI->nrow(dataFrame)));
     ShieldSEXP names = RI->names(dataFrame);
     int ncol = asInt(RI->ncol(dataFrame));
@@ -130,7 +241,9 @@ Status RPIServiceImpl::dataFrameGetInfo(ServerContext* context, const RRef* requ
 Status RPIServiceImpl::dataFrameGetData(ServerContext* context, const DataFrameGetDataRequest* request, DataFrameGetDataResponse* response) {
   executeOnMainThread([&] {
     if (!initDplyr()) return;
-    ShieldSEXP dataFrame = dereference(request->ref());
+    DataFrameInfo *info = getDataFrameByRef(&request->ref());
+    if (info == nullptr) return;
+    ShieldSEXP dataFrame = info->dataFrame;
     int start = request->start();
     int end = request->end();
     int ncol = asInt(RI->ncol(dataFrame));
@@ -182,7 +295,9 @@ Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSort
   response->set_value(-1);
   executeOnMainThread([&] {
     if (!initDplyr()) return;
-    ShieldSEXP dataFrame = dereference(request->ref());
+    DataFrameInfo *info = getDataFrameByRef(&request->ref());
+    if (info == nullptr) return;
+    ShieldSEXP dataFrame = info->dataFrame;
     std::vector<PrSEXP> arrangeArgs = {dataFrame};
     for (auto const& key : request->keys()) {
       if (key.descending()) {
@@ -191,7 +306,8 @@ Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSort
         arrangeArgs.emplace_back(RI->doubleSubscript(dataFrame, key.columnindex() + 1));
       }
     }
-    response->set_value(persistentRefStorage.add(invokeFunction(RI->dplyrArrange, arrangeArgs)));
+    DataFrameInfo *newInfo = registerDataFrame(invokeFunction(RI->dplyrArrange, arrangeArgs), true);
+    response->set_value(newInfo->index);
   }, context, true);
   return Status::OK;
 }
@@ -280,7 +396,9 @@ Status RPIServiceImpl::dataFrameFilter(ServerContext* context, const DataFrameFi
   response->set_value(-1);
   executeOnMainThread([&] {
     if (!initDplyr()) return;
-    ShieldSEXP dataFrame = dereference(request->ref());
+    DataFrameInfo *info = getDataFrameByRef(&request->ref());
+    if (info == nullptr) return;
+    ShieldSEXP dataFrame = info->dataFrame;
     ShieldSEXP maskWithNa = applyFilter(dataFrame, request->filter());
     ShieldSEXP mask = RI->replace(maskWithNa, RI->isNa(maskWithNa), false);
     PrSEXP call = R_NilValue;
@@ -291,15 +409,24 @@ Status RPIServiceImpl::dataFrameFilter(ServerContext* context, const DataFrameFi
     ShieldSEXP names = RI->names(dataFrame);
     ShieldSEXP newDataFrame = RI->namesAssign(safeEval(Rf_lcons(RI->dplyrTibble, call), R_GlobalEnv), names);
 
-    int index = persistentRefStorage.add(newDataFrame);
-    response->set_value(index);
+    DataFrameInfo *newInfo = registerDataFrame(newDataFrame, true);
+    response->set_value(newInfo->index);
   }, context, true);
   return Status::OK;
 }
 
-Status RPIServiceImpl::dataFrameDispose(ServerContext*, const Int32Value* request, Empty*) {
+Status RPIServiceImpl::dataFrameRefresh(ServerContext* context, const RRef* request, BoolValue* response) {
   executeOnMainThread([&] {
-    dataFramesCache.erase(request->value());
-  }, nullptr, true);
+    if (!initDplyr()) return;
+    DataFrameInfo *info = getDataFrameByRef(request);
+    if (info == nullptr) return;
+    if (!info->refresher) return;
+    ShieldSEXP newTable = info->refresher();
+    if (newTable == info->initialDataFrame || !isSupportedDataFrame(newTable)) return;
+    dataFrameCache.erase(info->initialDataFrame);
+    info->initialDataFrame = newTable;
+  initDataFrame(info);
+    response->set_value(true);
+  }, context, true);
   return Status::OK;
 }
