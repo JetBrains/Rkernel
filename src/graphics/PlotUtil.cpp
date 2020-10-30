@@ -198,6 +198,9 @@ private:
   }
 
   Ptr<Figure> extrapolate(const PathAction* firstPath, const PathAction* secondPath) {
+    if (firstPath->getSubPaths().size() != secondPath->getSubPaths().size()) {
+      throw ParsingError(PlotError::MISMATCHING_ACTIONS);
+    }
     auto subPaths = std::vector<std::vector<AffinePoint>>();
     auto subPathCount = int(firstPath->getSubPaths().size());
     subPaths.reserve(subPathCount);
@@ -306,6 +309,9 @@ private:
   }
 
   std::vector<AffinePoint> extrapolate(const std::vector<Point>& firstPoints, const std::vector<Point>& secondPoints) {
+    if (firstPoints.size() != secondPoints.size()) {
+      throw ParsingError(PlotError::MISMATCHING_ACTIONS);
+    }
     auto pointCount = int(firstPoints.size());
     auto points = std::vector<AffinePoint>();
     points.reserve(pointCount);
@@ -497,6 +503,9 @@ public:
   }
 
   void parse(const std::vector<Ptr<Action>>& firstActions, const std::vector<Ptr<Action>>& secondActions) {
+    if (firstActions.size() != secondActions.size()) {
+      throw ParsingError(PlotError::MISMATCHING_ACTIONS);
+    }
     auto actionCount = int(firstActions.size());
     for (auto i = 0; i < actionCount; i++) {
       const auto& firstAction = firstActions[i];
