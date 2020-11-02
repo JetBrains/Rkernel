@@ -1,0 +1,15 @@
+# Default ignored files
+.idea
+grpc
+Rcpp
+vcpkg
+build
+rwrapper-*
+cmake-build-*
+crashpad_handler-*
+crashpad/crashpad
+gens/protos/service.grpc.pb.cc
+gens/protos/service.grpc.pb.h
+gens/protos/service.pb.cc
+gens/protos/service.pb.h
+fsnotifier-*
