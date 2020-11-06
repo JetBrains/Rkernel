@@ -137,17 +137,84 @@ namespace {
     message->set_pattern(stroke.pattern);
   }
 
-  void fillMessage(AffinePoint* message, const graphics::AffinePoint& point) {
-    message->set_xscale(point.x.scale);
-    message->set_xoffset(point.x.offset);
-    message->set_yscale(point.y.scale);
-    message->set_yoffset(point.y.offset);
+  template<typename T>
+  T clamp(T value, T minValue, T maxValue) {
+    if (value < minValue) {
+      return minValue;
+    }
+    if (value > maxValue) {
+      return maxValue;
+    }
+    return value;
   }
 
-  AffinePoint* createMessage(const graphics::AffinePoint& point) {
-    auto message = new AffinePoint();
-    fillMessage(message, point);
-    return message;
+  uint64_t packFixedPoint(double value, unsigned integerBitCount, unsigned fractionBitCount) {
+    /*
+     * Say, I want to pack Q2.13 (2 bit per integer part, 13 per fraction, see Q notation),
+     * so I can represent values from -2.0 to 1.99987793, then:
+     *  1) multiplier = 2^13
+     *  2) minValue .. maxValue = -2^14 .. 2^14 - 1 (2^15 total)
+     *  3) mask = 0b1111...1 (15 times)
+     */
+    auto multiplier = 1U << fractionBitCount;
+    auto magnitude = 1U << (fractionBitCount + integerBitCount - 1U);
+    auto minValue = -int64_t(magnitude);
+    auto maxValue = int64_t(magnitude) - 1;
+    auto clamped = clamp(int64_t(value * multiplier), minValue, maxValue);
+    auto mask = (1U << (fractionBitCount + integerBitCount)) - 1U;
+    return uint64_t(clamped) & mask;
+  }
+
+  uint64_t packScale(double scale) {
+    return packFixedPoint(scale, 2U, 13U);  // 15 bit total
+  }
+
+  uint64_t packOffset(double offset) {
+    return packFixedPoint(offset, 6U, 10U);  // 16 bit total
+  }
+
+  uint64_t packCoordinate(graphics::AffineCoordinate coordinate) {
+    auto scalePacked = packScale(coordinate.scale);
+    auto offsetPacked = packOffset(coordinate.offset);
+    return scalePacked << 16U | offsetPacked;
+  }
+
+  uint64_t packPoint(const graphics::AffinePoint& point) {
+    /*
+     * Note: in order to optimize memory usage, the points are packed into 8 bytes.
+     * High word's layout:
+     *  [Reserved bit #63] [xScale (15 bit)] [xOffset (16 bit)]
+     * Low word's layout:
+     *  [Reserved bit #31] [yScale (15 bit)] [yOffset (16 bit)]
+     *
+     * Scales are stored as a signed fixed point real number.
+     * In order to obtain an equivalent float value, divide it by 2^13.
+     * Thus they represent values from -2.0 to 1.99987793.
+     * Rationale:
+     *  a) In practice I've never observed values out of range [0.0, 1.0]
+     *     but I decided to enlarge it to be prepared for any strange cases.
+     *     Negative values are added for the sake of symmetry
+     *     and encoding/decoding simplicity.
+     *  b) A one-pixel error will be observable for pictures of width 16384 pixels and more
+     *     thus the precision of a fraction part seems to be very good.
+     *
+     * Offsets are stored in a similar way, except they must be divided by 2^10.
+     * Thus they represent values from -32 to 31.999023437 (inches).
+     * Rationale:
+     *  a) Assuming that a typical width of a large image is 1920 px and its DPI is 72
+     *     then offset has a magnitude less than 26.67 inches
+     *     so an integer part is big enough.
+     *  b) A one-pixel error will be observable for pictures of DPI 2048
+     *     while typical values are from 72 to 300 DPI
+     *     so a fraction part is sufficient.
+     *
+     * Bits #63 and #31 are reserved for future uses.
+     * Bit #63 is supposed to indicate points which are safe to exclude from a simplified version of plot.
+     * Bit #31 can be used to indicate sophisticated path segments (such as cubic Bezier curve).
+     */
+    auto xPacked = packCoordinate(point.x);
+    auto yPacked = packCoordinate(point.y);
+    return xPacked << 32U | yPacked;
   }
 
   RasterImage* createMessage(const graphics::RasterImage& image) {
@@ -168,8 +235,8 @@ namespace {
 
   FreeViewport* createMessage(const graphics::FreeViewport& viewport) {
     auto message = new FreeViewport();
-    message->set_allocated_from(createMessage(viewport.getFrom()));
-    message->set_allocated_to(createMessage(viewport.getTo()));
+    message->set_from(packPoint(viewport.getFrom()));
+    message->set_to(packPoint(viewport.getTo()));
     message->set_parentindex(viewport.getParentIndex());
     return message;
   }
@@ -184,9 +251,8 @@ namespace {
 
   CircleFigure* createMessage(const graphics::CircleFigure& circle) {
     auto message = new CircleFigure();
-    message->set_allocated_center(createMessage(circle.getCenter()));
-    message->set_radiusscale(circle.getRadius().scale);
-    message->set_radiusoffset(circle.getRadius().offset);
+    message->set_center(packPoint(circle.getCenter()));
+    message->set_radius(packCoordinate(circle.getRadius()));
     message->set_strokeindex(circle.getStrokeIndex());
     message->set_colorindex(circle.getColorIndex());
     message->set_fillindex(circle.getFillIndex());
@@ -195,8 +261,8 @@ namespace {
 
   LineFigure* createMessage(const graphics::LineFigure& line) {
     auto message = new LineFigure();
-    message->set_allocated_from(createMessage(line.getFrom()));
-    message->set_allocated_to(createMessage(line.getTo()));
+    message->set_from(packPoint(line.getFrom()));
+    message->set_to(packPoint(line.getTo()));
     message->set_strokeindex(line.getStrokeIndex());
     message->set_colorindex(line.getColorIndex());
     return message;
@@ -207,8 +273,7 @@ namespace {
     for (const auto& subPath : path.getSubPaths()) {
       auto subPathMessage = message->add_subpath();
       for (const auto& point : subPath) {
-        auto pointMessage = subPathMessage->add_point();
-        fillMessage(pointMessage, point);
+        subPathMessage->add_point(packPoint(point));
       }
     }
     message->set_winding(path.getWinding());
@@ -221,8 +286,7 @@ namespace {
   PolygonFigure* createMessage(const graphics::PolygonFigure& polygon) {
     auto message = new PolygonFigure();
     for (const auto& point : polygon.getPoints()) {
-      auto pointMessage = message->add_point();
-      fillMessage(pointMessage, point);
+      message->add_point(packPoint(point));
     }
     message->set_strokeindex(polygon.getStrokeIndex());
     message->set_colorindex(polygon.getColorIndex());
@@ -233,8 +297,7 @@ namespace {
   PolylineFigure* createMessage(const graphics::PolylineFigure& polyline) {
     auto message = new PolylineFigure();
     for (const auto& point : polyline.getPoints()) {
-      auto pointMessage = message->add_point();
-      fillMessage(pointMessage, point);
+      message->add_point(packPoint(point));
     }
     message->set_strokeindex(polyline.getStrokeIndex());
     message->set_colorindex(polyline.getColorIndex());
@@ -244,8 +307,8 @@ namespace {
   RasterFigure* createMessage(const graphics::RasterFigure& raster) {
     auto message = new RasterFigure();
     message->set_allocated_image(createMessage(raster.getImage()));
-    message->set_allocated_from(createMessage(raster.getFrom()));
-    message->set_allocated_to(createMessage(raster.getTo()));
+    message->set_from(packPoint(raster.getFrom()));
+    message->set_to(packPoint(raster.getTo()));
     message->set_interpolate(raster.getInterpolate());
     message->set_angle(raster.getAngle());
     return message;
@@ -253,8 +316,8 @@ namespace {
 
   RectangleFigure* createMessage(const graphics::RectangleFigure& rectangle) {
     auto message = new RectangleFigure();
-    message->set_allocated_from(createMessage(rectangle.getFrom()));
-    message->set_allocated_to(createMessage(rectangle.getTo()));
+    message->set_from(packPoint(rectangle.getFrom()));
+    message->set_to(packPoint(rectangle.getTo()));
     message->set_strokeindex(rectangle.getStrokeIndex());
     message->set_colorindex(rectangle.getColorIndex());
     message->set_fillindex(rectangle.getFillIndex());
@@ -264,7 +327,7 @@ namespace {
   TextFigure* createMessage(const graphics::TextFigure& text) {
     auto message = new TextFigure();
     message->set_text(text.getText());
-    message->set_allocated_position(createMessage(text.getPosition()));
+    message->set_position(packPoint(text.getPosition()));
     message->set_angle(text.getAngle());
     message->set_anchor(text.getAnchor());
     message->set_fontindex(text.getFontIndex());
