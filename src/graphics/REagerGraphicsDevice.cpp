@@ -86,6 +86,10 @@ Font extractFont(pGEcontext context) {
   return Font{context->fontfamily, fontSize, extractFontStyle(context)};
 }
 
+int getComplexityMultiplier(pGEcontext context) {
+  return int(!Color(context->col).isTransparent()) + int(!Color(context->fill).isTransparent());
+}
+
 }  // anonymous
 
 REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber,
@@ -154,7 +158,7 @@ void REagerGraphicsDevice::drawCircle(Point center, double radius, pGEcontext co
   if (isProxy) {
     record<CircleAction>(normalize(center), normalize(radius), extractStroke(context), Color(context->col), Color(context->fill));
   }
-  complexity++;
+  complexity += getComplexityMultiplier(context);
 }
 
 void REagerGraphicsDevice::clip(Point from, Point to) {
@@ -224,7 +228,7 @@ void REagerGraphicsDevice::drawPolygon(int n, double *x, double *y, pGEcontext c
   if (isProxy) {
     record<PolygonAction>(createNormalizedPoints(n, x, y), extractStroke(context), Color(context->col), Color(context->fill));
   }
-  complexity += n;
+  complexity += n * getComplexityMultiplier(context);
 }
 
 void REagerGraphicsDevice::drawPolyline(int n, double *x, double *y, pGEcontext context) {
@@ -248,7 +252,7 @@ void REagerGraphicsDevice::drawRect(Point from, Point to, pGEcontext context) {
   if (isProxy) {
     record<RectangleAction>(normalize(Rectangle::make(from, to)), extractStroke(context), Color(context->col), Color(context->fill));
   }
-  complexity += 2;
+  complexity += 2 * getComplexityMultiplier(context);
 }
 
 void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, Rboolean winding, pGEcontext context)
@@ -268,8 +272,9 @@ void REagerGraphicsDevice::drawPath(double *x, double *y, int npoly, int *nper, 
     }
     record<PathAction>(std::move(subPaths), winding == TRUE, extractStroke(context), Color(context->col), Color(context->fill));
   }
+  auto multiplier = getComplexityMultiplier(context);
   for (auto i = 0; i < npoly; i++) {
-    complexity += nper[i];
+    complexity += nper[i] * multiplier;
   }
 }
 

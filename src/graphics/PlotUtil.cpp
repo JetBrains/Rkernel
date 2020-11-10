@@ -34,6 +34,8 @@ namespace graphics {
 
 namespace {
 
+const auto STROKE_WIDTH_THRESHOLD = 1.0 / 72.0;  // 1 px (in inches)
+
 class ParsingError : public std::exception {
 private:
   PlotError error;
@@ -105,6 +107,7 @@ private:
 
   Size firstSize;
   Size secondSize;
+  int totalComplexity;
 
   std::unordered_map<int, int> color2Indices;  // The key is a `Color::value`
   std::vector<Rectangle> secondClippingAreas;
@@ -492,8 +495,96 @@ private:
     return index;
   }
 
+  int calculatePreviewComplexity() const {
+    auto complexity = 0;
+    for (const auto& layer : layers) {
+      for (const auto& figure : layer.figures) {
+        complexity += calculatePreviewComplexity(*figure);
+      }
+    }
+    return complexity;
+  }
+
+  int calculatePreviewComplexity(const Figure& figure) const {
+    switch (figure.getKind()) {
+      case FigureKind::CIRCLE:
+        return calculatePreviewComplexity<CircleFigure>(figure);
+      case FigureKind::LINE:
+        return calculatePreviewComplexity<LineFigure>(figure);
+      case FigureKind::PATH:
+        return calculatePreviewComplexity<PathFigure>(figure);
+      case FigureKind::POLYGON:
+        return calculatePreviewComplexity<PolygonFigure>(figure);
+      case FigureKind::POLYLINE:
+        return calculatePreviewComplexity<PolylineFigure>(figure);
+      case FigureKind::RASTER:
+        return calculatePreviewComplexity<RasterFigure>(figure);
+      case FigureKind::RECTANGLE:
+        return calculatePreviewComplexity<RectangleFigure>(figure);
+      case FigureKind::TEXT:
+        return calculatePreviewComplexity<TextFigure>(figure);
+    }
+    return 0;  // Just to make a compiler happy. Must never be reachable
+  }
+
+  template<typename TFigure>
+  int calculatePreviewComplexity(const Figure& figure) const {
+    const auto& casted = dynamic_cast<const TFigure&>(figure);
+    return calculatePreviewComplexity(casted);
+  }
+
+  int calculatePreviewComplexity(const CircleFigure& circle) const {
+    return getComplexityMultiplier(circle);
+  }
+
+  int calculatePreviewComplexity(const LineFigure& line) const {
+    return 2;
+  }
+
+  int calculatePreviewComplexity(const PathFigure& path) const {
+    auto complexity = 0;
+    for (const auto& subPath : path.getSubPaths()) {
+      complexity += int(subPath.size());
+    }
+    complexity *= getComplexityMultiplier(path);
+    return complexity;
+  }
+
+  int calculatePreviewComplexity(const PolygonFigure& polygon) const {
+    return int(polygon.getPoints().size()) * getComplexityMultiplier(polygon);
+  }
+
+  int calculatePreviewComplexity(const PolylineFigure& polyline) const {
+    return int(polyline.getPoints().size());
+  }
+
+  int calculatePreviewComplexity(const RasterFigure& raster) const {
+    return raster.getImage().width * raster.getImage().height / 8;
+  }
+
+  int calculatePreviewComplexity(const RectangleFigure& rectangle) const {
+    return 2 * getComplexityMultiplier(rectangle);
+  }
+
+  int calculatePreviewComplexity(const TextFigure& text) const {
+    return 10;
+  }
+
+  template<typename TFigure>
+  int getComplexityMultiplier(const TFigure& figure) const {
+    return getComplexityMultiplier(figure.getStrokeIndex(), figure.getColorIndex(), figure.getFillIndex());
+  }
+
+  int getComplexityMultiplier(int strokeIndex, int colorIndex, int fillIndex) const {
+    auto hasFill = fillIndex >= 0;
+    auto hasStroke = strokeIndex >= 0 && colorIndex >= 0 && (!hasFill || strokes[strokeIndex].width > STROKE_WIDTH_THRESHOLD);
+    return int(hasFill) + int(hasStroke);
+  }
+
 public:
-  DifferentialParser(Size firstSize, Size secondSize) : firstSize(firstSize), secondSize(secondSize) {
+  DifferentialParser(Size firstSize, Size secondSize, int totalComplexity)
+    : firstSize(firstSize), secondSize(secondSize), totalComplexity(totalComplexity)
+  {
     secondClippingAreas.push_back(Rectangle::make(Point{0.0, 0.0}, secondSize.toPoint()));
     firstClippingAreas.push_back(Rectangle::make(Point{0.0, 0.0}, firstSize.toPoint()));
     viewports.push_back(FreeViewport::createFullScreen());
@@ -534,7 +625,9 @@ public:
     for (auto& font : fonts) {
       font.name = FontUtil::matchName(font.name);
     }
-    return Plot{std::move(fonts), std::move(colors), std::move(strokes), std::move(viewports), std::move(layers), error};
+    auto previewComplexity = calculatePreviewComplexity();
+    return Plot{std::move(fonts), std::move(colors), std::move(strokes), std::move(viewports), std::move(layers),
+                previewComplexity, totalComplexity, error};
   };
 };
 
@@ -544,14 +637,15 @@ Plot PlotUtil::createPlotWithError(PlotError error) {
   // Note: this will return an empty (i.e. without any layers) plot
   // but with predefined colors, fonts and global viewport which might be useful
   // if a client side wants to display some kind of diagnostic message
-  return DifferentialParser(Size{0.0, 0.0}, Size{0.0, 0.0}).buildPlot(error);
+  return DifferentialParser(Size{0.0, 0.0}, Size{0.0, 0.0}, 0).buildPlot(error);
 }
 
 Plot PlotUtil::extrapolate(Size firstSize, const std::vector<Ptr<Action>>& firstActions,
-                           Size secondSize, const std::vector<Ptr<Action>>& secondActions)
+                           Size secondSize, const std::vector<Ptr<Action>>& secondActions,
+                           int totalComplexity)
 {
   try {
-    auto parser = DifferentialParser(firstSize, secondSize);
+    auto parser = DifferentialParser(firstSize, secondSize, totalComplexity);
     parser.parse(firstActions, secondActions);
     return parser.buildPlot();
   } catch (const ParsingError& e) {
