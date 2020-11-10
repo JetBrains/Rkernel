@@ -26,6 +26,8 @@ struct Plot {
   std::vector<Stroke> strokes;
   std::vector<Ptr<Viewport>> viewports;
   std::vector<Layer> layers;
+  int previewComplexity;
+  int totalComplexity;
   PlotError error;
 };
 

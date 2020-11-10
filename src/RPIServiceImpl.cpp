@@ -408,6 +408,8 @@ namespace {
       auto layerMessage = message->add_layer();
       fillMessage(layerMessage, layer);
     }
+    message->set_previewcomplexity(plot.previewComplexity);
+    message->set_totalcomplexity(plot.totalComplexity);
     message->set_error(int(plot.error));
     return message;
   }
