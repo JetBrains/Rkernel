@@ -75,11 +75,11 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   vmaxset(vmax);
 
   CPP_BEGIN
-    DoSystemResult res = myDoSystemImpl(cmd, intern, timeout, true, false, false, last_is_amp);
+    DoSystemResult res = myDoSystemImpl(cmd, timeout, intern ? COLLECT : PRINT, "", PRINT, "", "", last_is_amp);
     if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
     if (intern) {
       std::vector<std::string> lines;
-      std::istringstream stream(res.stdoutBuf);
+      std::istringstream stream(res.output);
       std::string line;
       while (std::getline(stream, line)) {
         lines.push_back(line);

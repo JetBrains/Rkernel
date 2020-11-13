@@ -21,83 +21,115 @@
 #include "Timer.h"
 #include <process.hpp>
 #include <thread>
+#include <fstream>
+
+static const size_t BUF_SIZE = 4096;
 
 extern "C" {
 typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);
 void SET_PRIMFUN(SEXP x, CCODE f);
 }
 
-DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout, bool replInput, bool ignoreStdout, bool ignoreStderr, bool background) {
+DoSystemResult myDoSystemImpl(const char* cmd, int timeout,
+                              SystemOutputType outType, const char* outFile,
+                              SystemOutputType errType, const char* errFile,
+                              const char* inFile, bool background) {
   if (background) {
-    auto process = std::make_unique<TinyProcessLib::Process>(
+    if (outType == COLLECT) outType = IGNORE_OUTPUT;
+    if (errType == COLLECT) errType = IGNORE_OUTPUT;
+  }
+  bool replInput = !inFile[0];
+  std::string buf = "";
+  std::shared_ptr<std::ofstream> outFileStream, errFileStream;
+  if (outType == TO_FILE) {
+    outFileStream = std::make_shared<std::ofstream>(outFile, std::ios_base::out | std::ios_base::binary);
+  }
+  if (errType == TO_FILE) {
+    errFileStream = std::make_shared<std::ofstream>(errFile, std::ios_base::out | std::ios_base::binary);
+  }
+  std::shared_ptr<TinyProcessLib::Process> process = std::make_shared<TinyProcessLib::Process>(
       cmd, "",
-      [=] (const char* s, size_t len) {
-        if (!ignoreStdout) {
+      [outType, outFileStream = std::move(outFileStream), background, &buf] (const char* s, size_t len) {
+        switch (outType) {
+        case IGNORE_OUTPUT:
+          break;
+        case COLLECT:
+          buf.insert(buf.end(), s, s + len);
+          break;
+        case PRINT:
           rpiService->executeOnMainThread([&] {
-            WithOutputHandler with(rpiService->replOutputHandler);
+            WithOutputHandler with = background ? WithOutputHandler(rpiService->replOutputHandler) : WithOutputHandler();
             Rprintf("%s", std::string(s, s + len).c_str());
           });
+          break;
+        case TO_FILE:
+          outFileStream->write(s, len);
+          break;
         }
       },
-      [=] (const char* s, size_t len) {
-        if (!ignoreStderr) {
+      [errType, errFileStream = std::move(errFileStream), background, &buf] (const char* s, size_t len) {
+        switch (errType) {
+        case IGNORE_OUTPUT:
+          break;
+        case COLLECT:
+          buf.insert(buf.end(), s, s + len);
+          break;
+        case PRINT:
           rpiService->executeOnMainThread([&] {
-            WithOutputHandler with(rpiService->replOutputHandler);
+            WithOutputHandler with = background ? WithOutputHandler(rpiService->replOutputHandler) : WithOutputHandler();
             REprintf("%s", std::string(s, s + len).c_str());
           });
+          break;
+        case TO_FILE:
+          errFileStream->write(s, len);
+          break;
         }
       },
-      false
-    );
-    std::thread([process = std::move(process)] {
+      !background || !replInput
+  );
+  if (!replInput) {
+    std::thread([process, f = std::string(inFile)] {
+      std::ifstream inStream(f, std::ios_base::in | std::ios_base::binary);
+      char buf[BUF_SIZE];
+      int unused;
+      while (!process->try_get_exit_status(unused) && inStream.good()) {
+        inStream.read(buf, BUF_SIZE);
+        auto size = inStream.gcount();
+        if (size > 0) process->write(buf, size);
+      }
+      process->close_stdin();
+    }).detach();
+  }
+  if (background) {
+    std::thread([process] {
       process->get_exit_status();
     }).detach();
     return {"", 0, false};
   }
-  std::string stdoutBuf = "";
-  TinyProcessLib::Process process(
-      cmd, "",
-      [&] (const char* s, size_t len) {
-        if (collectStdout) {
-          stdoutBuf.insert(stdoutBuf.end(), s, s + len);
-        } else if (!ignoreStdout) {
-          rpiService->executeOnMainThread([&] {
-            Rprintf("%s", std::string(s, s + len).c_str());
-          });
-        }
-      },
-      [&] (const char* s, size_t len) {
-        if (!ignoreStderr) {
-          rpiService->executeOnMainThread([&] {
-            REprintf("%s", std::string(s, s + len).c_str());
-          });
-        }
-      },
-      true
-  );
+
   volatile int exitCode = 0;
   volatile bool timedOut = false;
   std::thread terminationThread([&] {
-    exitCode = process.get_exit_status();
+    exitCode = process->get_exit_status();
     rpiService->subprocessHandlerStop();
   });
   std::unique_ptr<Timer> timeoutTimer = timeout == 0 ? nullptr : std::make_unique<Timer>([&] {
     timedOut = true;
-    process.kill();
+    process->kill();
   }, timeout);
   rpiService->subprocessHandler(
     replInput,
     [&] (std::string const& s) {
       if (s.empty()) {
-        process.close_stdin();
+        process->close_stdin();
       } else {
-        process.write(s);
+        process->write(s);
       }
     },
-    [&] { process.kill(); }
+    [&] { process->kill(); }
   );
   terminationThread.join();
-  return { stdoutBuf, timedOut ? 124 : exitCode, timedOut };
+  return { buf, timedOut ? 124 : exitCode, timedOut };
 }
 
 void initDoSystem() {
