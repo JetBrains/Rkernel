@@ -59,25 +59,31 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   if (timeout && !flag)
     Rf_errorcall(call, "Timeout with background running processes is not supported.");
 
+  if (flag == 2) flag = 1; /* ignore std.output.on.console */
   const char* fout = "";
   const char* ferr = "";
-  if (flag == 2) flag = 1; /* ignore std.output.on.console */
-  if (TYPEOF(Stdout) == STRSXP) fout = CHAR(STRING_ELT(Stdout, 0));
-  else if (Rf_asLogical(Stdout) == 0) fout = nullptr;
-  if (TYPEOF(Stderr) == STRSXP) ferr = CHAR(STRING_ELT(Stderr, 0));
-  else if (Rf_asLogical(Stderr) == 0) ferr = nullptr;
+  SystemOutputType outType = IGNORE_OUTPUT;
+  SystemOutputType errType = IGNORE_OUTPUT;
+  if (TYPEOF(Stdout) == STRSXP) {
+    fout = CHAR(STRING_ELT(Stdout, 0));
+    outType = fout[0] ? TO_FILE : PRINT;
+  } else {
+    outType = Rf_asLogical(Stdout) ? COLLECT : IGNORE_OUTPUT;
+  }
+  if (TYPEOF(Stderr) == STRSXP) {
+    ferr = CHAR(STRING_ELT(Stderr, 0));
+    errType = ferr[0] ? TO_FILE : PRINT;
+  } else {
+    errType = Rf_asLogical(Stderr) ? COLLECT : IGNORE_OUTPUT;
+  }
 
   CPP_BEGIN
     std::string command = cmd;
-    if (fin[0] != '\0') command += " < \"" + escapeStringCharacters(fin) + "\"";
-    if (fout != nullptr && fout[0] != '\0') command += " > \"" + escapeStringCharacters(fout) + "\"";
-    if (ferr != nullptr && ferr[0] != '\0') command += " 2> \"" + escapeStringCharacters(ferr) + "\"";
-    bool intern = flag == 3;
-    DoSystemResult res = myDoSystemImpl(command.c_str(), intern, timeout, fin[0] == '\0', fout == nullptr, ferr == nullptr, flag == 0);
+    DoSystemResult res = myDoSystemImpl(command.c_str(), timeout, outType, fout, errType, ferr, fin, flag == 0);
     if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
-    if (intern) {
+    if (outType == COLLECT || errType == COLLECT) {
       std::vector<std::string> lines;
-      std::istringstream stream(res.stdoutBuf);
+      std::istringstream stream(res.output);
       std::string line;
       while (std::getline(stream, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();

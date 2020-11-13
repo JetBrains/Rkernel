@@ -25,13 +25,18 @@
 void initDoSystem();
 SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP rho);
 
+enum SystemOutputType {
+  IGNORE_OUTPUT, COLLECT, PRINT, TO_FILE
+};
+
 struct DoSystemResult {
-  std::string stdoutBuf;
+  std::string output;
   int exitCode = 0;
   bool timedOut = false;
 };
-DoSystemResult myDoSystemImpl(const char* cmd, bool collectStdout, int timeout,
-                              bool replInput = true, bool ignoreStdout = false, bool ignoreStderr = false,
-                              bool background = false);
+DoSystemResult myDoSystemImpl(const char* cmd, int timeout,
+                              SystemOutputType outType, const char* outFile,
+                              SystemOutputType errType, const char* errFile,
+                              const char* inFile = "", bool background = false);
 
 #endif //RWRAPPER_SUBPROCESS_H
