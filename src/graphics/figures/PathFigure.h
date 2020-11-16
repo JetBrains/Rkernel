@@ -5,21 +5,21 @@
 #include <sstream>
 
 #include "Figure.h"
+#include "../Polyline.h"
 #include "../AffinePoint.h"
-#include "../../util/StringUtil.h"
 
 namespace graphics {
 
 class PathFigure : public Figure {
 private:
-  std::vector<std::vector<AffinePoint>> subPaths;
+  std::vector<Polyline> subPaths;
   bool winding;
   int strokeIndex;
   int colorIndex;
   int fillIndex;
 
 public:
-  PathFigure(std::vector<std::vector<AffinePoint>> subPaths, bool winding, int strokeIndex, int colorIndex, int fillIndex)
+  PathFigure(std::vector<Polyline> subPaths, bool winding, int strokeIndex, int colorIndex, int fillIndex)
     : subPaths(std::move(subPaths)), winding(winding), strokeIndex(strokeIndex), colorIndex(colorIndex), fillIndex(fillIndex) {}
 
   FigureKind getKind() const override {
@@ -28,15 +28,12 @@ public:
 
   std::string toString() const override {
     auto sout = std::ostringstream();
-    auto mapper = [](const std::vector<AffinePoint>& points) {
-      return joinToString(points, [](const AffinePoint& point) { return point; }, "[", "]");
-    };
-    sout << "PathFigure(subPaths: " << joinToString(subPaths, mapper, "[", "]") << ", winding: " << winding
+    sout << "PathFigure(subPaths: [" << joinToString(subPaths) << "], winding: " << winding
          << ", strokeIndex: " << strokeIndex << ", colorIndex: " << colorIndex << ", fillIndex: " << fillIndex << ")";
     return sout.str();
   }
 
-  const std::vector<std::vector<AffinePoint>>& getSubPaths() const {
+  const std::vector<Polyline>& getSubPaths() const {
     return subPaths;
   }
 

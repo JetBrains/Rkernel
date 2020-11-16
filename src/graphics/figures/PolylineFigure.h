@@ -5,20 +5,20 @@
 #include <sstream>
 
 #include "Figure.h"
+#include "../Polyline.h"
 #include "../AffinePoint.h"
-#include "../../util/StringUtil.h"
 
 namespace graphics {
 
 class PolylineFigure : public Figure {
 private:
-  std::vector<AffinePoint> points;
+  Polyline polyline;
   int strokeIndex;
   int colorIndex;
 
 public:
-  PolylineFigure(std::vector<AffinePoint> points, int strokeIndex, int colorIndex)
-    : points(std::move(points)), strokeIndex(strokeIndex), colorIndex(colorIndex) {}
+  PolylineFigure(Polyline polyline, int strokeIndex, int colorIndex)
+    : polyline(std::move(polyline)), strokeIndex(strokeIndex), colorIndex(colorIndex) {}
 
   FigureKind getKind() const override {
     return FigureKind::POLYLINE;
@@ -26,13 +26,13 @@ public:
 
   std::string toString() const override {
     auto sout = std::ostringstream();
-    sout << "PolylineFigure(points: [" << joinToString(points) << "], strokeIndex: " << strokeIndex
+    sout << "PolylineFigure(polyline: " << polyline << ", strokeIndex: " << strokeIndex
          << ", colorIndex: " << colorIndex << ")";
     return sout.str();
   }
 
-  const std::vector<AffinePoint>& getPoints() const {
-    return points;
+  const Polyline& getPolyline() const {
+    return polyline;
   }
 
   int getStrokeIndex() const {

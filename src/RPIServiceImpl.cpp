@@ -183,7 +183,7 @@ namespace {
     /*
      * Note: in order to optimize memory usage, the points are packed into 8 bytes.
      * High word's layout:
-     *  [Reserved bit #63] [xScale (15 bit)] [xOffset (16 bit)]
+     *  [Preview mask (bit #63)] [xScale (15 bit)] [xOffset (16 bit)]
      * Low word's layout:
      *  [Reserved bit #31] [yScale (15 bit)] [yOffset (16 bit)]
      *
@@ -208,13 +208,32 @@ namespace {
      *     while typical values are from 72 to 300 DPI
      *     so a fraction part is sufficient.
      *
-     * Bits #63 and #31 are reserved for future uses.
-     * Bit #63 is supposed to indicate points which are safe to exclude from a simplified version of plot.
-     * Bit #31 can be used to indicate sophisticated path segments (such as cubic Bezier curve).
+     * Bit #31 is reserved for future uses.
+     * Bit #63 is used to indicate points which are safe to exclude from a simplified version of plot
      */
     auto xPacked = packCoordinate(point.x);
     auto yPacked = packCoordinate(point.y);
     return xPacked << 32U | yPacked;
+  }
+
+  uint64_t packPoint(const graphics::AffinePoint& point, bool isMasked) {
+    auto packed = packPoint(point);
+    auto bit63 = uint64_t(isMasked) << 63U;
+    return packed | bit63;
+  }
+
+  void fillMessage(Polyline* message, const graphics::Polyline& polyline) {
+    auto pointCount = polyline.points.size();
+    for (auto i = 0U; i < pointCount; i++) {
+      message->add_point(packPoint(polyline.points[i], polyline.previewMask[i]));
+    }
+    message->set_previewcount(polyline.previewCount);
+  }
+
+  Polyline* createMessage(const graphics::Polyline& polyline) {
+    auto message = new Polyline();
+    fillMessage(message, polyline);
+    return message;
   }
 
   RasterImage* createMessage(const graphics::RasterImage& image) {
@@ -272,9 +291,7 @@ namespace {
     auto message = new PathFigure();
     for (const auto& subPath : path.getSubPaths()) {
       auto subPathMessage = message->add_subpath();
-      for (const auto& point : subPath) {
-        subPathMessage->add_point(packPoint(point));
-      }
+      fillMessage(subPathMessage, subPath);
     }
     message->set_winding(path.getWinding());
     message->set_strokeindex(path.getStrokeIndex());
@@ -285,9 +302,7 @@ namespace {
 
   PolygonFigure* createMessage(const graphics::PolygonFigure& polygon) {
     auto message = new PolygonFigure();
-    for (const auto& point : polygon.getPoints()) {
-      message->add_point(packPoint(point));
-    }
+    message->set_allocated_polyline(createMessage(polygon.getPolyline()));
     message->set_strokeindex(polygon.getStrokeIndex());
     message->set_colorindex(polygon.getColorIndex());
     message->set_fillindex(polygon.getFillIndex());
@@ -296,9 +311,7 @@ namespace {
 
   PolylineFigure* createMessage(const graphics::PolylineFigure& polyline) {
     auto message = new PolylineFigure();
-    for (const auto& point : polyline.getPoints()) {
-      message->add_point(packPoint(point));
-    }
+    message->set_allocated_polyline(createMessage(polyline.getPolyline()));
     message->set_strokeindex(polyline.getStrokeIndex());
     message->set_colorindex(polyline.getColorIndex());
     return message;
