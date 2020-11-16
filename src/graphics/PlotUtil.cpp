@@ -35,6 +35,43 @@ namespace graphics {
 namespace {
 
 const auto STROKE_WIDTH_THRESHOLD = 1.0 / 72.0;  // 1 px (in inches)
+const auto LINE_DISTANCE_THRESHOLD = 2.0 / 72.0;  // 2 px (in inches)
+const auto POLYLINE_LENGTH_THRESHOLD = 7;  // Note: prevent optimizing hexagons
+
+class Line {
+private:
+  bool isProper;
+  double a;
+  double b;
+  double c;
+  double d;
+
+public:
+  Line(Point from, Point to) {
+    if (!isClose(from, to)) {
+      isProper = true;
+      a = to.y - from.y;
+      b = from.x - to.x;
+      c = to.x * from.y - to.y * from.x;
+      d = std::sqrt(a * a + b * b);
+    } else {
+      isProper = false;
+      a = from.x;
+      b = from.y;
+      c = 0.0;
+      d = 0.0;
+    }
+  }
+
+  double distanceTo(Point point) const {
+    if (isProper) {
+      auto nominator = a * point.x + b * point.y + c;
+      return std::abs(nominator) / d;
+    } else {
+      return distance(point, Point{a, b});
+    }
+  }
+};
 
 class ParsingError : public std::exception {
 private:
@@ -204,7 +241,7 @@ private:
     if (firstPath->getSubPaths().size() != secondPath->getSubPaths().size()) {
       throw ParsingError(PlotError::MISMATCHING_ACTIONS);
     }
-    auto subPaths = std::vector<std::vector<AffinePoint>>();
+    auto subPaths = std::vector<Polyline>();
     auto subPathCount = int(firstPath->getSubPaths().size());
     subPaths.reserve(subPathCount);
     for (auto i = 0; i < subPathCount; i++) {
@@ -217,11 +254,11 @@ private:
   }
 
   Ptr<Figure> extrapolate(const PolygonAction* firstPolygon, const PolygonAction* secondPolygon) {
-    auto points = extrapolate(firstPolygon->getPoints(), secondPolygon->getPoints());
+    auto polyline = extrapolate(firstPolygon->getPoints(), secondPolygon->getPoints());
     auto strokeIndex = getOrRegisterStrokeIndex(firstPolygon->getStroke());
     auto colorIndex = getOrRegisterColorIndex(firstPolygon->getColor());
     auto fillIndex = getOrRegisterColorIndex(firstPolygon->getFill());
-    return makePtr<PolygonFigure>(std::move(points), strokeIndex, colorIndex, fillIndex);
+    return makePtr<PolygonFigure>(std::move(polyline), strokeIndex, colorIndex, fillIndex);
   }
 
   Ptr<Figure> extrapolate(const PolylineAction* firstPolyline, const PolylineAction* secondPolyline) {
@@ -233,8 +270,8 @@ private:
       auto to = extrapolate(firstPolyline->getPoints()[1], secondPolyline->getPoints()[1]);
       return makePtr<LineFigure>(from, to, strokeIndex, colorIndex);
     } else {
-      auto points = extrapolate(firstPolyline->getPoints(), secondPolyline->getPoints());
-      return makePtr<PolylineFigure>(std::move(points), strokeIndex, colorIndex);
+      auto polyline = extrapolate(firstPolyline->getPoints(), secondPolyline->getPoints());
+      return makePtr<PolylineFigure>(std::move(polyline), strokeIndex, colorIndex);
     }
   }
 
@@ -311,7 +348,7 @@ private:
     return graphics::extrapolate(firstArea.height(), firstRadius, secondArea.height(), secondRadius);
   }
 
-  std::vector<AffinePoint> extrapolate(const std::vector<Point>& firstPoints, const std::vector<Point>& secondPoints) {
+  Polyline extrapolate(const std::vector<Point>& firstPoints, const std::vector<Point>& secondPoints) {
     if (firstPoints.size() != secondPoints.size()) {
       throw ParsingError(PlotError::MISMATCHING_ACTIONS);
     }
@@ -321,7 +358,46 @@ private:
     for (auto i = 0; i < pointCount; i++) {
       points.push_back(extrapolate(firstPoints[i], secondPoints[i]));
     }
-    return points;
+    auto preview = buildPreviewMask(firstPoints);
+    return Polyline{std::move(points), std::move(preview.first), preview.second};
+  }
+
+  static std::pair<std::vector<bool>, int> buildPreviewMask(const std::vector<Point>& points) {
+    auto mask = std::vector<bool>(points.size(), false);  // `true` means that a point [i] might be skipped in a preview
+    auto pointCount = int(points.size());
+    if (pointCount > POLYLINE_LENGTH_THRESHOLD) {
+      auto previewCount = buildPreviewMask(mask, points, 0, pointCount);
+      return std::make_pair(std::move(mask), previewCount);
+    } else {
+      return std::make_pair(std::move(mask), pointCount);
+    }
+  }
+
+  static int buildPreviewMask(std::vector<bool>& mask, const std::vector<Point>& points, int startIndex, /* exclusive */ int endIndex) {
+    // Note: an implementation of the Ramer-Douglas-Peucker algorithm
+    if (endIndex - startIndex <= 2) {
+      return endIndex - startIndex;  // all points are visible
+    }
+    auto line = Line(points[startIndex], points[endIndex - 1]);
+    auto maxDistance = 0.0;
+    auto maxDistanceIndex = -1;
+    for (auto index = startIndex + 1; index < endIndex - 1; index++) {
+      auto distance = line.distanceTo(points[index]);
+      if (distance > maxDistance) {
+        maxDistanceIndex = index;
+        maxDistance = distance;
+      }
+    }
+    if (maxDistance < LINE_DISTANCE_THRESHOLD) {
+      for (auto index = startIndex + 1; index < endIndex - 1; index++) {
+        mask[index] = true;  // can be safely removed from preview
+      }
+      return 2;  // only end points are visible
+    } else {
+      auto firstPreviewCount = buildPreviewMask(mask, points, startIndex, maxDistanceIndex + 1);
+      auto secondPreviewCount = buildPreviewMask(mask, points, maxDistanceIndex, endIndex);
+      return firstPreviewCount + secondPreviewCount - 1;  // subtract one common point
+    }
   }
 
   bool touchesAnyClippingArea(Point point) {
@@ -544,18 +620,18 @@ private:
   int calculatePreviewComplexity(const PathFigure& path) const {
     auto complexity = 0;
     for (const auto& subPath : path.getSubPaths()) {
-      complexity += int(subPath.size());
+      complexity += int(subPath.previewCount);
     }
     complexity *= getComplexityMultiplier(path);
     return complexity;
   }
 
   int calculatePreviewComplexity(const PolygonFigure& polygon) const {
-    return int(polygon.getPoints().size()) * getComplexityMultiplier(polygon);
+    return int(polygon.getPolyline().previewCount) * getComplexityMultiplier(polygon);
   }
 
   int calculatePreviewComplexity(const PolylineFigure& polyline) const {
-    return int(polyline.getPoints().size());
+    return int(polyline.getPolyline().previewCount);
   }
 
   int calculatePreviewComplexity(const RasterFigure& raster) const {
