@@ -637,6 +637,7 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
    filter = NULL,
    existing = TRUE)
 {
+   path <- .rs.normalizePath(path)
    filePath <- .Call(".jetbrains_selectFile", list(
          caption,
          label,
@@ -656,6 +657,7 @@ options(terminal.manager = list(terminalActivate = .rs.api.terminalActivate,
    label = "Select",
    path = .rs.getProjectDirectory())
 {
+   path <- .rs.normalizePath(path)
    filePath <- .Call(".jetbrains_selectDirectory", list(
      caption,
      label,
