@@ -270,7 +270,7 @@ namespace {
 
   CircleFigure* createMessage(const graphics::CircleFigure& circle) {
     auto message = new CircleFigure();
-    message->set_center(packPoint(circle.getCenter()));
+    message->set_center(packPoint(circle.getCenter(), circle.isMasked()));
     message->set_radius(packCoordinate(circle.getRadius()));
     message->set_strokeindex(circle.getStrokeIndex());
     message->set_colorindex(circle.getColorIndex());

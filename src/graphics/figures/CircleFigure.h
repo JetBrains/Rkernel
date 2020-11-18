@@ -15,10 +15,11 @@ private:
   int strokeIndex;
   int colorIndex;
   int fillIndex;
+  bool masked;
 
 public:
-  CircleFigure(AffinePoint center, AffineCoordinate radius, int strokeIndex, int colorIndex, int fillIndex)
-    : center(center), radius(radius), strokeIndex(strokeIndex), colorIndex(colorIndex), fillIndex(fillIndex) {}
+  CircleFigure(AffinePoint center, AffineCoordinate radius, int strokeIndex, int colorIndex, int fillIndex, bool isMasked)
+    : center(center), radius(radius), strokeIndex(strokeIndex), colorIndex(colorIndex), fillIndex(fillIndex), masked(isMasked) {}
 
   FigureKind getKind() const override {
     return FigureKind::CIRCLE;
@@ -27,7 +28,7 @@ public:
   std::string toString() const override {
     auto sout = std::ostringstream();
     sout << "CircleFigure(center: " << center << ", radius: " << radius << ", strokeIndex: " << strokeIndex
-         << ", colorIndex: " << colorIndex << ", fillIndex: " << fillIndex << ")";
+         << ", colorIndex: " << colorIndex << ", fillIndex: " << fillIndex << ", isMasked: " << masked << ")";
     return sout.str();
   }
 
@@ -49,6 +50,10 @@ public:
 
   int getFillIndex() const {
     return fillIndex;
+  }
+
+  bool isMasked() const {
+    return masked;
   }
 };
 

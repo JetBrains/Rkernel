@@ -37,6 +37,8 @@ namespace {
 const auto STROKE_WIDTH_THRESHOLD = 1.0 / 72.0;  // 1 px (in inches)
 const auto LINE_DISTANCE_THRESHOLD = 2.0 / 72.0;  // 2 px (in inches)
 const auto POLYLINE_LENGTH_THRESHOLD = 7;  // Note: prevent optimizing hexagons
+const auto MAX_CIRCLES_PER_CELL = 250;
+const auto CIRCLE_DISTANCE_THRESHOLD = 12.0 / 72.0;  // 12 px (in inches)
 
 class Line {
 private:
@@ -134,6 +136,17 @@ std::pair<double, double> extrapolateFixed(Size firstSize, Size secondSize) {
   return std::make_pair(ratio, delta);
 }
 
+int getGridIndex(double value, double side, int gridSide) {
+  auto index = int((value / side) * gridSide);
+  return std::min(std::max(0, index), gridSide - 1);
+}
+
+std::pair<int, int> getGridIndices(Point point, const Rectangle& area, int gridSide) {
+  auto x = getGridIndex(point.x - area.from.x, area.width(), gridSide);
+  auto y = getGridIndex(point.y - area.from.y, area.height(), gridSide);
+  return std::make_pair(x, y);
+}
+
 class DifferentialParser {
 private:
   enum class State {
@@ -144,6 +157,8 @@ private:
 
   Size firstSize;
   Size secondSize;
+  const std::vector<Ptr<Action>>& firstActions;
+  const std::vector<Ptr<Action>>& secondActions;
   int totalComplexity;
 
   std::unordered_map<int, int> color2Indices;  // The key is a `Color::value`
@@ -162,6 +177,7 @@ private:
   std::vector<Ptr<Figure>> currentFigures;
   int currentClippingAreaIndex = 0;
   int currentViewportIndex = 0;
+  int currentActionIndex = -1;
 
   Ptr<Figure> extrapolate(const Ptr<Action>& firstAction, const Ptr<Action>& secondAction) {
     auto kind = firstAction->getKind();
@@ -209,12 +225,71 @@ private:
   }
 
   Ptr<Figure> extrapolate(const CircleAction* firstCircle, const CircleAction* secondCircle) {
+    auto firstCircles = std::vector<const CircleAction*>{firstCircle};
+    auto secondCircles = std::vector<const CircleAction*>{secondCircle};
+    while (moveNextAction() && firstActions[currentActionIndex]->getKind() == ActionKind::CIRCLE) {
+      auto pair = downcast<CircleAction>(firstActions[currentActionIndex], secondActions[currentActionIndex]);
+      firstCircles.push_back(pair.first);
+      secondCircles.push_back(pair.second);
+    }
+    currentActionIndex--;
+    if (firstCircles.size() == 1U) {
+      return extrapolateCircle(firstCircles[0], secondCircles[0], /* isMasked */ false);
+    } else {
+      auto mask = buildPreviewMask(firstCircles);
+      auto circleCount = int(firstCircles.size());
+      for (auto i = 0; i < circleCount - 1; i++) {
+        currentFigures.push_back(extrapolateCircle(firstCircles[i], secondCircles[i], mask[i]));
+      }
+      return extrapolateCircle(firstCircles[circleCount - 1], secondCircles[circleCount - 1], mask[circleCount - 1]);
+    }
+  }
+
+  std::vector<bool> buildPreviewMask(const std::vector<const CircleAction*>& circles) {
+    auto circleCount = int(circles.size());
+    auto cellCount = circleCount / MAX_CIRCLES_PER_CELL;
+    auto gridSide = int(std::sqrt(cellCount));
+    auto mask = std::vector<bool>(circleCount, false);  // `true` means that a circle can be removed from a preview
+    if (gridSide > 1) {
+      const auto& clippingArea = firstClippingAreas[currentClippingAreaIndex];
+      auto cells = std::vector<std::vector<int>>(gridSide * gridSide);
+      for (auto i = 0; i < circleCount; i++) {
+        auto pair = getGridIndices(circles[i]->getCenter(), clippingArea, gridSide);
+        cells[pair.second * gridSide + pair.first].push_back(i);
+      }
+      for (const auto& cell : cells) {
+        buildPreviewMask(mask, circles, &cell);
+      }
+    } else {
+      buildPreviewMask(mask, circles, /* indices */ nullptr);
+    }
+    return mask;
+  }
+
+  static void buildPreviewMask(std::vector<bool>& mask, const std::vector<const CircleAction*>& circles, const std::vector<int>* indices) {
+    auto indexCount = indices != nullptr ? int(indices->size()) : int(circles.size());
+    for (auto i = indexCount - 2; i >= 0; i--) {
+      auto circleIndex = indices != nullptr ? (*indices)[i] : i;
+      for (auto j = i + 1; j < indexCount; j++) {
+        auto rivalIndex = indices != nullptr ? (*indices)[j] : j;
+        if (mask[rivalIndex]) {
+          continue;  // rival is not visible, don't compare to it
+        }
+        if (distance(circles[rivalIndex]->getCenter(), circles[circleIndex]->getCenter()) < CIRCLE_DISTANCE_THRESHOLD) {
+          mask[circleIndex] = true;  // circle is not visible due to rival
+          break;
+        }
+      }
+    }
+  }
+
+  Ptr<CircleFigure> extrapolateCircle(const CircleAction* firstCircle, const CircleAction* secondCircle, bool isMasked) {
     auto center = extrapolate(firstCircle->getCenter(), secondCircle->getCenter());
     auto radius = extrapolateRadius(firstCircle->getRadius(), secondCircle->getRadius());  // Note: radius may depend on viewport's height
     auto strokeIndex = getOrRegisterStrokeIndex(firstCircle->getStroke());
     auto colorIndex = getOrRegisterColorIndex(firstCircle->getColor());
     auto fillIndex = getOrRegisterColorIndex(firstCircle->getFill());
-    return makePtr<CircleFigure>(center, radius, strokeIndex, colorIndex, fillIndex);
+    return makePtr<CircleFigure>(center, radius, strokeIndex, colorIndex, fillIndex, isMasked);
   }
 
   Ptr<Figure> extrapolate(const LineAction* firstLine, const LineAction* secondLine) {
@@ -610,7 +685,7 @@ private:
   }
 
   int calculatePreviewComplexity(const CircleFigure& circle) const {
-    return getComplexityMultiplier(circle);
+    return !circle.isMasked() ? getComplexityMultiplier(circle) : 0;
   }
 
   int calculatePreviewComplexity(const LineFigure& line) const {
@@ -657,9 +732,24 @@ private:
     return int(hasFill) + int(hasStroke);
   }
 
+  bool moveNextAction() {
+    currentActionIndex++;
+    if (currentActionIndex >= int(firstActions.size())) {
+      return false;
+    }
+    if (firstActions[currentActionIndex]->getKind() != secondActions[currentActionIndex]->getKind()) {
+      throw ParsingError(PlotError::MISMATCHING_ACTIONS);
+    }
+    return true;
+  }
+
 public:
-  DifferentialParser(Size firstSize, Size secondSize, int totalComplexity)
-    : firstSize(firstSize), secondSize(secondSize), totalComplexity(totalComplexity)
+  DifferentialParser(Size firstSize, const std::vector<Ptr<Action>>& firstActions,
+                     Size secondSize, const std::vector<Ptr<Action>>& secondActions,
+                     int totalComplexity)
+    : firstSize(firstSize), firstActions(firstActions),
+      secondSize(secondSize), secondActions(secondActions),
+      totalComplexity(totalComplexity)
   {
     secondClippingAreas.push_back(Rectangle::make(Point{0.0, 0.0}, secondSize.toPoint()));
     firstClippingAreas.push_back(Rectangle::make(Point{0.0, 0.0}, firstSize.toPoint()));
@@ -669,17 +759,13 @@ public:
     getOrRegisterFontIndex(Font::getDefault());
   }
 
-  void parse(const std::vector<Ptr<Action>>& firstActions, const std::vector<Ptr<Action>>& secondActions) {
+  void parse() {
     if (firstActions.size() != secondActions.size()) {
       throw ParsingError(PlotError::MISMATCHING_ACTIONS);
     }
-    auto actionCount = int(firstActions.size());
-    for (auto i = 0; i < actionCount; i++) {
-      const auto& firstAction = firstActions[i];
-      const auto& secondAction = secondActions[i];
-      if (firstAction->getKind() != secondAction->getKind()) {
-        throw ParsingError(PlotError::MISMATCHING_ACTIONS);
-      }
+    while (moveNextAction()) {
+      const auto& firstAction = firstActions[currentActionIndex];
+      const auto& secondAction = secondActions[currentActionIndex];
       if (firstAction->getKind() == ActionKind::CLIP) {
         flushCurrentLayer();
         auto areas = extractClippingAreas(firstAction, secondAction);
@@ -713,7 +799,9 @@ Plot PlotUtil::createPlotWithError(PlotError error) {
   // Note: this will return an empty (i.e. without any layers) plot
   // but with predefined colors, fonts and global viewport which might be useful
   // if a client side wants to display some kind of diagnostic message
-  return DifferentialParser(Size{0.0, 0.0}, Size{0.0, 0.0}, 0).buildPlot(error);
+  auto firstActions = std::vector<Ptr<Action>>();
+  auto secondActions = std::vector<Ptr<Action>>();
+  return DifferentialParser(Size{0.0, 0.0}, firstActions, Size{0.0, 0.0}, secondActions, 0).buildPlot(error);
 }
 
 Plot PlotUtil::extrapolate(Size firstSize, const std::vector<Ptr<Action>>& firstActions,
@@ -721,8 +809,8 @@ Plot PlotUtil::extrapolate(Size firstSize, const std::vector<Ptr<Action>>& first
                            int totalComplexity)
 {
   try {
-    auto parser = DifferentialParser(firstSize, secondSize, totalComplexity);
-    parser.parse(firstActions, secondActions);
+    auto parser = DifferentialParser(firstSize, firstActions, secondSize, secondActions, totalComplexity);
+    parser.parse();
     return parser.buildPlot();
   } catch (const ParsingError& e) {
     return createPlotWithError(e.getError());
