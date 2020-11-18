@@ -222,7 +222,7 @@ namespace {
     return packed | bit63;
   }
 
-  void fillMessage(Polyline* message, const graphics::Polyline& polyline) {
+  void fillMessage(rplugininterop::Polyline* message, const graphics::Polyline& polyline) {
     auto pointCount = polyline.points.size();
     for (auto i = 0U; i < pointCount; i++) {
       message->add_point(packPoint(polyline.points[i], polyline.previewMask[i]));
@@ -230,8 +230,8 @@ namespace {
     message->set_previewcount(polyline.previewCount);
   }
 
-  Polyline* createMessage(const graphics::Polyline& polyline) {
-    auto message = new Polyline();
+  rplugininterop::Polyline* createMessage(const graphics::Polyline& polyline) {
+    auto message = new rplugininterop::Polyline();
     fillMessage(message, polyline);
     return message;
   }
