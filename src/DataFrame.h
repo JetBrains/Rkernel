@@ -22,12 +22,15 @@
 #include <functional>
 
 struct DataFrameInfo {
-  int index;
+  int refIndex;
+  int uniqueIndex;
   PrSEXP initialDataFrame;
+  std::vector<SEXP> equalityVector;
   PrSEXP dataFrame;
   std::function<SEXP()> refresher;
   std::function<void()> finalizer;
 
+  DataFrameInfo();
   ~DataFrameInfo();
 };
 
