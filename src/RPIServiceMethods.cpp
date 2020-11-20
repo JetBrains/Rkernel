@@ -14,18 +14,18 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
-#include "RPIServiceImpl.h"
-#include <grpcpp/server_builder.h>
-#include "IO.h"
-#include "RStuff/RUtil.h"
-#include "RLoader.h"
-#include "util/StringUtil.h"
+#include "DataFrame.h"
 #include "EventLoop.h"
-#include "Session.h"
-#include <signal.h>
-#include "Timer.h"
+#include "IO.h"
+#include "RLoader.h"
+#include "RPIServiceImpl.h"
 #include "RStudioApi.h"
+#include "RStuff/RUtil.h"
+#include "Session.h"
+#include "Timer.h"
+#include "util/StringUtil.h"
+#include <grpcpp/server_builder.h>
+#include <signal.h>
 
 static RObject rStudioResponse;
 
@@ -241,16 +241,26 @@ Status RPIServiceImpl::setOutputWidth(ServerContext* context, const Int32Value* 
   return Status::OK;
 }
 
-void RPIServiceImpl::viewHandler(SEXP xSEXP, SEXP titleSEXP) {
-  ShieldSEXP x = xSEXP;
+void RPIServiceImpl::viewHandler(SEXP _expr, SEXP _env, SEXP titleSEXP) {
+  PrSEXP expr = _expr;
+  PrSEXP env = _env;
   if (!isScalarString(titleSEXP)) {
     throw std::runtime_error("Title should be a string");
   }
   std::string title = asStringUTF8(titleSEXP);
+  ShieldSEXP x = safeEval(expr, env);
+
   AsyncEvent event;
-  event.mutable_viewrequest()->set_persistentrefindex(persistentRefStorage.add(x));
-  event.mutable_viewrequest()->set_title(title);
-  getValueInfo(x, event.mutable_viewrequest()->mutable_value());
+  if (isSupportedDataFrame(x)) {
+    DataFrameInfo *info = registerDataFrame(x);
+    info->refresher = [=] { return safeEval(expr, env); };
+    event.mutable_viewtablerequest()->set_persistentrefindex(info->index);
+    event.mutable_viewtablerequest()->set_title(title);
+  } else {
+    event.mutable_viewrequest()->set_persistentrefindex(persistentRefStorage.add(x));
+    event.mutable_viewrequest()->set_title(title);
+    getValueInfo(x, event.mutable_viewrequest()->mutable_value());
+  }
   sendAsyncRequestAndWait(event);
 }
 

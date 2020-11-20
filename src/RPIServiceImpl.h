@@ -120,7 +120,7 @@ public:
   Status dataFrameGetData(ServerContext* context, const DataFrameGetDataRequest* request, DataFrameGetDataResponse* response) override;
   Status dataFrameSort(ServerContext* context, const DataFrameSortRequest* request, Int32Value* response) override;
   Status dataFrameFilter(ServerContext* context, const DataFrameFilterRequest* request, Int32Value* response) override;
-  Status dataFrameDispose(ServerContext* context, const Int32Value* request, Empty*) override;
+  Status dataFrameRefresh(ServerContext* context, const RRef* request, BoolValue* response) override;
 
   Status getWorkingDir(ServerContext* context, const Empty*, StringValue* response) override;
   Status setWorkingDir(ServerContext* context, const StringValue* request, Empty*) override;
@@ -151,7 +151,7 @@ public:
       std::function<void(std::string)> const& inputCallback, std::function<void()> const& interruptCallback);
   void subprocessHandlerStop();
   void debugPromptHandler();
-  void viewHandler(SEXP x, SEXP title);
+  void viewHandler(SEXP expr, SEXP env, SEXP title);
   void showFileHandler(std::string const& filePath, std::string const& title);
   void showHelpHandler(std::string const& content, std::string const& url);
   void browseURLHandler(std::string const& url);
@@ -173,6 +173,8 @@ public:
   OutputHandler replOutputHandler;
   void writeToReplOutputHandler(std::string const& s, OutputType type);
 
+  IndexedStorage<PrSEXP> persistentRefStorage;
+
 private:
   BlockingQueue<AsyncEvent> asyncEvents;
 
@@ -188,10 +190,7 @@ private:
   bool isInClientRequest = false;
   bool isInRStudioApiRequest = false;
 
-  std::unordered_set<int> dataFramesCache;
   std::vector<RDebuggerStackFrame> lastErrorStack;
-
-  IndexedStorage<PrSEXP> persistentRefStorage;
 
   Status executeCommand(ServerContext* context, const std::string& command, ServerWriter<CommandOutput>* writer);
 
