@@ -42,18 +42,34 @@ static PrSEXP& getDataFrameStorageEnv() {
   return env;
 }
 
-static std::unordered_map<SEXP, DataFrameInfo*> dataFrameCache;
+static std::vector<SEXP> getEqualityVector(SEXP _x) {
+  ShieldSEXP x = _x;
+  std::vector<SEXP> v = {x};
+  v.push_back(Rf_getAttrib(x, Rf_install("names")));
+  v.push_back(Rf_getAttrib(x, Rf_install("rownames")));
+  if (x.type() == VECSXP) {
+    for (int i = 0; i < x.length(); ++i) v.push_back(x[i]);
+  }
+  return v;
+}
+
+static std::unordered_map<int, DataFrameInfo*> dataFrameCache;
+
+DataFrameInfo::DataFrameInfo() {
+  static int currentIndex = 0;
+  uniqueIndex = ++currentIndex;
+}
 
 DataFrameInfo::~DataFrameInfo() {
-  getDataFrameStorageEnv().assign(std::to_string(index), R_NilValue);
-  dataFrameCache.erase(initialDataFrame);
+  getDataFrameStorageEnv().assign(std::to_string(uniqueIndex), R_NilValue);
   if (finalizer) finalizer();
+  dataFrameCache.erase(uniqueIndex);
 }
 
 static void initDataFrame(DataFrameInfo *info) {
   PrSEXP dataFrame = info->initialDataFrame;
-  dataFrameCache[info->initialDataFrame] = info;
-  getDataFrameStorageEnv().assign(std::to_string(info->index), dataFrame);
+  info->equalityVector = getEqualityVector(dataFrame);
+  getDataFrameStorageEnv().assign(std::to_string(info->uniqueIndex), dataFrame);
   if (Rf_isMatrix(dataFrame)) {
     dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
   }
@@ -103,7 +119,7 @@ static DataFrameInfo *getDataFrameByRef(RRef const* ref) {
   return (DataFrameInfo*)R_ExternalPtrAddr(ptr);
 }
 
-static DataFrameInfo *getDataFrameByIndex(int index) {
+static DataFrameInfo *getDataFrameByRefIndex(int index) {
   if (!rpiService->persistentRefStorage.has(index)) return nullptr;
   ShieldSEXP ptr = rpiService->persistentRefStorage[index];
   if (ptr.type() != EXTPTRSXP) return nullptr;
@@ -112,9 +128,14 @@ static DataFrameInfo *getDataFrameByIndex(int index) {
 
 DataFrameInfo *registerDataFrame(SEXP x, bool isTemporary) {
   SHIELD(x);
-  if (!isTemporary && dataFrameCache.count(x)) {
-    DataFrameInfo *info = dataFrameCache[x];
-    if (info == getDataFrameByIndex(info->index)) return info;
+  if (!isTemporary) {
+    auto equalityVector = getEqualityVector(x);
+    for (auto const& p : dataFrameCache) {
+      DataFrameInfo *info = p.second;
+      if (info == getDataFrameByRefIndex(info->refIndex) && info->equalityVector == equalityVector) {
+        return info;
+      }
+    }
   }
   ShieldSEXP extPtr = rAlloc<DataFrameInfo>();
   DataFrameInfo *info = (DataFrameInfo*)R_ExternalPtrAddr(extPtr);
@@ -123,10 +144,11 @@ DataFrameInfo *registerDataFrame(SEXP x, bool isTemporary) {
   if (isTemporary) {
     info->dataFrame = info->initialDataFrame;
   } else {
+    dataFrameCache[info->uniqueIndex] = info;
     initDataFrame(info);
   }
 
-  info->index = rpiService->persistentRefStorage.add(extPtr);
+  info->refIndex = rpiService->persistentRefStorage.add(extPtr);
   return info;
 }
 
@@ -189,7 +211,7 @@ Status RPIServiceImpl::dataFrameRegister(ServerContext* context, const RRef* req
     PrSEXP dataFrame = dereference(*request);
     DataFrameInfo *info = registerDataFrame(dataFrame);
     createRefresher(info, request);
-    response->set_value(info->index);
+    response->set_value(info->refIndex);
   }, context, true);
   return Status::OK;
 }
@@ -307,7 +329,7 @@ Status RPIServiceImpl::dataFrameSort(ServerContext* context, const DataFrameSort
       }
     }
     DataFrameInfo *newInfo = registerDataFrame(invokeFunction(RI->dplyrArrange, arrangeArgs), true);
-    response->set_value(newInfo->index);
+    response->set_value(newInfo->refIndex);
   }, context, true);
   return Status::OK;
 }
@@ -410,7 +432,7 @@ Status RPIServiceImpl::dataFrameFilter(ServerContext* context, const DataFrameFi
     ShieldSEXP newDataFrame = RI->namesAssign(safeEval(Rf_lcons(RI->dplyrTibble, call), R_GlobalEnv), names);
 
     DataFrameInfo *newInfo = registerDataFrame(newDataFrame, true);
-    response->set_value(newInfo->index);
+    response->set_value(newInfo->refIndex);
   }, context, true);
   return Status::OK;
 }
@@ -422,10 +444,9 @@ Status RPIServiceImpl::dataFrameRefresh(ServerContext* context, const RRef* requ
     if (info == nullptr) return;
     if (!info->refresher) return;
     ShieldSEXP newTable = info->refresher();
-    if (newTable == info->initialDataFrame || !isSupportedDataFrame(newTable)) return;
-    dataFrameCache.erase(info->initialDataFrame);
+    if (!isSupportedDataFrame(newTable) || getEqualityVector(newTable) == info->equalityVector) return;
     info->initialDataFrame = newTable;
-  initDataFrame(info);
+    initDataFrame(info);
     response->set_value(true);
   }, context, true);
   return Status::OK;

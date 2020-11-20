@@ -254,7 +254,7 @@ void RPIServiceImpl::viewHandler(SEXP _expr, SEXP _env, SEXP titleSEXP) {
   if (isSupportedDataFrame(x)) {
     DataFrameInfo *info = registerDataFrame(x);
     info->refresher = [=] { return safeEval(expr, env); };
-    event.mutable_viewtablerequest()->set_persistentrefindex(info->index);
+    event.mutable_viewtablerequest()->set_persistentrefindex(info->refIndex);
     event.mutable_viewtablerequest()->set_title(title);
   } else {
     event.mutable_viewrequest()->set_persistentrefindex(persistentRefStorage.add(x));
