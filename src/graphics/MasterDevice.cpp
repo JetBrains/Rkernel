@@ -280,19 +280,42 @@ pGEDevDesc MasterDevice::getGeDescriptor() {
 void MasterDevice::recordLast(bool isTriggeredByGgPlot) {
   // If current device is neither null nor blank then it should be recorded
   if (masterDeviceDescriptor) {
+    // Note: for some reason, after the commands from `gganimate` package were executed
+    // the proxy device is selected as the current one thus preventing
+    // the next plots from recording.
+    // That's why it's necessary to check it before new plot is created
+    // and switch to the main device if needed
+    auto currentDeviceDescriptor = GEcurrentDevice();
+    auto proxy = DeviceManager::getInstance()->getProxy();
+    auto thisDeviceNumber = GEdeviceNumber(masterDeviceDescriptor);
+    if (proxy != nullptr && proxy->masterDeviceDescriptor == currentDeviceDescriptor) {
+      currentDeviceDescriptor = masterDeviceDescriptor;
+      Rf_selectDevice(thisDeviceNumber);
+    }
     isNextGgPlot = isTriggeredByGgPlot;
     auto& deviceInfo = currentDeviceInfos[currentSnapshotNumber];
     auto device = deviceInfo.device;
     if (device && !device->isBlank()) {
-      // Note: you may want to ask why we don't add a new device after recording.
-      // Well, if you trace execution of graphics command `pairs(iris)`,
-      // (you know, this fascinating plot with 25 art boards)
-      // you will find out that it emits "before.plot.new" event
-      // **every time** it wants to start drawing a new art board (oh, but why???).
-      // This implies we will get 25 partial plots if we decide to insert `addNewDevice()` here.
-      // This would be pretty enough to blow out your IDE.
-      // Instead, we will add a new device in `newPage` handler
-      record(deviceInfo, currentSnapshotNumber);
+      if (currentDeviceDescriptor == masterDeviceDescriptor) {
+        // Note: you may want to ask why we don't add a new device after recording.
+        // Well, if you trace execution of graphics command `pairs(iris)`,
+        // (you know, this fascinating plot with 25 art boards)
+        // you will find out that it emits "before.plot.new" event
+        // **every time** it wants to start drawing a new art board (oh, but why???).
+        // This implies we will get 25 partial plots if we decide to insert `addNewDevice()` here.
+        // This would be pretty enough to blow out your IDE.
+        // Instead, we will add a new device in `newPage` handler
+        record(deviceInfo, currentSnapshotNumber);
+      } else {
+        // Note: if the control flow is here, someone else is trying to draw plots with
+        // his own graphics device (for instance, `gganimate` will do this).
+        // It's necessary to record current plot on the main device
+        // otherwise it will be lost (leading to segfaults)
+        InitHelper helper;
+        Rf_selectDevice(thisDeviceNumber);
+        record(deviceInfo, currentSnapshotNumber);
+        addNewDevice();  // Note: insert a blank device so the next `!device->isBlank()` check will certainly fail
+      }
     }
   }
 }
