@@ -143,6 +143,7 @@ public:
   Status startHttpd(ServerContext* context, const Empty*, Int32Value* response) override;
 
   Status setSaveOnExit(ServerContext* context, const BoolValue* request, Empty*) override;
+  Status setRStudioApiEnabled(::grpc::ServerContext *context, const ::google::protobuf::BoolValue *request, ServerWriter<CommandOutput>* response) override;
 
   void mainLoop();
   std::string readLineHandler(std::string const& prompt);

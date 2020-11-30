@@ -38,10 +38,7 @@ options(device = function() {
   .Call(".jetbrains_ther_device_restart")
 })
 
-# Set "RStudio as .Platform$GUI
-unlockBinding(".Platform", baseenv())
-.Platform$GUI <<- "RStudio"
-lockBinding(".Platform", baseenv())
+.jetbrains$defaultPlatformGUI <<- .Platform$GUI
 
 # Some packages might be not available as binaries.
 # The default behaviour of interpreter in such a case
@@ -71,6 +68,16 @@ options(install.packages.compile.from.source = "always")
   }, finally = {
     setwd(current.wd)
   })
+}
+
+.jetbrains$setRStudioAPIEnabled <<- function(isEnabled) {
+  unlockBinding(".Platform", baseenv())
+  if (isEnabled) {
+    .Platform$GUI <<- "RStudio"
+  } else {
+    .Platform$GUI <<- .jetbrains$defaultPlatformGUI
+  }
+  lockBinding(".Platform", baseenv())
 }
 
 .jetbrains$updatePackageEvents <<- function() {

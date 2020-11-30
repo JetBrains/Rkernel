@@ -288,3 +288,12 @@ Status RPIServiceImpl::setSaveOnExit(ServerContext*, const BoolValue* request, E
   sessionManager.saveOnExit = request->value();
   return Status::OK;
 }
+
+Status RPIServiceImpl::setRStudioApiEnabled(::grpc::ServerContext *context,
+                                            const ::google::protobuf::BoolValue *request,
+                                            ServerWriter<CommandOutput>* response) {
+  auto command = std::ostringstream();
+  std::string isEnabled = request->value() ? "TRUE" : "FALSE";
+  command << ".jetbrains$setRStudioAPIEnabled(" << isEnabled << ")";
+  return executeCommand(context, command.str(), response);
+}
