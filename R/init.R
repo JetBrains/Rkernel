@@ -184,9 +184,14 @@ options(install.packages.compile.from.source = "always")
   }
 
   s4 <- ignoreErrors(names(formals(getMethod(x))))
-  s3Info <- attr(.S3methods(x), "info")
-  s3Info[, "functionName"] <- rownames(s3Info)
-  s3 <- ignoreErrors(apply(s3Info[, c("functionName", "from")], 1, getS3Names))
+  if (utils:::findGeneric(x, parent.frame(), warnS4only = FALSE) == "") {
+    s3 <- NULL
+  }
+  else {
+    s3Info <- attr(.S3methods(x), "info")
+    s3Info[, "functionName"] <- rownames(s3Info)
+    s3 <- ignoreErrors(apply(s3Info[, c("functionName", "from")], 1, getS3Names))
+  }
   unique(unlist(c(s4, s3, names(formals(x)))))
 }
 
