@@ -393,7 +393,10 @@ private:
 
   Ptr<Viewport> extrapolate(const Rectangle& firstClippingArea, const Rectangle& secondClippingArea) {
     currentViewportIndex = findParentClippingArea(firstClippingArea, int(viewports.size()));
-    if (isFixedRatio(firstClippingArea, firstClippingAreas[currentViewportIndex])) {
+    // Note: even if the viewport looks like a fixed ratio one, this maybe due to `grid.arrange()` plot
+    // with odd number of columns. In order to prevent false positives, it's necessary to check
+    // whether there are any other viewports inside the same parent one
+    if (isFixedRatio(firstClippingArea, firstClippingAreas[currentViewportIndex]) && !hasChildren(currentViewportIndex)) {
       return extrapolateFixed(firstClippingArea, secondClippingArea);
     } else {
       return extrapolateFree(firstClippingArea, secondClippingArea);
@@ -496,9 +499,15 @@ private:
 
   static bool isFixedRatio(const Rectangle& internal, const Rectangle& external) {
     if (isClose(internal.from.x, external.from.x) && isClose(internal.to.x, external.to.x)) {
-      return internal.from.y > external.from.y && internal.to.y < external.to.y;
+      // Note: make sure the viewport is centered vertically
+      auto topGap = internal.from.y - external.from.y;
+      auto bottomGap = external.to.y - internal.to.y;
+      return isClose(topGap, bottomGap) && topGap > 0;
     } else if (isClose(internal.from.y, external.from.y) && isClose(internal.to.y, external.to.y)) {
-      return internal.from.x > external.from.x && internal.to.x < external.to.x;
+      // Note: make sure the viewport is centered horizontally
+      auto leftGap = internal.from.x - external.from.x;
+      auto rightGap = external.to.x - internal.to.x;
+      return isClose(leftGap, rightGap) && leftGap > 0;
     } else {
       return false;
     }
@@ -565,6 +574,20 @@ private:
       }
     }
     return parentIndex;
+  }
+
+  bool hasChildren(int viewportIndex) {
+    const auto& viewport = firstClippingAreas[viewportIndex];
+    auto viewportCount = int(viewports.size());
+    for (auto i = 1; i < viewportCount; i++) {
+      if (i == viewportIndex) {
+        continue;
+      }
+      if (isNested(firstClippingAreas[i], viewport)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   int suggestViewport(int requestedIndex) {
