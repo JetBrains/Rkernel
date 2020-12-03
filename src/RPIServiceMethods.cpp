@@ -73,7 +73,9 @@ Status RPIServiceImpl::init(ServerContext* context, const Init* request, ServerW
   }
   auto executeInit = std::ostringstream();
   executeInit << ".jetbrains$init(\"" << escapeStringCharacters(request->rscriptspath()) << "/RSession\", \""
-              << escapeStringCharacters(request->projectdir()) << "\")";
+              << escapeStringCharacters(request->projectdir()) << "\");";
+
+  executeInit << ".jetbrains$setRStudioAPIEnabled(" << (request->enablerstudioapi() ? "TRUE" : "FALSE") << ");";
   return executeCommand(context, executeInit.str(), response);
 }
 
