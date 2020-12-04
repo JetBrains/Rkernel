@@ -46,9 +46,8 @@
    )
    
    success <- .Call(
-      "rs_writeProjectFile",
-      rProjFile,
-      PACKAGE = "(embedding)"
+      ".jetbrains_writeProjectFile",
+      list(rProjFile)
    )
    
    if (!success)
@@ -76,10 +75,9 @@
    
    # request that we open this project
    invisible(
-      .Call("rs_requestOpenProject",
-            rProjFile,
-            newSession,
-            PACKAGE = "(embedding)")
+      .Call(".jetbrains_openProject",
+          list(rProjFile, newSession)
+      )
    )
 })
 

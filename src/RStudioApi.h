@@ -32,6 +32,8 @@
 #define SOURCE_MARKERS_ID 38
 #define TRANSLATE_LOCAL_URL_ID 39
 #define EXECUTE_COMMAND_ID 40
+#define OPEN_PROJECT_ID 41
+#define WRITE_PROJECT_FILE 42
 
 extern std::string currentExpr;
 
