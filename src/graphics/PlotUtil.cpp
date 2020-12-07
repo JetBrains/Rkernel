@@ -40,6 +40,11 @@ const auto POLYLINE_LENGTH_THRESHOLD = 7;  // Note: prevent optimizing hexagons
 const auto MAX_CIRCLES_PER_CELL = 250;
 const auto CIRCLE_DISTANCE_THRESHOLD = 12.0 / 72.0;  // 12 px (in inches)
 
+struct Intersection {
+  bool isExistent;
+  Point point;
+};
+
 class Line {
 private:
   bool isProper;
@@ -72,6 +77,32 @@ public:
     } else {
       return distance(point, Point{a, b});
     }
+  }
+
+  /**
+   * Find the point of intersection with a line `x = x0`.
+   * **Note:** this function is not intended to be used in case if the lines are equal
+   * (i.e. when this line can be represented as `Ax - Ax0 = 0`)
+   */
+  Intersection intersectWithX(double x0) const {
+    if (!isProper || isClose(b, 0.0)) {
+      return Intersection{false, Point{}};
+    }
+    auto y0 = -(c + a * x0) / b;
+    return Intersection{true, Point{x0, y0}};
+  }
+
+  /**
+   * Find the point of intersection with a line `y = y0`.
+   * **Note:** this function is not intended to be used in case if the lines are equal
+   * (i.e. when this line can be represented as `By - By0 = 0`)
+   */
+  Intersection intersectWithY(double y0) const {
+    if (!isProper || isClose(a, 0.0)) {
+      return Intersection{false, Point{}};
+    }
+    auto x0 = -(c + b * y0) / a;
+    return Intersection{true, Point{x0, y0}};
   }
 };
 
@@ -300,11 +331,61 @@ private:
     if (currentClippingAreaIndex != 0 && state == State::AXIS_LINES) {
       flushAndSwitchTo(State::INITIAL);
     }
-    auto from = extrapolate(firstLine->getFrom(), secondLine->getFrom());
-    auto to = extrapolate(firstLine->getTo(), secondLine->getTo());
+    auto firstEnds = clipLine(firstLine->getFrom(), firstLine->getTo(), firstClippingAreas[currentViewportIndex]);
+    auto secondEnds = clipLine(secondLine->getFrom(), secondLine->getTo(), secondClippingAreas[currentViewportIndex]);
+    auto from = extrapolate(firstEnds.first, secondEnds.first);
+    auto to = extrapolate(firstEnds.second, secondEnds.second);
     auto strokeIndex = getOrRegisterStrokeIndex(firstLine->getStroke());
     auto colorIndex = getOrRegisterColorIndex(firstLine->getColor());
     return makePtr<LineFigure>(from, to, strokeIndex, colorIndex);
+  }
+
+  static std::pair<Point, Point> clipLine(Point from, Point to, const Rectangle& clippingArea) {
+    auto containsFrom = clippingArea.contains(from);
+    auto containsTo = clippingArea.contains(to);
+    if (!containsFrom || !containsTo) {
+      auto line = Line(from, to);
+      Intersection intersections[] = {
+          line.intersectWithX(clippingArea.from.x),
+          line.intersectWithX(clippingArea.to.x),
+          line.intersectWithY(clippingArea.from.y),
+          line.intersectWithY(clippingArea.to.y),
+      };
+      auto hasExistent = false;
+      for (auto& intersection : intersections) {
+        if (intersection.isExistent && !touchesClippingArea(intersection.point, clippingArea)) {
+          intersection.isExistent = false;
+        }
+        if (intersection.isExistent) {
+          hasExistent = true;
+        }
+      }
+      if (hasExistent) {
+        if (!containsFrom) {
+          from = findClosestIntersection(from, intersections);
+        }
+        if (!containsTo) {
+          to = findClosestIntersection(to, intersections);
+        }
+      }
+    }
+    return std::make_pair(from, to);
+  }
+
+  template<int N>
+  static Point findClosestIntersection(Point point, const Intersection (&intersections)[N]) {
+    auto index = -1;
+    auto minDistance = 0.0;
+    for (auto i = 0; i < N; i++) {
+      if (intersections[i].isExistent) {
+        auto d = distance(point, intersections[i].point);
+        if (index == -1 || d < minDistance) {
+          minDistance = d;
+          index = i;
+        }
+      }
+    }
+    return intersections[index].point;
   }
 
   Ptr<Figure> extrapolate(const NewPageAction* firstNewPage, const NewPageAction*) {
