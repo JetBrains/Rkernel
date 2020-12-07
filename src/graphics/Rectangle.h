@@ -45,6 +45,19 @@ struct Rectangle {
     return (from + to) / 2.0;
   }
 
+  bool contains(Point point, double epsilon = EPSILON) const {
+    if (point.x < from.x - epsilon) {
+      return false;
+    }
+    if (point.x > to.x + epsilon) {
+      return false;
+    }
+    if (point.y < from.y - epsilon) {
+      return false;
+    }
+    return point.y < to.y + epsilon;
+  }
+
   static inline Rectangle make(Point a, Point b) {
     auto xMin = std::min(a.x, b.x);
     auto xMax = std::max(a.x, b.x);
@@ -54,7 +67,7 @@ struct Rectangle {
   }
 };
 
-inline bool isClose(Rectangle a, Rectangle b, double epsilon = 1e-3) {
+inline bool isClose(Rectangle a, Rectangle b, double epsilon = EPSILON) {
   return isClose(a.from, b.from, epsilon) && isClose(a.to, b.to, epsilon);
 }
 
