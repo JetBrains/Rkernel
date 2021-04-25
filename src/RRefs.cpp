@@ -255,6 +255,59 @@ Status RPIServiceImpl::getS4ClassInfoByClassName(ServerContext* context, const S
   return Status::OK;
 }
 
+bool isObjectFromR6(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP func = jetbrainsEnv.getVar("isObjectFromR6");
+    return func(object);
+}
+
+SEXPREC* getR6ClassName(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassName");
+    return func(object);
+}
+
+SEXPREC* getR6ClassInheritanceTree(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassInheritanceTree");
+    return func(object);
+}
+
+SEXPREC* getR6ClassDefMembers(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassDefMembers");
+    return func(object);
+}
+
+void getR6ClassInfo(const ShieldSEXP &classDef, R6ClassInfo *response) {
+    if (!isObjectFromR6(classDef)) return;
+
+    auto className = getR6ClassName(classDef);
+    response->set_classname(stringEltUTF8(className, 0));
+
+    auto classInheritanceNames = getR6ClassInheritanceTree(classDef);
+    for (int i = 1; i < XLENGTH(classInheritanceNames); ++i) {
+        response->add_superclasses(stringEltUTF8(classInheritanceNames, i));
+    }
+
+    auto classMembers = getR6ClassDefMembers(classDef);
+    for (int i = 0; i < XLENGTH(classMembers); ++i) {
+        auto next_member = response->add_members();
+        next_member->set_name(stringEltUTF8(classMembers, i));
+        next_member->set_ispublic(true);
+    }
+}
+
+Status RPIServiceImpl::getR6ClassInfoByObjectName(ServerContext *context, const RRef *request, R6ClassInfo *response) {
+    executeOnMainThread([&] {
+        ShieldSEXP obj = dereference(*request);
+        bool isR6 = isObjectFromR6(obj);
+        if (!isR6) return;
+        getR6ClassInfo(obj, response);
+    }, context, true);
+    return Status::OK;
+}
+
 Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableColumnsInfoRequest* request, TableColumnsInfo* response) {
   executeOnMainThread([&] {
     ShieldSEXP table = dereference(request->ref());

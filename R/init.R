@@ -317,6 +317,22 @@ options(install.packages.compile.from.source = "always")
   Filter(function(x) !is.null(x), infos)
 }
 
+.jetbrains$isObjectFromR6 <<- function(object) {
+  return(is.R6(object))
+}
+
+.jetbrains$getR6ClassName <<- function(x) {
+  return(class(x)[1])
+}
+
+.jetbrains$getR6ClassInheritanceTree <<- function(x) {
+  return(head(class(x), -1)[-1])
+}
+
+.jetbrains$getR6ClassDefMembers <<- function(x) {
+  return(names(x)[-1])
+}
+
 .jetbrains$getSysEnv <<- function(env_name, flags) {
   s <- Sys.getenv(env_name)
   s <- strsplit(s, .Platform$path.sep)[[1]]
