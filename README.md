@@ -11,20 +11,11 @@ The idea of Rkernel is pretty similar to
 
 ## Building
 
-### 1 Init git submodules
-
-To build Rkernel, initialize the git submodules: `git submodules update --init`
-
-Git submodules: 
-  - [vcpkg](https://github.com/microsoft/vcpkg)
-  - [Rcpp](https://github.com/RcppCore/Rcpp)
-  - [Rkernel-proto](https://github.com/JetBrains/Rkernel-proto)
-
-### 2 Build [gRPC](https://grpc.io)
+### 1 Build [gRPC](https://grpc.io)
    - On Windows: `build_grpc.bat`
    - On GNU/Linux or MacOS: `build_grpc.sh`
 
-### 3 Use `cmake` with your toolchain to build the project
+### 2 Use `cmake` with your toolchain to build the project
 Ensure that the cmake `R_HOME` variable is defined or suitable `R` version 
 is present in the `PATH` variable. 
 Use the following toolchains:
