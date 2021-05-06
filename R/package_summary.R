@@ -136,15 +136,33 @@ processPackage <- function(pName) {
   }
 
   classTable <- methods:::.classTable
+  extractSlots <- function(class) {
+    superSlots <- new.env()
+    contains <- class@contains
+    contains <- contains[order(sapply(contains, slot, name = 'distance'))]
+    inner <- function(classRepr) {
+      className <- classRepr@className
+      lapply(myNames(classRepr@slots), function(name) {
+        type <- classRepr@slots[[name]]
+        if (!exists(name, where = superSlots, inherits = FALSE) || extends(type, superSlots[[name]][[1]])) {
+          superSlots[[name]] <- c(type, className)
+        }
+      })
+    }
+    inner(class)
+    lapply(contains, function(y) inner(classTable[[y@superClass]]))
+    lapply(names(superSlots), function(y) c(y, superSlots[[y]]))
+  }
+
   # class_name types... <slotName, slotType>... superClasses... isVirtual
   lapply(myNames(classTable), function(className) {
     class <- classTable[[className]]
     if (inherits(class, "classRepresentation") && class@package == pName) {
       spec <- NULL
-      slots <- sapply(myNames(class@slots), function(s) c(s, class@slots[[s]]))
-      spec <- c(spec, myLength(slots), unlist(slots))
-      superClasses <- sapply(class@contains, function(y) y@superClass)
-      spec <- c(spec, myLength(superClasses), unlist(superClasses))
+      slots <- unlist(extractSlots(class))
+      spec <- c(spec, myLength(slots), slots)
+      superClasses <- unlist(lapply(class@contains, function(y) c(y@superClass, y@distance == 1)))
+      spec <- c(spec, myLength(superClasses), superClasses)
       myCat("\n")
       myCat(symbolSignature(className, myClass(class), TRUE, c(spec, class@virtual)))
     }
