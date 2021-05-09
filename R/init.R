@@ -325,12 +325,27 @@ options(install.packages.compile.from.source = "always")
   return(class(x)[1])
 }
 
+.jetbrains$getR6ClassVariable <<- function(x) {
+  return(get(class(x)[1]))
+}
+
 .jetbrains$getR6ClassInheritanceTree <<- function(x) {
   return(head(class(x), -1)[-1])
 }
 
-.jetbrains$getR6ClassDefMembers <<- function(x) {
-  return(names(x)[-1])
+.jetbrains$getR6ClassDefFields <- function(class){
+  internals <- class$public_fields
+  return(names(internals))
+}
+
+.jetbrains$getR6ClassDefMethods <- function(class){
+  internals <- class$public_methods
+  return(names(internals))
+}
+
+.jetbrains$getR6ClassDefActive <- function(class){
+  internals <- class$active
+  return(names(internals))
 }
 
 .jetbrains$getSysEnv <<- function(env_name, flags) {

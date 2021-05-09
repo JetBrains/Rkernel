@@ -267,15 +267,33 @@ SEXPREC* getR6ClassName(const ShieldSEXP &object) {
     return func(object);
 }
 
+SEXPREC* getR6ClassVariable(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassVariable");
+    return func(object);
+}
+
 SEXPREC* getR6ClassInheritanceTree(const ShieldSEXP &object) {
     ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassInheritanceTree");
     return func(object);
 }
 
-SEXPREC* getR6ClassDefMembers(const ShieldSEXP &object) {
+SEXPREC* getR6ClassDefFields(const ShieldSEXP &object) {
     ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
-    ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassDefMembers");
+    ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassDefFields");
+    return func(object);
+}
+
+SEXPREC* getR6ClassDefMethods(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassDefMethods");
+    return func(object);
+}
+
+SEXPREC* getR6ClassDefActive(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassDefActive");
     return func(object);
 }
 
@@ -290,11 +308,29 @@ void getR6ClassInfo(const ShieldSEXP &classDef, R6ClassInfo *response) {
         response->add_superclasses(stringEltUTF8(classInheritanceNames, i));
     }
 
-    auto classMembers = getR6ClassDefMembers(classDef);
-    for (int i = 0; i < XLENGTH(classMembers); ++i) {
-        auto next_member = response->add_members();
-        next_member->set_name(stringEltUTF8(classMembers, i));
+    auto classVariable = getR6ClassVariable(classDef);
+
+    // add fields
+    auto fields = getR6ClassDefFields(classVariable);
+    for (int i = 0; i < XLENGTH(fields); ++i) {
+        auto next_member = response->add_fields();
+        next_member->set_name(stringEltUTF8(fields, i));
         next_member->set_ispublic(true);
+    }
+
+    // add methods
+    auto methods = getR6ClassDefMethods(classVariable);
+    for (int i = 0; i < XLENGTH(fields); ++i) {
+        auto next_member = response->add_methods();
+        next_member->set_name(stringEltUTF8(methods, i));
+        next_member->set_ispublic(true);
+    }
+
+    // add active-bindings
+    auto actives = getR6ClassDefActive(classVariable);
+    for (int i = 0; i < XLENGTH(fields); ++i) {
+        auto next_member = response->add_activebindings();
+        next_member->set_name(stringEltUTF8(actives, i));
     }
 }
 
