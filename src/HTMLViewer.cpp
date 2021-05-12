@@ -22,7 +22,7 @@
 
 void htmlViewerInit() {
   RI->evalCode(
-    ".jetbrains$ther_old_browser <<- getOption('browser')\n"
+    ".jetbrains$ther_old_browser <- getOption('browser')\n"
     "options(browser = function(url) {\n"
     "  if (grepl('^https?:', url)) {\n"
     "    if (!.Call('.jetbrains_processBrowseURL', url)) {\n"
@@ -167,7 +167,7 @@ Status RPIServiceImpl::getDocumentationForSymbol(ServerContext* context, const D
     std::string const& symbol = request->symbol();
     std::string const& package = request->package();
 
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     jetbrainsEnv.assign("documentationUrl", R_NilValue);
     PrSEXP expr = Rf_install(symbol.c_str());
     if (!package.empty()) {
@@ -177,7 +177,7 @@ Status RPIServiceImpl::getDocumentationForSymbol(ServerContext* context, const D
     expr = Rf_lang2(Rf_install("?"), expr);
     expr = Rf_lang2(Rf_install("print"), expr);
 
-    static PrSEXP browser = RI->evalCode("function(url) .jetbrains$documentationUrl <<- url", RI->baseEnv);
+    static PrSEXP browser = RI->evalCode("function(url) .jetbrains$documentationUrl <<- url", RI->globalEnv);
     WithOption withBrowser("browser", browser);
     safeEval(expr, RI->utils);
 
@@ -192,7 +192,7 @@ Status RPIServiceImpl::getDocumentationForSymbol(ServerContext* context, const D
 Status RPIServiceImpl::convertRoxygenToHTML(ServerContext* context, const ConvertRoxygenToHTMLRequest* request, ConvertRoxygenToHTMLResponse* response) {
   executeOnMainThread([&] {
     try {
-      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
       ShieldSEXP fun = jetbrainsEnv.getVar("convertRoxygenToHTML");
       response->set_text(asStringUTF8(fun(request->functionname(), request->functiontext())));
     } catch (RError const& e) {

@@ -1,25 +1,25 @@
 # If you have made significant changes here, it may be worth looking at
 # rplugin/test/extraNamedArgsPerformanceTest.R to check performance
 
-.jetbrains$funcArgsInternal <<- list2env(list(
+.jetbrains$funcArgsInternal <- list2env(list(
   lapply = "FUN",
   sapply = "FUN",
   vapply = "FUN",
   rapply = "f"))
 
-.jetbrains$namedArgsInternal <<- list2env(list(
+.jetbrains$namedArgsInternal <- list2env(list(
   tryCatch = c("error", "warning"),
   withCallingHandlers = c("error", "warning"),
   write.csv = c("x", "file", "quote", "eol", "na", "row.names", "fileEncoding"), # Some params of write.table ignored
   write.csv2 = c("x", "file", "quote", "eol", "na", "row.names", "fileEncoding")))
 
-.jetbrains$safeEq <<- function(x, y) {
+.jetbrains$safeEq <- function(x, y) {
   res <- x == y
   if (!is.logical(res) || length(res) == 0) FALSE
   else res
 }
 
-.jetbrains$safeSapply <<- function(list, fun, ..., dropNull = TRUE) {
+.jetbrains$safeSapply <- function(list, fun, ..., dropNull = TRUE) {
   if (length(list) == 0) return(NULL)
   emptyHandler <- function(ignore) { }
   result <- sapply(list, function(e, ...) tryCatch(fun(e, ...), error = emptyHandler, warning = emptyHandler), ...)
@@ -31,15 +31,15 @@
   }
 }
 
-.jetbrains$safePredicateAny <<- function(list, predicate, ...) {
+.jetbrains$safePredicateAny <- function(list, predicate, ...) {
   any(.jetbrains$safeSapply(list, predicate, ..., dropNull = FALSE), na.rm = TRUE)
 }
 
-.jetbrains$isFunctionNode <<- function(node) {
+.jetbrains$isFunctionNode <- function(node) {
   class(node) == "call" && node[[1]] == "function"
 }
 
-.jetbrains$safeFormalArgs <<- function(l, package = NULL) {
+.jetbrains$safeFormalArgs <- function(l, package = NULL) {
   env_formals <- function (fun, envir) {
     if (is.character(fun)) fun <- get(fun, mode = "function", envir = envir)
     .Internal(formals(fun))
@@ -50,7 +50,7 @@
   })
 }
 
-.jetbrains$bindArgs <<- function(params, call) {
+.jetbrains$bindArgs <- function(params, call) {
   args <- call[seq(2, length(call))]
   args <- args[sapply(args, function(x) !.jetbrains$safeEq(x, "..."))]
   res <- new.env()
@@ -75,7 +75,7 @@
   res
 }
 
-.jetbrains$findNodeExtraNamedArgs <<- function(node, functionParams, depth, package, cache, recStack) {
+.jetbrains$findNodeExtraNamedArgs <- function(node, functionParams, depth, package, cache, recStack) {
   if (!is.recursive(node) || depth <= 0) return()
   if (class(node) != "call" || length(node) < 2) {
     # Not a function/function call. Or argument list is empty.
@@ -168,7 +168,7 @@
   }
 }
 
-.jetbrains$addArgsFromInternal <<- function(x, result) {
+.jetbrains$addArgsFromInternal <- function(x, result) {
   if (is.character(x) && length(x) == 1) {
 
     add <- function(envir, val) {
@@ -187,7 +187,7 @@
 #' @returns List of pairs of type <character(1), logical(1)>. If second element of pair is FALSE, then
 #' first element is name of argument which can be passed directly to `...`. Otherwise
 #' first element is name of argument which is function whose arguments can also be passed to `...`.
-.jetbrains$findExtraNamedArgs <<- function(x, depth, package = NULL, cache = new.env(), recStack = NULL) {
+.jetbrains$findExtraNamedArgs <- function(x, depth, package = NULL, cache = new.env(), recStack = NULL) {
   if (depth <= 0) return(NULL)
   if (is.character(x) && length(x) == 1) {
     if (.jetbrains$safePredicateAny(recStack, .jetbrains$safeEq, x = x)) return()

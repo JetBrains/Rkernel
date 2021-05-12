@@ -167,7 +167,7 @@ Status RPIServiceImpl::loadObjectNames(ServerContext* context, const RRef* reque
 
 Status RPIServiceImpl::findInheritorNamedArguments(ServerContext* context, const RRef* request, StringList* response) {
   executeOnMainThread([&] {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("findInheritorNamedArguments");
     ShieldSEXP result = func(dereference(*request));
     if (TYPEOF(result) != STRSXP) return;
@@ -180,7 +180,7 @@ Status RPIServiceImpl::findInheritorNamedArguments(ServerContext* context, const
 
 Status RPIServiceImpl::findExtraNamedArguments(ServerContext* context, const RRef* request, ExtraNamedArguments* response) {
   executeOnMainThread([&] {
-      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
       ShieldSEXP func = jetbrainsEnv.getVar("findExtraNamedArgs");
       ShieldSEXP result = func(dereference(*request), named("depth", 2));
       if (TYPEOF(result) != VECSXP) return;
@@ -200,7 +200,7 @@ Status RPIServiceImpl::findExtraNamedArguments(ServerContext* context, const RRe
 
 Status RPIServiceImpl::getLoadedShortS4ClassInfos(ServerContext* context, const Empty*, ShortS4ClassInfoList* response) {
   executeOnMainThread([&] {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("getLoadedS4ClassInfos");
     ShieldSEXP result = func();
     if (TYPEOF(result) != VECSXP) return;
