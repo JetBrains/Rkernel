@@ -209,6 +209,30 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
   setMasterDeviceSize(masterDevDesc, area);
 }
 
+SEXP setPattern(SEXP, pDevDesc) {
+  return R_NilValue;
+}
+
+void releasePattern(SEXP, pDevDesc) {
+  // Do nothing
+}
+
+SEXP setClipPath(SEXP, SEXP, pDevDesc) {
+  return R_NilValue;
+}
+
+void releaseClipPath(SEXP, pDevDesc) {
+  // Do nothing
+}
+
+SEXP setMask(SEXP, SEXP, pDevDesc) {
+  return R_NilValue;
+}
+
+void releaseMask(SEXP, pDevDesc) {
+  // Do nothing
+}
+
 } // anonymous
 
 MasterDevice::MasterDevice(std::string snapshotDirectory, ScreenParameters screenParameters, int deviceNumber, bool inMemory, bool isProxy)
@@ -529,6 +553,8 @@ void MasterDevice::restart() {
   masterDevDesc->canGenKeybd = FALSE;
   masterDevDesc->gettingEvent = FALSE;
 
+  masterDevDesc->setMask = setMask;
+
   masterDevDesc->activate = nullptr;  // NULL
   masterDevDesc->circle = circle;
   masterDevDesc->clip = clip;
@@ -550,6 +576,12 @@ void MasterDevice::restart() {
   masterDevDesc->text = text;
   masterDevDesc->onExit = nullptr;  // NULL
   masterDevDesc->getEvent = nullptr;
+  masterDevDesc->setPattern = setPattern;
+  masterDevDesc->releasePattern = releasePattern;
+  masterDevDesc->setClipPath = setClipPath;
+  masterDevDesc->releaseClipPath = releaseClipPath;
+  masterDevDesc->setMask = setMask;
+  masterDevDesc->releaseMask = releaseMask;
 
   masterDevDesc->newFrameConfirm = nullptr;  // NULL
   masterDevDesc->hasTextUTF8 = TRUE;
