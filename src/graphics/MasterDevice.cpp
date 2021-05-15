@@ -553,8 +553,6 @@ void MasterDevice::restart() {
   masterDevDesc->canGenKeybd = FALSE;
   masterDevDesc->gettingEvent = FALSE;
 
-  masterDevDesc->setMask = setMask;
-
   masterDevDesc->activate = nullptr;  // NULL
   masterDevDesc->circle = circle;
   masterDevDesc->clip = clip;
@@ -576,12 +574,32 @@ void MasterDevice::restart() {
   masterDevDesc->text = text;
   masterDevDesc->onExit = nullptr;  // NULL
   masterDevDesc->getEvent = nullptr;
-  masterDevDesc->setPattern = setPattern;
-  masterDevDesc->releasePattern = releasePattern;
-  masterDevDesc->setClipPath = setClipPath;
-  masterDevDesc->releaseClipPath = releaseClipPath;
-  masterDevDesc->setMask = setMask;
-  masterDevDesc->releaseMask = releaseMask;
+
+  // In R 4.1 a couple of new function in the struct "DevDesc" were introduced. To setup them in R 4.1
+  // and not to break complication with R 3.4 it was decided to initialize these function via pointers.
+  auto fieldHaveLocatorPointer = &(masterDevDesc->haveLocator); // The field before new functions.
+
+  int pointerSize = sizeof(void *);
+  int paddingOffset = pointerSize > 1 ? 1 : 0;
+  auto offset = fieldHaveLocatorPointer + paddingOffset + 1;
+
+  auto setPatternPointer = reinterpret_cast<SEXP (**)(SEXP, pDevDesc)>(offset);
+  *setPatternPointer = &setPattern;
+
+  auto releasePatternPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + pointerSize);
+  *releasePatternPointer = &releasePattern;
+
+  auto setClipPathPointer = reinterpret_cast<SEXP (**)(SEXP, SEXP, pDevDesc)>(offset + 2 * pointerSize);
+  *setClipPathPointer = &setClipPath;
+
+  auto releaseClipPathPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + 3 * pointerSize);
+  *releaseClipPathPointer = &releaseClipPath;
+
+  auto setMaskPathPointer = reinterpret_cast<SEXP (**)(SEXP, SEXP, pDevDesc)>(offset + 4 * pointerSize);
+  *setMaskPathPointer = &setMask;
+
+  auto releaseMaskPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + 5 * pointerSize);
+  *releaseMaskPointer = &releaseMask;
 
   masterDevDesc->newFrameConfirm = nullptr;  // NULL
   masterDevDesc->hasTextUTF8 = TRUE;
