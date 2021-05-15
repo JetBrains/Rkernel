@@ -27,6 +27,7 @@
 #include "REagerGraphicsDevice.h"
 #include "DeviceManager.h"
 #include "PlotUtil.h"
+#include "RVersionHelper.h"
 
 namespace graphics {
 namespace {
@@ -579,27 +580,32 @@ void MasterDevice::restart() {
   // and not to break complication with R 3.4 it was decided to initialize these function via pointers.
   auto fieldHaveLocatorPointer = &(masterDevDesc->haveLocator); // The field before new functions.
 
-  int pointerSize = sizeof(void *);
-  int paddingOffset = pointerSize > 1 ? 1 : 0;
-  auto offset = fieldHaveLocatorPointer + paddingOffset + 1;
+  int devDescSize = sizeof(DevDesc);
+  int r4_1DevDescSize = sizeof(SampleDevDesc);
 
-  auto setPatternPointer = reinterpret_cast<SEXP (**)(SEXP, pDevDesc)>(offset);
-  *setPatternPointer = &setPattern;
+  if (devDescSize >= r4_1DevDescSize) {
+    int pointerSize = sizeof(void *) / 4;
+    int paddingOffset = pointerSize > 1 ? 1 : 0;
+    auto offset = fieldHaveLocatorPointer + paddingOffset + 1;
 
-  auto releasePatternPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + pointerSize);
-  *releasePatternPointer = &releasePattern;
+    auto setPatternPointer = reinterpret_cast<SEXP (**)(SEXP, pDevDesc)>(offset);
+    *setPatternPointer = &setPattern;
 
-  auto setClipPathPointer = reinterpret_cast<SEXP (**)(SEXP, SEXP, pDevDesc)>(offset + 2 * pointerSize);
-  *setClipPathPointer = &setClipPath;
+    auto releasePatternPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + pointerSize);
+    *releasePatternPointer = &releasePattern;
 
-  auto releaseClipPathPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + 3 * pointerSize);
-  *releaseClipPathPointer = &releaseClipPath;
+    auto setClipPathPointer = reinterpret_cast<SEXP (**)(SEXP, SEXP, pDevDesc)>(offset + 2 * pointerSize);
+    *setClipPathPointer = &setClipPath;
 
-  auto setMaskPathPointer = reinterpret_cast<SEXP (**)(SEXP, SEXP, pDevDesc)>(offset + 4 * pointerSize);
-  *setMaskPathPointer = &setMask;
+    auto releaseClipPathPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + 3 * pointerSize);
+    *releaseClipPathPointer = &releaseClipPath;
 
-  auto releaseMaskPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + 5 * pointerSize);
-  *releaseMaskPointer = &releaseMask;
+    auto setMaskPathPointer = reinterpret_cast<SEXP (**)(SEXP, SEXP, pDevDesc)>(offset + 4 * pointerSize);
+    *setMaskPathPointer = &setMask;
+
+    auto releaseMaskPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + 5 * pointerSize);
+    *releaseMaskPointer = &releaseMask;
+  }
 
   masterDevDesc->newFrameConfirm = nullptr;  // NULL
   masterDevDesc->hasTextUTF8 = TRUE;
