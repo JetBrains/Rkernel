@@ -82,6 +82,7 @@ public:
   Status findExtraNamedArguments(ServerContext* context, const RRef* request, ExtraNamedArguments* response) override;
   Status getS4ClassInfoByObjectName(ServerContext* context, const RRef* request, S4ClassInfo* response) override;
   Status getS4ClassInfoByClassName(ServerContext* context, const StringValue* request, S4ClassInfo* response) override;
+  Status getR6ClassInfoByObjectName(ServerContext* context, const RRef* request, R6ClassInfo* response) override;
   Status getLoadedShortS4ClassInfos(ServerContext* context, const Empty* request, ShortS4ClassInfoList* response) override;
   Status getTableColumnsInfo(ServerContext* context, const TableColumnsInfoRequest* request, TableColumnsInfo* response) override;
   Status getFormalArguments(ServerContext* context, const RRef* request, StringList* response) override;
