@@ -25,6 +25,7 @@ myNames <- base::names
 myPaste <- base::paste
 myPaste0 <- base::paste0
 myGet <- base::get
+myEnvironment <- base::environment
 
 arguments <- commandArgs(TRUE)
 
@@ -74,20 +75,18 @@ processPackage <- function(pName) {
   }
 
   cache <- new.env()
-  for (symbol in allSymbols) {
-    if (symbol %in% ignoreList) next
-    obj <- myGet(symbol, envir = namespace)
-
-    types <- myClass(obj)
-    spec <- NULL
+  processSymbol <- function(symbol, obj, types, spec = NULL) {
     isExported <- symbol %in% exportedSymbols
-    if ("function" %in% types) {
+    if (is(obj, "function")) {
+      if (!("function" %in% types)) {
+        types <- c(types, "function")
+      }
       description <- args(obj)
       if (myLength(description) > 0) {
         description <- deparse(description)
-        spec <- myPaste(description[seq_len(myLength(description) - 1)], collapse = "")
+        spec <- c(spec, myPaste(description[seq_len(myLength(description) - 1)], collapse = ""))
         # See extraNamedArguments.R#.jetbrains$findExtraNamedArgs for details
-        if (isExported) {
+        if (isExported && !is(obj, "MethodDefinition")) {
           extraNamedArgs <- tryCatch(.jetbrains$findExtraNamedArgs(symbol, 2, package = pName, cache = cache), error = function(e) {
             base::message(e)
           })
@@ -109,6 +108,27 @@ processPackage <- function(pName) {
     }
     myCat("\n")
     myCat(symbolSignature(symbol, types, isExported, spec))
+  }
+
+  for (symbol in allSymbols) {
+    if (symbol %in% ignoreList) next
+    obj <- myGet(symbol, envir = namespace)
+    types <- myClass(obj)
+    if (is(obj, "standardGeneric") && obj@package == pName) {
+      processSymbol(symbol, obj, types, c(myLength(obj@signature), obj@signature, myLength(obj@valueClass), obj@valueClass))
+    }
+    else processSymbol(symbol, obj, types[types != "standardGeneric"])
+  }
+
+  generics <- getGenerics()
+  for (i in seq_len(length(generics))) {
+    symbol <- generics[[i]]
+    generic <- getGeneric(symbol, package = generics@package[[i]])
+    for (method in findMethods(generic, where = namespace)) {
+      sig <- method@target
+      spec <- c(myLength(sig@names), sig@names, myLength(sig@.Data), sig@.Data)
+      processSymbol(symbol, method, "MethodDefinition", spec)
+    }
   }
 
   ##
