@@ -524,6 +524,8 @@ void MasterDevice::restart() {
 
   setMasterDeviceSize(masterDevDesc, slaveDevDesc);
 
+  memset(masterDevDesc->reserved, 0, 64);
+
   masterDevDesc->xCharOffset = slaveDevDesc->xCharOffset;
   masterDevDesc->yCharOffset = slaveDevDesc->yCharOffset;
   masterDevDesc->yLineBias = slaveDevDesc->yLineBias;
@@ -606,8 +608,6 @@ void MasterDevice::restart() {
   masterDevDesc->haveRaster = 2;
   masterDevDesc->haveCapture = 1;
   masterDevDesc->haveLocator = 2;  // Previously was 1, I have set this according to RStudio source files
-
-  memset(masterDevDesc->reserved, 0, 64);
 
   pGEDevDesc masterDevice = GEcreateDevDesc(masterDevDesc);
   GEaddDevice2(masterDevice, isProxy ? PROXY_DEVICE_NAME : MASTER_DEVICE_NAME);
