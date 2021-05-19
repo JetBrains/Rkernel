@@ -194,7 +194,7 @@ link_directories("${GRPC_DIST}/lib")
 if (UNIX)
     set(SYSTEM_SPECIFIC_SOURCES src/UnixForkHandler.cpp src/SubprocessUnix.cpp src/EventLoopUnix.cpp)
 else()
-    set(SYSTEM_SPECIFIC_SOURCES src/SubprocessWin.cpp src/EventLoopWin.cpp src/graphics/RVersionHelper.h)
+    set(SYSTEM_SPECIFIC_SOURCES src/SubprocessWin.cpp src/EventLoopWin.cpp)
 endif()
 
 

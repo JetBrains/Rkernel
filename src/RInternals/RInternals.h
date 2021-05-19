@@ -60,4 +60,6 @@ extern Rboolean* ptr_R_Visible;
 
 SEXP matchArgs(SEXP formals, SEXP supplied, SEXP call);
 
+int getRIntVersion();
+
 #endif //RWRAPPER_RINTERNALS_H

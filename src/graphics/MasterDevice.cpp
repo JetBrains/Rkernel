@@ -28,6 +28,7 @@
 #include "DeviceManager.h"
 #include "PlotUtil.h"
 #include "RVersionHelper.h"
+#include "../RInternals/RInternals.h"
 
 namespace graphics {
 namespace {
@@ -576,35 +577,17 @@ void MasterDevice::restart() {
   masterDevDesc->onExit = nullptr;  // NULL
   masterDevDesc->getEvent = nullptr;
 
-  // In R 4.1 a couple of new function in the struct "DevDesc" were introduced. To setup them in R 4.1
-  // and not to break complication with R 3.4 it was decided to initialize these function via pointers.
-  auto fieldHaveLocatorPointer = &(masterDevDesc->haveLocator); // The field before new functions.
-
-  int devDescSize = sizeof(DevDesc);
-  int r4_1DevDescSize = sizeof(SampleDevDesc);
-
-  if (devDescSize >= r4_1DevDescSize) {
-    int pointerSize = sizeof(void *) / 4;
-    int paddingOffset = pointerSize > 1 ? 1 : 0;
-    auto offset = fieldHaveLocatorPointer + paddingOffset + 1;
-
-    auto setPatternPointer = reinterpret_cast<SEXP (**)(SEXP, pDevDesc)>(offset);
-    *setPatternPointer = &setPattern;
-
-    auto releasePatternPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + pointerSize);
-    *releasePatternPointer = &releasePattern;
-
-    auto setClipPathPointer = reinterpret_cast<SEXP (**)(SEXP, SEXP, pDevDesc)>(offset + 2 * pointerSize);
-    *setClipPathPointer = &setClipPath;
-
-    auto releaseClipPathPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + 3 * pointerSize);
-    *releaseClipPathPointer = &releaseClipPath;
-
-    auto setMaskPathPointer = reinterpret_cast<SEXP (**)(SEXP, SEXP, pDevDesc)>(offset + 4 * pointerSize);
-    *setMaskPathPointer = &setMask;
-
-    auto releaseMaskPointer = reinterpret_cast<void (**)(SEXP, pDevDesc)>(offset + 5 * pointerSize);
-    *releaseMaskPointer = &releaseMask;
+  int rVersion = getRIntVersion();
+  if (rVersion >= 41) {
+    // In R 4.1 a couple of new function in the struct "DevDesc" were introduced. To setup them in R 4.1
+    // and not to break complication with R 3.4 it was decided to initialize these function via pointers.
+    auto masterDevDesc_4_1 = reinterpret_cast<SampleDevDesc *>(masterDevDesc);
+    masterDevDesc_4_1->setPattern = &setPattern;
+    masterDevDesc_4_1->releasePattern = &releasePattern;
+    masterDevDesc_4_1->setClipPath = &setClipPath;
+    masterDevDesc_4_1->releaseClipPath = &releaseClipPath;
+    masterDevDesc_4_1->setMask = &setMask;
+    masterDevDesc_4_1->releaseMask = &releaseMask;
   }
 
   masterDevDesc->newFrameConfirm = nullptr;  // NULL

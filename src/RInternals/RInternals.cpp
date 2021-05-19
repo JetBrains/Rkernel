@@ -174,4 +174,8 @@ R_MakeUnwindCont_t ptr_R_MakeUnwindCont = nullptr;
 
 Rboolean* ptr_R_Visible = nullptr;
 
+int getRIntVersion() {
+  return rVersion;
+}
+
 #pragma clang diagnostic pop
