@@ -27,6 +27,8 @@
 #include "REagerGraphicsDevice.h"
 #include "DeviceManager.h"
 #include "PlotUtil.h"
+#include "RVersionHelper.h"
+#include "../RInternals/RInternals.h"
 
 namespace graphics {
 namespace {
@@ -207,6 +209,30 @@ void setMasterDeviceSize(pDevDesc masterDevDesc, pDevDesc slaveDevDesc) {
   auto to = Point{slaveDevDesc->right, slaveDevDesc->bottom};
   auto area = Rectangle::make(from, to);
   setMasterDeviceSize(masterDevDesc, area);
+}
+
+SEXP setPattern(SEXP, pDevDesc) {
+  return R_NilValue;
+}
+
+void releasePattern(SEXP, pDevDesc) {
+  // Do nothing
+}
+
+SEXP setClipPath(SEXP, SEXP, pDevDesc) {
+  return R_NilValue;
+}
+
+void releaseClipPath(SEXP, pDevDesc) {
+  // Do nothing
+}
+
+SEXP setMask(SEXP, SEXP, pDevDesc) {
+  return R_NilValue;
+}
+
+void releaseMask(SEXP, pDevDesc) {
+  // Do nothing
 }
 
 } // anonymous
@@ -498,6 +524,8 @@ void MasterDevice::restart() {
 
   setMasterDeviceSize(masterDevDesc, slaveDevDesc);
 
+  memset(masterDevDesc->reserved, 0, 64);
+
   masterDevDesc->xCharOffset = slaveDevDesc->xCharOffset;
   masterDevDesc->yCharOffset = slaveDevDesc->yCharOffset;
   masterDevDesc->yLineBias = slaveDevDesc->yLineBias;
@@ -551,6 +579,19 @@ void MasterDevice::restart() {
   masterDevDesc->onExit = nullptr;  // NULL
   masterDevDesc->getEvent = nullptr;
 
+  int rVersion = getRIntVersion();
+  if (rVersion >= 41) {
+    // In R 4.1 a couple of new function in the struct "DevDesc" were introduced. To setup them in R 4.1
+    // and not to break complication with R 3.4 it was decided to initialize these function via pointers.
+    auto masterDevDesc_4_1 = reinterpret_cast<SampleDevDesc *>(masterDevDesc);
+    masterDevDesc_4_1->setPattern = &setPattern;
+    masterDevDesc_4_1->releasePattern = &releasePattern;
+    masterDevDesc_4_1->setClipPath = &setClipPath;
+    masterDevDesc_4_1->releaseClipPath = &releaseClipPath;
+    masterDevDesc_4_1->setMask = &setMask;
+    masterDevDesc_4_1->releaseMask = &releaseMask;
+  }
+
   masterDevDesc->newFrameConfirm = nullptr;  // NULL
   masterDevDesc->hasTextUTF8 = TRUE;
   masterDevDesc->textUTF8 = textUTF8;
@@ -567,8 +608,6 @@ void MasterDevice::restart() {
   masterDevDesc->haveRaster = 2;
   masterDevDesc->haveCapture = 1;
   masterDevDesc->haveLocator = 2;  // Previously was 1, I have set this according to RStudio source files
-
-  memset(masterDevDesc->reserved, 0, 64);
 
   pGEDevDesc masterDevice = GEcreateDevDesc(masterDevDesc);
   GEaddDevice2(masterDevice, isProxy ? PROXY_DEVICE_NAME : MASTER_DEVICE_NAME);
