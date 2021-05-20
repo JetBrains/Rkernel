@@ -482,4 +482,4 @@ if (.Platform$OS.type == "unix" && !("UTF-8" %in% localeToCharset(Sys.getlocale(
 
 options(warn = 1)
 options(demo.ask = TRUE);
-assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = globalenv())
+assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = baseenv())
