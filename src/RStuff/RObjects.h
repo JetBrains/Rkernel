@@ -39,6 +39,7 @@ struct RObjects2 {
   PrSEXP asNumeric = baseEnv.getVar("as.numeric");
   PrSEXP asPOSIXct = baseEnv.getVar("as.POSIXct");
   PrSEXP assign = baseEnv.getVar("assign");
+  PrSEXP attach = baseEnv.getVar("attach");
   PrSEXP assignOperator = baseEnv.getVar("<-");
   PrSEXP baseName = baseEnv.getVar("basename");
   PrSEXP begin = baseEnv.getVar("{");
@@ -196,20 +197,20 @@ struct RObjects2 {
       "  }\n"
       "  normalizePath(path, winslash = '/')\n"
       "}, error = function(e) NULL))\n",
-      baseEnv
+      globalEnv
   );
 
   PrSEXP withReplExceptionHandler = evalCode(
       "function(x) withCallingHandlers(x, error = function(e) .Call(\".jetbrains_exception_handler\", e))\n",
-      baseEnv);
+      globalEnv);
 
   PrSEXP jetbrainsDebuggerEnable = evalCode(
-      "function() .Call(\".jetbrains_debugger_enable\")", baseEnv);
+      "function() .Call(\".jetbrains_debugger_enable\")", globalEnv);
   PrSEXP jetbrainsDebuggerDisable = evalCode(
-      "function() .Call(\".jetbrains_debugger_disable\")", baseEnv);
+      "function() .Call(\".jetbrains_debugger_disable\")", globalEnv);
 
   PrSEXP jetbrainsRunFunction = installGlobalSymbol(".jetbrains_runFunction",
-      evalCode("function(f, x) .Call(\".jetbrains_runFunction\", f, x)", baseEnv));
+      evalCode("function(f, x) .Call(\".jetbrains_runFunction\", f, x)", globalEnv));
 
   PrSEXP printFactorSimple = evalCode(
       "function(x) {\n"
@@ -219,7 +220,7 @@ struct RObjects2 {
       "    xx[] <- as.character(x)\n"
       "    print(xx, quote = FALSE)\n"
       "  }\n"
-      "}", baseEnv);
+      "}", globalEnv);
 
   PrSEXP xSymbol = Rf_install("x");
   PrSEXP basePrintXExpr = mkLang("base::print(x)");

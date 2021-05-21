@@ -33,7 +33,7 @@ if (myLength(arguments) < 2) {
   quit(save = "no", status = 1, runLast = FALSE)
 }
 
-assign(".jetbrains", new.env(), envir = baseenv())
+assign(".jetbrains", new.env(), envir = globalenv())
 source(arguments[[1]]) # extraNamedArguments.R
 
 attachAndLoadNamespace <- function(pName) {

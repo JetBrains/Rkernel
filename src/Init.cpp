@@ -42,7 +42,9 @@ void initRWrapper() {
   initBytecodeHandling();
 
   RI = std::make_unique<RObjects2>();
-  RI->assign(".jetbrains", RI->newEnv(), named("envir", RI->baseEnv));
+  auto jetbrainsEnvironment = RI->newEnv();
+  RI->assign(".jetbrains", jetbrainsEnvironment, named("envir", RI->globalEnv));
+  RI->attach(jetbrainsEnvironment);
 
   initColoredOutput();
   initDoSystem();

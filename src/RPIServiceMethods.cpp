@@ -124,7 +124,7 @@ Status RPIServiceImpl::clearEnvironment(ServerContext* context, const RRef* requ
 
 Status RPIServiceImpl::getSysEnv(ServerContext *context, const GetSysEnvRequest *request, StringList *response) {
   executeOnMainThread([&] {
-      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
       ShieldSEXP func = jetbrainsEnv.getVar("getSysEnv");
       std::vector<std::string> flags;
       for (auto &s : request->flags()) flags.push_back(s);
@@ -151,7 +151,7 @@ void characterizeCells(ShieldSEXP &frame) {
 
 Status RPIServiceImpl::loadInstalledPackages(ServerContext *context, const Empty *, RInstalledPackageList *response) {
   executeOnMainThread([&] {
-      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
       ShieldSEXP func = jetbrainsEnv.getVar("loadInstalledPackages");
       ShieldSEXP packages = func();
       if (TYPEOF(packages) != VECSXP || packages.length() < 4) return;
@@ -186,7 +186,7 @@ Status RPIServiceImpl::loadInstalledPackages(ServerContext *context, const Empty
 
 Status RPIServiceImpl::loadLibPaths(ServerContext *context, const Empty *, RLibraryPathList *response) {
   executeOnMainThread([&] {
-      ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+      ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
       ShieldSEXP func = jetbrainsEnv.getVar("loadLibraryPath");
       ShieldSEXP libPaths = func();
       if (TYPEOF(libPaths) != VECSXP || libPaths.length() % 2 != 0) return;
