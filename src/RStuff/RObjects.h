@@ -39,6 +39,7 @@ struct RObjects2 {
   PrSEXP asNumeric = baseEnv.getVar("as.numeric");
   PrSEXP asPOSIXct = baseEnv.getVar("as.POSIXct");
   PrSEXP assign = baseEnv.getVar("assign");
+  PrSEXP attach = baseEnv.getVar("attach");
   PrSEXP assignOperator = baseEnv.getVar("<-");
   PrSEXP baseName = baseEnv.getVar("basename");
   PrSEXP begin = baseEnv.getVar("{");
