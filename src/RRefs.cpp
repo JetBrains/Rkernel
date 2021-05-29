@@ -278,7 +278,7 @@ void getS4ClassInfo(const ShieldSEXP &classDef, S4ClassInfo *response) {
     ShieldSEXP superClass = VECTOR_ELT(superClasses, i);
     auto nextSuperClass = response->add_superclasses();
     nextSuperClass->set_name(stringEltUTF8(R_do_slot(superClass, toSEXP("superClass")), 0));
-    nextSuperClass->set_isdirectinheritance(asInt(R_do_slot(superClass, toSEXP("distance"))) == 1);
+    nextSuperClass->set_distance(asInt(R_do_slot(superClass, toSEXP("distance"))));
   }
 
   response->set_isvirtual(asBool(R_do_slot(classDef, toSEXP("virtual"))));

@@ -181,7 +181,7 @@ processPackage <- function(pName) {
       spec <- NULL
       slots <- unlist(extractSlots(class))
       spec <- c(spec, myLength(slots), slots)
-      superClasses <- unlist(lapply(class@contains, function(y) c(y@superClass, y@distance == 1)))
+      superClasses <- unlist(lapply(class@contains, function(y) c(y@superClass, y@distance)))
       spec <- c(spec, myLength(superClasses), superClasses)
       myCat("\n")
       myCat(symbolSignature(className, myClass(class), TRUE, c(spec, class@virtual)))
