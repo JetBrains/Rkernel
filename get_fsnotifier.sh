@@ -2,7 +2,7 @@
 set -euo pipefail
 
 if [ ! -f fsnotifier-linux ]; then
-  curl https://raw.githubusercontent.com/JetBrains/intellij-community/master/bin/linux/fsnotifier64 -o fsnotifier-linux
+  curl https://raw.githubusercontent.com/JetBrains/intellij-community/master/bin/linux/fsnotifier -o fsnotifier-linux
   chmod +x fsnotifier-linux
 fi
 if [ ! -f fsnotifier-osx ]; then
