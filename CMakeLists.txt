@@ -142,16 +142,26 @@ set(service_proto_srcs "${CMAKE_HOME_DIRECTORY}/gens/protos/service.pb.cc")
 set(service_proto_hdrs "${CMAKE_HOME_DIRECTORY}/gens/protos/service.pb.h")
 set(service_grpc_srcs "${CMAKE_HOME_DIRECTORY}/gens/protos/service.grpc.pb.cc")
 set(service_grpc_hdrs "${CMAKE_HOME_DIRECTORY}/gens/protos/service.grpc.pb.h")
+
+set(classes_proto "${CMAKE_HOME_DIRECTORY}/Rkernel-proto/classes.proto")
+get_filename_component(classes_proto_path "${classes_proto}" DIRECTORY)
+set(classes_proto_srcs "${CMAKE_HOME_DIRECTORY}/gens/protos/classes.pb.cc")
+set(classes_proto_hdrs "${CMAKE_HOME_DIRECTORY}/gens/protos/classes.pb.h")
+set(classes_grpc_srcs "${CMAKE_HOME_DIRECTORY}/gens/protos/classes.grpc.pb.cc")
+set(classes_grpc_hdrs "${CMAKE_HOME_DIRECTORY}/gens/protos/classes.grpc.pb.h")
 add_custom_command(
         OUTPUT "${service_proto_srcs}" "${service_proto_hdrs}" "${service_grpc_srcs}" "${service_grpc_hdrs}"
+               "${classes_proto_srcs}" "${classes_proto_hdrs}" "${classes_grpc_srcs}" "${classes_grpc_hdrs}"
         COMMAND ${_PROTOBUF_PROTOC}
         ARGS --grpc_out "${CMAKE_HOME_DIRECTORY}/gens/protos"
             --cpp_out "${CMAKE_HOME_DIRECTORY}/gens/protos"
             -I "${service_proto_path}"
+            -I "${classes_proto_path}"
             -I "${GRPC_DIST}/include"
             --plugin=protoc-gen-grpc="${_GRPC_CPP_PLUGIN_EXECUTABLE}"
             "${service_proto}"
-        DEPENDS "${service_proto}")
+            "${classes_proto}"
+        DEPENDS "${service_proto}" "${classes_proto}")
 include_directories("${CMAKE_HOME_DIRECTORY}/gens")
 include_directories("${R_INCLUDE}")
 include_directories("${GRPC_DIST}/include")
@@ -205,6 +215,8 @@ add_executable(
         ${SYSTEM_SPECIFIC_SOURCES}
         ${service_proto_srcs}
         ${service_grpc_srcs}
+        ${classes_proto_srcs}
+        ${classes_grpc_srcs}
 )
 
 if (DEFINED CRASHPAD_DIR)

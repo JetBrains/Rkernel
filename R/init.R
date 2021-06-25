@@ -314,19 +314,19 @@ options(install.packages.compile.from.source = "always")
   Filter(function(x) !is.null(x), infos)
 }
 
-.jetbrains$isObjectFromR6 <<- function(object) {
+.jetbrains$isObjectFromR6 <- function(object) {
   return(is.R6(object))
 }
 
-.jetbrains$getR6ClassName <<- function(x) {
+.jetbrains$getR6ClassName <- function(x) {
   return(class(x)[1])
 }
 
-.jetbrains$getR6ClassVariable <<- function(x) {
+.jetbrains$getR6ClassVariable <- function(x) {
   return(get(class(x)[1]))
 }
 
-.jetbrains$getR6ClassInheritanceTree <<- function(x) {
+.jetbrains$getR6ClassInheritanceTree <- function(x) {
   return(head(class(x), -1)[-1])
 }
 
@@ -337,7 +337,18 @@ options(install.packages.compile.from.source = "always")
 
 .jetbrains$getR6ClassDefMethods <- function(class){
   internals <- class$public_methods
-  return(names(internals))
+  parameters <- sapply(internals, function (method) {
+    description <- args(method)
+    if (base::length(description) > 0) {
+      description <- deparse(description)
+      base::paste(description[seq_len(base::length(description) - 1)], collapse = "")
+    }
+    else {
+      ""
+    }
+  })
+  names(parameters) <- names(internals)
+  parameters
 }
 
 .jetbrains$getR6ClassDefActive <- function(class){

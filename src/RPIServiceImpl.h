@@ -32,6 +32,7 @@ using grpc::Status;
 using grpc::ServerContext;
 using grpc::ServerWriter;
 using namespace rplugininterop;
+using namespace classes;
 using namespace google::protobuf;
 
 class RPIServiceImpl : public RPIService::Service {

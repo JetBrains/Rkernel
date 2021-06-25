@@ -302,43 +302,43 @@ Status RPIServiceImpl::getS4ClassInfoByClassName(ServerContext* context, const S
 }
 
 bool isObjectFromR6(const ShieldSEXP &object) {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("isObjectFromR6");
     return func(object);
 }
 
-SEXPREC* getR6ClassName(const ShieldSEXP &object) {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+ShieldSEXP getR6ClassName(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassName");
     return func(object);
 }
 
-SEXPREC* getR6ClassVariable(const ShieldSEXP &object) {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+ShieldSEXP getR6ClassVariable(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassVariable");
     return func(object);
 }
 
-SEXPREC* getR6ClassInheritanceTree(const ShieldSEXP &object) {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+ShieldSEXP getR6ClassInheritanceTree(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassInheritanceTree");
     return func(object);
 }
 
-SEXPREC* getR6ClassDefFields(const ShieldSEXP &object) {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+ShieldSEXP getR6ClassDefFields(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassDefFields");
     return func(object);
 }
 
-SEXPREC* getR6ClassDefMethods(const ShieldSEXP &object) {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+ShieldSEXP getR6ClassDefMethods(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassDefMethods");
     return func(object);
 }
 
-SEXPREC* getR6ClassDefActive(const ShieldSEXP &object) {
-    ShieldSEXP jetbrainsEnv = RI->baseEnv.getVar(".jetbrains");
+ShieldSEXP getR6ClassDefActive(const ShieldSEXP &object) {
+    ShieldSEXP jetbrainsEnv = RI->globalEnv.getVar(".jetbrains");
     ShieldSEXP func = jetbrainsEnv.getVar("getR6ClassDefActive");
     return func(object);
 }
@@ -350,7 +350,7 @@ void getR6ClassInfo(const ShieldSEXP &classDef, R6ClassInfo *response) {
     response->set_classname(stringEltUTF8(className, 0));
 
     auto classInheritanceNames = getR6ClassInheritanceTree(classDef);
-    for (int i = 1; i < XLENGTH(classInheritanceNames); ++i) {
+    for (int i = 1; i < classInheritanceNames.length(); ++i) {
         response->add_superclasses(stringEltUTF8(classInheritanceNames, i));
     }
 
@@ -358,7 +358,7 @@ void getR6ClassInfo(const ShieldSEXP &classDef, R6ClassInfo *response) {
 
     // add fields
     auto fields = getR6ClassDefFields(classVariable);
-    for (int i = 0; i < XLENGTH(fields); ++i) {
+    for (int i = 0; i < fields.length(); ++i) {
         auto next_member = response->add_fields();
         next_member->set_name(stringEltUTF8(fields, i));
         next_member->set_ispublic(true);
@@ -366,15 +366,18 @@ void getR6ClassInfo(const ShieldSEXP &classDef, R6ClassInfo *response) {
 
     // add methods
     auto methods = getR6ClassDefMethods(classVariable);
-    for (int i = 0; i < XLENGTH(fields); ++i) {
+    ShieldSEXP names = Rf_getAttrib(methods, R_NamesSymbol);
+    for (int i = 0; i < methods.length(); ++i) {
         auto next_member = response->add_methods();
-        next_member->set_name(stringEltUTF8(methods, i));
+        next_member->set_name(stringEltUTF8(names, i));
+        string description = stringEltUTF8(methods, i);
+        next_member->set_parameterlist(description.substr(strlen("function "), description.size() - 2));
         next_member->set_ispublic(true);
     }
 
     // add active-bindings
     auto actives = getR6ClassDefActive(classVariable);
-    for (int i = 0; i < XLENGTH(fields); ++i) {
+    for (int i = 0; i < actives.length(); ++i) {
         auto next_member = response->add_activebindings();
         next_member->set_name(stringEltUTF8(actives, i));
     }
