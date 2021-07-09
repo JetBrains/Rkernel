@@ -155,27 +155,9 @@
       basePath <- .rs.normalizePath(basePath,  mustWork = TRUE)
 
    if (is.data.frame(markers)) {
-
-      cols <- colnames(markers)
-
-      if (!"type" %in% cols || !is.character(markers$type))
-         stop("markers type field is unspecified or invalid", call. = FALSE)
-      if (!"file" %in% cols || !is.character(markers$file))
-         stop("markers file field is unspecified or invalid", call. = FALSE)
-      if (!"line" %in% cols || !is.numeric(markers$line))
-         stop("markers line field is unspecified or invalid", call. = FALSE)
-      if (!"column" %in% cols || !is.numeric(markers$column))
-         stop("markers column field is unspecified or invalid", call. = FALSE)
-      if (!"message" %in% cols || !is.character(markers$message))
-         stop("markers message field is unspecified or invalid", call. = FALSE)
-
-      # normalize paths
-      markers$file <- .rs.normalizePath(markers$file, mustWork = TRUE)
-
-      # check for html
-      markers$messageHTML <- inherits(markers$message, "html")
-
-   } else if (is.list(markers)) {
+      markers <- split(markers, seq(nrow(markers)))
+   }
+   if (is.list(markers)) {
       markers <- lapply(markers, function(marker) {
          markerTypes <- c("error", "warning", "box", "info", "style", "usage")
          if (is.null(marker$type) || (!marker$type %in% markerTypes))
