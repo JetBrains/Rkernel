@@ -124,7 +124,7 @@ processPackage <- function(pName) {
   for (i in seq_len(length(generics))) {
     symbol <- generics[[i]]
     generic <- getGeneric(symbol, package = generics@package[[i]])
-    if (is(generic, "function") || is.character(generic) && nchar(generic) == 1) {
+    if (is(generic, "genericFunction") || is(generic, "function") || methods:::.isSingleString(generic)) {
       for (method in findMethods(generic, where = namespace)) {
         sig <- method@target
         spec <- c(myLength(sig@names), sig@names, myLength(sig@.Data), sig@.Data)
