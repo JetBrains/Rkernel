@@ -429,6 +429,7 @@
          options[["skip"]] <- dataImportOptions$skip
          options[["n_max"]] <- dataImportOptions$maxRows
          options[["col_types"]] <- dataImportOptions$columnDefinitions
+         options[["show_col_types"]] <- dataImportOptions$showColumnTypes
 
          # set special parameter types
          optionTypes <- list()
