@@ -278,6 +278,10 @@
    # remove empty parameters
    parameters <- Filter(Negate(function(x) is.null(unlist(x))), parameters)
 
+   if (!identical(package, NULL) && package == "readr" && packageVersion("readr") < "2.0") {
+     parameters[["col_types"]] <- "col_types = readr::cols()"
+   }
+
    paste(parameters, collapse = ",")
 })
 
