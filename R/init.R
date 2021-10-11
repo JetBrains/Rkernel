@@ -524,4 +524,11 @@ if (.Platform$OS.type == "unix" && !("UTF-8" %in% localeToCharset(Sys.getlocale(
 
 options(warn = 1)
 options(demo.ask = TRUE);
-assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = globalenv())
+
+
+if (package_version(R.version) < package_version("4.1")) {
+  assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = baseenv())
+} else {
+  assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = globalenv())
+}
+
