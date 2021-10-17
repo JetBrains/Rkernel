@@ -23,6 +23,7 @@
 #include "Ptr.h"
 #include "Plot.h"
 #include "InitHelper.h"
+#include "DeviceSlotLock.h"
 #include "ScreenParameters.h"
 #include "REagerGraphicsDevice.h"
 
@@ -38,6 +39,7 @@ class MasterDevice {
   };
 
   InitHelper initHelper;  // Rollback to previous active GD when this is closed (used in device dtor)
+  Ptr<DeviceSlotLock> deviceSlotLock;
   std::string currentSnapshotDirectory;
   ScreenParameters currentScreenParameters;
   std::vector<DeviceInfo> currentDeviceInfos;

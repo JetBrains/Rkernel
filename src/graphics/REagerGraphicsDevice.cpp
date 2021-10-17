@@ -93,17 +93,22 @@ int getComplexityMultiplier(pGEcontext context) {
 }  // anonymous
 
 REagerGraphicsDevice::REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber,
-                                           int snapshotVersion, ScreenParameters parameters, bool inMemory, bool isProxy)
+                                           int snapshotVersion, ScreenParameters parameters, bool inMemory, bool isProxy,
+                                           Ptr<DeviceSlotLock> deviceSlotLock)
     : snapshotDirectory(std::move(snapshotDirectory)), deviceNumber(deviceNumber), snapshotNumber(snapshotNumber),
       snapshotVersion(snapshotVersion), parameters(parameters), slaveDevice(nullptr), isDeviceBlank(true),
       snapshotType(SnapshotType::NORMAL), hasDumped(false), isProxy(isProxy), isPlotOnNewPage(false),
-      clippingArea({-1.0, -1.0, -1.0, -1.0}), inMemory(inMemory)
+      clippingArea({-1.0, -1.0, -1.0, -1.0}), inMemory(inMemory),
+      deviceSlotLock(std::move(deviceSlotLock))
 {
   getSlave();
 }
 
 Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
   DEVICE_TRACE;
+  if (deviceSlotLock != nullptr) {
+    deviceSlotLock->acquire();
+  }
   auto name = std::string();
   if (!hasDumped) {
     name = SnapshotUtil::makeSnapshotName(snapshotType, snapshotNumber, snapshotVersion, parameters.resolution);
@@ -133,12 +138,25 @@ Ptr<SlaveDevice> REagerGraphicsDevice::initializeSlaveDevice() {
     name = SnapshotUtil::getDummySnapshotName();
   }
   snapshotPath = snapshotDirectory + "/" + name;
-  return makePtr<SlaveDevice>(snapshotPath, parameters);
+  auto device = makePtr<SlaveDevice>(snapshotPath, parameters);
+  if (device->getGeDescriptor() == nullptr) {
+    // Failed to initialize a slave device
+    if (deviceSlotLock != nullptr) {
+      deviceSlotLock->release();
+    }
+  }
+  return device;
 }
 
 void REagerGraphicsDevice::shutdownSlaveDevice() {
   DEVICE_TRACE;
-  slaveDevice = nullptr;
+  if (slaveDevice != nullptr) {
+    auto isSlaveAlive = slaveDevice->getGeDescriptor() != nullptr;
+    slaveDevice = nullptr;
+    if (isSlaveAlive && deviceSlotLock != nullptr) {
+      deviceSlotLock->release();
+    }
+  }
 }
 
 // Nullable

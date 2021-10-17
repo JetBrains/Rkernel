@@ -21,6 +21,7 @@
 #include <string>
 
 #include "Rinternals.h"
+#undef length
 #include <R_ext/GraphicsEngine.h>
 
 #include "ScreenParameters.h"

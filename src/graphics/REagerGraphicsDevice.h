@@ -32,6 +32,7 @@
 #include "Rectangle.h"
 #include "SlaveDevice.h"
 #include "SnapshotType.h"
+#include "DeviceSlotLock.h"
 #include "actions/Action.h"
 
 namespace graphics {
@@ -57,6 +58,7 @@ private:
   std::string snapshotDirectory;
   ScreenParameters parameters;
   Ptr<SlaveDevice> slaveDevice;
+  Ptr<DeviceSlotLock> deviceSlotLock;
   std::vector<Ptr<Action>> actions;
   Rectangle clippingArea;
   int64_t complexity = 0;
@@ -78,7 +80,7 @@ private:
 
 public:
   REagerGraphicsDevice(std::string snapshotDirectory, int deviceNumber, int snapshotNumber, int snapshotVersion,
-                       ScreenParameters parameters, bool inMemory, bool isProxy);
+                       ScreenParameters parameters, bool inMemory, bool isProxy, Ptr<DeviceSlotLock> deviceSlotLock);
 
   void drawCircle(Point center, double radius, pGEcontext context);
   void clip(Point from, Point to);

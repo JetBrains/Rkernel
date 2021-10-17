@@ -15,7 +15,7 @@
 //  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#include <string.h>
+#include <cstring>
 #include <sstream>
 #include <fstream>
 
@@ -258,7 +258,7 @@ bool MasterDevice::hasCurrentDevice() {
 Ptr<REagerGraphicsDevice> MasterDevice::getCurrentDevice() {
   if (!hasCurrentDevice()) {
     auto newDevice = makePtr<REagerGraphicsDevice>(currentSnapshotDirectory, deviceNumber, currentSnapshotNumber, 0,
-                                                   currentScreenParameters, inMemory, isProxy);
+                                                   currentScreenParameters, inMemory, isProxy, deviceSlotLock);
     currentDeviceInfos[currentSnapshotNumber].device = newDevice;
     setMasterDeviceSize(masterDeviceDescriptor->dev, newDevice->drawingArea());
   }
@@ -422,7 +422,8 @@ bool MasterDevice::rescaleByPath(const std::string& parentDirectory, int number,
     return false;
   }
 
-  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version + 1, newParameters, inMemory, isProxy);
+  auto device = makePtr<REagerGraphicsDevice>(parentDirectory, deviceNumber, number, version + 1, newParameters,
+                                              inMemory, isProxy, deviceSlotLock);
   device->replayFromFile(parentDirectory, number);
   device->dump();
 
@@ -513,8 +514,9 @@ void MasterDevice::restart() {
   }
 
   auto masterDevDesc = new DevDesc;
-  auto slaveDevice = SlaveDevice(currentSnapshotDirectory + "/" + SnapshotUtil::getDummySnapshotName(), currentScreenParameters);
-  auto slaveDevDesc = slaveDevice.getDescriptor();
+  auto dummySnapshotPath = currentSnapshotDirectory + "/" + SnapshotUtil::getDummySnapshotName();
+  deviceSlotLock = makePtr<DeviceSlotLock>(dummySnapshotPath, currentScreenParameters);
+  auto slaveDevDesc = deviceSlotLock->getSlaveDescriptor();
 
   // Note: under some circumstances (R interpreter failures) slave device's descriptor can be null
   if (!slaveDevDesc) {
@@ -608,6 +610,13 @@ void MasterDevice::restart() {
   masterDevDesc->haveRaster = 2;
   masterDevDesc->haveCapture = 1;
   masterDevDesc->haveLocator = 2;  // Previously was 1, I have set this according to RStudio source files
+
+  // Proxy device doesn't need its own device slot lock.
+  // Destroy it before the master device is added,
+  // so there is no "gap" in R device list
+  if (isProxy) {
+    deviceSlotLock = nullptr;
+  }
 
   pGEDevDesc masterDevice = GEcreateDevDesc(masterDevDesc);
   GEaddDevice2(masterDevice, isProxy ? PROXY_DEVICE_NAME : MASTER_DEVICE_NAME);
