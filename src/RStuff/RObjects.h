@@ -46,6 +46,7 @@ struct RObjects2 {
   PrSEXP cat = baseEnv.getVar("cat");
   PrSEXP classes = baseEnv.getVar("class");
   PrSEXP close = baseEnv.getVar("close");
+  PrSEXP c = baseEnv.getVar("c");
   PrSEXP colon = baseEnv.getVar(":");
   PrSEXP conditionCall = baseEnv.getVar("conditionCall");
   PrSEXP conditionMessage = baseEnv.getVar("conditionMessage");
