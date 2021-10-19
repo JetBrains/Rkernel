@@ -8,6 +8,7 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
   PACKAGE_NAME="x64-linux"
 else
   PACKAGE_NAME="x64-osx"
+  export MACOSX_DEPLOYMENT_TARGET=10.13
 fi
 
 ./vcpkg install "grpc:$PACKAGE_NAME"

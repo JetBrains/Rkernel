@@ -25,6 +25,7 @@ if [[ "$OSTYPE" == "linux-gnu" ]]; then
 else
   PACKAGE_NAME="x64-osx"
   IS_MACOS=true
+  export MACOSX_DEPLOYMENT_TARGET=10.13
 fi
 
 mkdir -p build

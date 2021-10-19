@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.6)
+set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum OS X deployment version")
 project(rwrapper)
 
 set(CMAKE_CXX_STANDARD 14)
