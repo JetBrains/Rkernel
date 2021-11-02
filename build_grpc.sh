@@ -1,15 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
+
+VCPKG_DISABLE_METRICS=1
 cd vcpkg
 ./bootstrap-vcpkg.sh
 
-if [[ "$OSTYPE" == "linux-gnu" ]]; then
-  PACKAGE_NAME="x64-linux"
-else
-  PACKAGE_NAME="x64-osx"
-  export MACOSX_DEPLOYMENT_TARGET=10.13
-fi
+. ../env.sh
 
 ./vcpkg install "grpc:$PACKAGE_NAME"
 ./vcpkg install "tiny-process-library:$PACKAGE_NAME"
