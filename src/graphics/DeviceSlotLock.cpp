@@ -5,7 +5,7 @@ namespace graphics {
 DeviceSlotLock::DeviceSlotLock(std::string snapshotPath, const ScreenParameters& screenParameters)
   : snapshotPath(std::move(snapshotPath)), screenParameters(screenParameters), deviceNumber(0)
 {
-  slaveDevice = makePtr<SlaveDevice>(snapshotPath, screenParameters);
+  slaveDevice = makePtr<SlaveDevice>(this->snapshotPath, screenParameters);
   auto slaveDescriptor = slaveDevice->getDescriptor();
   if (slaveDescriptor != nullptr) {
     deviceNumber = Rf_ndevNumber(slaveDescriptor);
