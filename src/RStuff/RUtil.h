@@ -135,7 +135,8 @@ inline const char* translateToNative(std::string const& s) {
 
 inline SEXP parseCode(std::string const& code, bool keepSource = false) {
 #ifdef Win32
-  ShieldSEXP connection = RI->textConnection(code, named("encoding", "UTF-8"));
+  auto enc = RI->c("", "bytes", "UTF-8");
+  ShieldSEXP connection = RI->textConnection(code, named("encoding", enc));
   try {
     ShieldSEXP result = RI->parse(connection,
                                   named("encoding", "UTF-8"),
