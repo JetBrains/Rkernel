@@ -41,7 +41,7 @@ $CMAKE -Wdev .. "$@"
 make -j1
 if [[ "$OS" == "Darwin" ]]; then
   OLDNAME=$(otool -L rwrapper | grep "libR.dylib" | awk '{ print $1 }')
-  install_name_tool -change $OLDNAME @library_path/libR.dylib rwrapper
+  install_name_tool -change $OLDNAME @rpath/lib/libR.dylib rwrapper
 fi
 mv rwrapper ../rwrapper-$PACKAGE_NAME
 
