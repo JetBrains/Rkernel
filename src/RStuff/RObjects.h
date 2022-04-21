@@ -23,6 +23,8 @@
 #include "MySEXP.h"
 #include "Exceptions.h"
 
+extern "C" void SET_SYMVALUE(SEXP x, SEXP v);
+
 struct RObjects2 {
   PrSEXP baseEnv = R_BaseEnv;
   PrSEXP globalEnv = R_GlobalEnv;
