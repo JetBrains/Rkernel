@@ -1,14 +1,13 @@
 #!/bin/bash
 
-MACOSX_DEPLOYMENT_TARGET=10.13
-
 case "$OS" in
 Linux)
   PACKAGE_NAME="$ARCH-linux"
   ;;
 Darwin)
   PACKAGE_NAME="$ARCH-osx"
-  [[ "$ARCH" == "x64" ]] && export MACOSX_DEPLOYMENT_TARGET=10.13
+  MACOSX_DEPLOYMENT_TARGET=10.13
+  export MACOSX_DEPLOYMENT_TARGET
   ;;
 *)
   echo "Unsupported os '$OS'"
@@ -17,4 +16,4 @@ Darwin)
 esac
 
 export PACKAGE_NAME
-export MACOSX_DEPLOYMENT_TARGET
+
