@@ -15,7 +15,7 @@ rm -rf ../grpc
 mkdir ../grpc
 
 if which rsync &>/dev/null; then
-  rsync -r --exclude=CONTROL --exclude=BUILD_INFO packages/*_"$PACKAGE_NAME"/ ../grpc
+  rsync -av --exclude=CONTROL --exclude=BUILD_INFO packages/*_"$PACKAGE_NAME"/ ../grpc
 else
   # shellcheck disable=SC2010
   for d in $(ls packages | grep -e "_$PACKAGE_NAME"); do
