@@ -771,21 +771,12 @@ public:
     }
   }
 
-#if defined __APPLE__ && defined __APPLE_SILICON__
   void PreSynchronousRequest(grpc::ServerContext* context) override {
     rpcHappened = true;
   }
 
   void PostSynchronousRequest(grpc::ServerContext* context) override {
   }
-#else
-  void PreSynchronousRequest(grpc_impl::ServerContext* context) override {
-    rpcHappened = true;
-  }
-
-  void PostSynchronousRequest(grpc_impl::ServerContext* context) override {
-  }
-#endif
 
   void init() {
     Server::SetGlobalCallbacks(this);
