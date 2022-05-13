@@ -57,15 +57,35 @@ for pkg in ./*.pkg; do
 done
 #chown -Rh root:admin "$result/Library/Frameworks/R.framework" || true
 #chmod -R g+w "$result/Library/Frameworks/R.framework" || true
+if [[ -d "$result/usr/local/bin" ]]; then
+  echo "X64 version, using $result/usr/local/bin"
+  bin_dir="$result/usr/local/bin"
+  up="../../.."
+elif [[ -d "$result/opt/R/arm64/bin" ]]; then
+  echo "ARM64 version, using $result/opt/R/arm64/bin"
+  bin_dir="$result/opt/R/arm64/bin"
+  up="../../../.."
+fi
+
 (
-  cd "$result/usr/local/bin"
-  ln -s "../../../Library/Frameworks/R.framework/Resources/bin/R" .
+  cd "$bin_dir"
+  ln -s "$up/Library/Frameworks/R.framework/Resources/bin/R" .
   # It makes no sense to link Rscript since it have path to Library/Frameworks/R.framework hardcoded
-  #ln -s "../../../Library/Frameworks/R.framework/Resources/bin/Rscript" .
+  #ln -s "$up/Library/Frameworks/R.framework/Resources/bin/Rscript" .
 )
 
 sed -i '' 's~DIR=/Library/Frameworks~DIR=$JAIL_ROOT/Library/Frameworks~' "$result/Library/Frameworks/R.framework/Resources/bin/R"
-# ../../../Library/Frameworks/R.framework/Resources/bin/fc-cache
+# $up/Library/Frameworks/R.framework/Resources/bin/fc-cache
+
+if [[ "$(uname -m)" == "arm64" ]]; then
+  R_BIN="$result/Library/Frameworks/R.framework/Resources/bin/exec/R"
+  for l in $(otool -L "$R_BIN" | grep '\t/Library/Frameworks' | awk '{print $1}'); do
+    install_name_tool -change "$l" "$result/$l" "$R_BIN"
+  done
+  otool -L "$R_BIN"
+  # ad-hoc sign
+  codesign --sign - --force --verbose "$R_BIN"
+fi
 
 cd "$old"
 mv "$tmpdir/$result" "$destination"
