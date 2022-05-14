@@ -5,7 +5,7 @@ if not exist Rcpp (
 )
 
 if not exist vcpkg (
-  git clone --single-branch --branch 2019.12  https://github.com/microsoft/vcpkg.git
+  git clone --single-branch --branch 2022.05.10  https://github.com/microsoft/vcpkg.git
 )
 
 

@@ -5,9 +5,5 @@ set -e
 cd "$(dirname "$0")"
 
 if [ ! -d vcpkg ]; then
-  if [ "$ARCH" == "arm64" ]; then
-    git clone --single-branch --branch 2021.05.12 --depth 1 https://github.com/microsoft/vcpkg.git
-  else
-    git clone --single-branch --branch 2019.12 --depth 1 https://github.com/microsoft/vcpkg.git
-  fi
+  git clone --single-branch --branch 2022.05.10 --depth 1 https://github.com/microsoft/vcpkg.git
 fi
