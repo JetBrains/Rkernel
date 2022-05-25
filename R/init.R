@@ -526,9 +526,5 @@ options(warn = 1)
 options(demo.ask = TRUE);
 
 
-if (package_version(R.version) < package_version("4.1")) {
-  assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = baseenv())
-} else {
-  assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = globalenv())
-}
+assign(".Last.sys", function() .Call(".jetbrains_quitRWrapper"), envir = baseenv())
 
