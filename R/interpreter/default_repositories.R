@@ -11,7 +11,18 @@ p <- file.path(Sys.getenv("HOME"), ".R", "repositories")
 if (!file.exists(p)) {
   p <- file.path(R.home("etc"), "repositories")
 }
-a <- tools:::.read_repositories(p)
+
+.read_repositories_alias <- NULL
+for (package in c("tools", "utils")) {
+  package_namespace <- getNamespace(package)
+  if (exists(".read_repositories", envir = package_namespace)) {
+    .read_repositories_alias <- get(".read_repositories", envir = package_namespace)
+    break
+  }
+}
+
+a <- .read_repositories_alias(p)
+
 cat(">>>RPLUGIN>>>")
 writeLines(a[, "URL"])
 writeLines("")
