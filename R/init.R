@@ -215,14 +215,6 @@ options(install.packages.compile.from.source = "always")
   options(repos = old.repos)
 }
 
-.jetbrains$getDefaultRepositories <- function() {
-  p <- file.path(Sys.getenv("HOME"), ".R", "repositories")
-  if (!file.exists(p))
-    p <- file.path(R.home("etc"), "repositories")
-  a <- tools:::.read_repositories(p)
-  a[, "URL"]
-}
-
 .jetbrains$printCranMirrorsToFile <- function(output.path) {
   sink(output.path)
   mirrors <- getCRANmirrors()[, c('Name', 'URL')]
