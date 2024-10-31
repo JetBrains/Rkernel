@@ -30,10 +30,14 @@ typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);
 void SET_PRIMFUN(SEXP x, CCODE f);
 }
 
+/**
+ * consignals values are currently ignored, but they should be supported
+ * see https://github.com/wch/r-source/commit/688f12cc9627c38ae10c4f597010da3f7142a487
+ */
 DoSystemResult myDoSystemImpl(const char* cmd, int timeout,
                               SystemOutputType outType, const char* outFile,
                               SystemOutputType errType, const char* errFile,
-                              const char* inFile, bool background) {
+                              const char* inFile, bool background, int consignals) {
   if (background) {
     if (outType == COLLECT) outType = IGNORE_OUTPUT;
     if (errType == COLLECT) errType = IGNORE_OUTPUT;

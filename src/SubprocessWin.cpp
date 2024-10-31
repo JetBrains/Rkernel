@@ -22,12 +22,16 @@
 #include <process.hpp>
 #include <thread>
 #include "util/StringUtil.h"
+#include "RStuff/RUtil.h"
 
-// This code is mostly from R sources
+// This code is mostly from R sources: https://github.com/wch/r-source/blob/trunk/src/gnuwin32/sys-win32.c#L249
 SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   int argsCount = Rf_length(args);
-  if (argsCount < 5 || argsCount > 6) {
-    Rf_error("%d arguments passed to .Internal(system) which requires 2 or 3", argsCount);
+  int consignals = NA_INTEGER;
+
+  Rf_checkArityCall(op, args, call);
+  if (argsCount < 5 || argsCount > 7) {
+    Rf_error("RWrapper error: %d arguments passed to .Internal(system) which requires 5, 6 or 7", argsCount);
   }
 
   SEXP cmdExp = CAR(args);
@@ -59,6 +63,13 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   if (timeout && !flag)
     Rf_errorcall(call, "Timeout with background running processes is not supported.");
 
+  if (argsCount >= 7) {
+    consignals = Rf_asLogical(CADR(args));
+    if (consignals == NA_INTEGER) {
+      Rf_errorcall(call, "invalid '%s' argument", "receive.console.signals");
+    }
+  }
+
   if (flag == 2) flag = 1; /* ignore std.output.on.console */
   const char* fout = "";
   const char* ferr = "";
@@ -79,7 +90,7 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
 
   CPP_BEGIN
     std::string command = cmd;
-    DoSystemResult res = myDoSystemImpl(command.c_str(), timeout, outType, fout, errType, ferr, fin, flag == 0);
+    DoSystemResult res = myDoSystemImpl(command.c_str(), timeout, outType, fout, errType, ferr, fin, flag == 0, consignals);
     if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
     if (outType == COLLECT || errType == COLLECT) {
       std::vector<std::string> lines;
