@@ -17,6 +17,7 @@
 #include "RPIServiceImpl.h"
 #include "Subprocess.h"
 #include "RStuff/RInclude.h"
+#include "RStuff/RUtil.h"
 #include <iostream>
 
 extern "C" {
@@ -36,13 +37,19 @@ static int utf8clen(char c) {
   return 1 + utf8_table4[c & 0x3f];
 }
 
+/**
+ * see https://github.com/wch/r-source/blob/trunk/src/unix/sys-unix.c#L894
+ */
 SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   int intern = 0;
   int timeout = 0;
+  int consignals = NA_INTEGER;
 
   int argsCount = Rf_length(args);
-  if (argsCount < 2 || argsCount > 3) {
-    Rf_error("%d arguments passed to .Internal(system) which requires 2 or 3", argsCount);
+
+  Rf_checkArityCall(op, args, call);
+  if (argsCount < 2 || argsCount > 4) {
+    Rf_error("RWrapper error: %d arguments passed to .Internal(system) which requires 2, 3 or 4", argsCount);
   }
 
   if (!Rf_isValidStringF(CAR(args)))
@@ -50,9 +57,17 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   intern = Rf_asLogical(CADR(args));
   if (intern == NA_INTEGER)
     Rf_error("'intern' must be logical and not NA");
-  timeout = argsCount == 3 ? Rf_asInteger(CADDR(args)) : 0;
+  timeout = argsCount >= 3 ? Rf_asInteger(CADDR(args)) : 0;
   if (timeout == NA_INTEGER || timeout < 0)
     Rf_error("invalid 'timeout' argument");
+
+  if (argsCount >= 4) {
+    consignals = Rf_asLogical(CADDDR(args));
+    if (consignals == NA_INTEGER) {
+      Rf_error("'receive.console.signals' must be logical and not NA");
+    }
+  }
+
   const void *vmax = vmaxget();
   const char *cmd = Rf_translateCharUTF8(STRING_ELT(CAR(args), 0));
   const char *c = cmd;
@@ -75,7 +90,7 @@ SEXP myDoSystem(SEXP call, SEXP op, SEXP args, SEXP) {
   vmaxset(vmax);
 
   CPP_BEGIN
-    DoSystemResult res = myDoSystemImpl(cmd, timeout, intern ? COLLECT : PRINT, "", PRINT, "", "", last_is_amp);
+    DoSystemResult res = myDoSystemImpl(cmd, timeout, intern ? COLLECT : PRINT, "", PRINT, "", "", last_is_amp, consignals);
     if (res.timedOut) Rf_warning("command '%s' timed out after %ds", cmd, timeout);
     if (intern) {
       std::vector<std::string> lines;

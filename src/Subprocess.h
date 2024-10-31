@@ -37,6 +37,6 @@ struct DoSystemResult {
 DoSystemResult myDoSystemImpl(const char* cmd, int timeout,
                               SystemOutputType outType, const char* outFile,
                               SystemOutputType errType, const char* errFile,
-                              const char* inFile = "", bool background = false);
+                              const char* inFile = "", bool background = false, int consignals = NA_INTEGER);
 
 #endif //RWRAPPER_SUBPROCESS_H
