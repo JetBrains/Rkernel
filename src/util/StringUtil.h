@@ -19,6 +19,7 @@
 #define RWRAPPER_STRING_UTIL_H
 
 #include <string>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 #include <sstream>
