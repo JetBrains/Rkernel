@@ -19,7 +19,7 @@
 #include "Init.h"
 #include "RStuff/Export.h"
 #include "RStuff/RInclude.h"
-#include <signal.h>
+#include <csignal>
 #include "RStuff/RUtil.h"
 #include "RStudioApi.h"
 
