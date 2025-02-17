@@ -136,11 +136,13 @@ struct RInternalStructures_4_0 {
     int bcintactive;
     SEXP bcbody;
     void* bcpc;
+    ptrdiff_t relpc; // https://github.com/r-devel/r-svn/commit/59c821d19ff741a06d0e4cea7fad9aff904eeab4
     SEXP handlerstack;
     SEXP restartstack;
     struct RPRSTACK *prstack;
     void *nodestack;
     void *bcprottop;
+    void *bcframe; // https://github.com/r-devel/r-svn/commit/2d0a210cff318506404263f9a4814064135a686a
     SEXP srcref;
     int browserfinish;
     SEXP returnValue;
