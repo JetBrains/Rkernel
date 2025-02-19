@@ -136,6 +136,40 @@ struct RInternalStructures_4_0 {
     int bcintactive;
     SEXP bcbody;
     void* bcpc;
+    SEXP handlerstack;
+    SEXP restartstack;
+    struct RPRSTACK *prstack;
+    void *nodestack;
+    void *bcprottop;
+    SEXP srcref;
+    int browserfinish;
+    SEXP returnValue;
+    struct RCNTXT *jumptarget;
+    int jumpmask;
+  };
+};
+
+struct RInternalStructures_4_4 {
+  struct RCNTXT {
+    struct RCNTXT *nextcontext;
+    int callflag;
+    JMP_BUF cjmpbuf;
+    int cstacktop;
+    int evaldepth;
+    SEXP promargs;
+    SEXP callfun;
+    SEXP sysparent;
+    SEXP call;
+    SEXP cloenv;
+    SEXP conexit;
+    void (*cend)(void *);
+    void *cenddata;
+    void *vmax;
+    int intsusp;
+    int gcenabled;
+    int bcintactive;
+    SEXP bcbody;
+    void* bcpc;
     ptrdiff_t relpc; // https://github.com/r-devel/r-svn/commit/59c821d19ff741a06d0e4cea7fad9aff904eeab4
     SEXP handlerstack;
     SEXP restartstack;
