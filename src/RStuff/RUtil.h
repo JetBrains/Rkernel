@@ -325,7 +325,9 @@ inline void walkObjectsImpl(Func const& f, std::unordered_set<SEXP> &visited, SE
     case DOTSXP:
     case LANGSXP:
     case LISTSXP: {
-      walkObjectsImpl(f, visited, CAR(x));
+      // sxpinfo.extra may contain an immediate binding, meaning that CAR(x) should not be called
+      // See: https://github.com/r-devel/r-svn/blob/trunk/doc/notes/immbnd.md
+      if (!x->sxpinfo.extra) walkObjectsImpl(f, visited, CAR(x));
       walkObjectsImpl(f, visited, CDR(x));
       walkObjectsImpl(f, visited, TAG(x));
       break;

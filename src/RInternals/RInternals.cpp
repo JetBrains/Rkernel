@@ -35,7 +35,8 @@ static int rVersion;
 #define SELECT(call, ...) \
   if (rVersion <= 33) return call<RInternalStructures_3_3>(__VA_ARGS__);\
   else if (rVersion < 40) return call<RInternalStructures_3_4>(__VA_ARGS__);\
-  else return call<RInternalStructures_4_0>(__VA_ARGS__)
+  else if (rVersion < 44) return call<RInternalStructures_4_0>(__VA_ARGS__);\
+  else return call<RInternalStructures_4_4>(__VA_ARGS__)
 
 bool isOldR() {
   return rVersion <= 33;

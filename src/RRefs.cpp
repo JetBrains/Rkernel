@@ -219,11 +219,11 @@ Status RPIServiceImpl::getLoadedShortS4ClassInfos(ServerContext* context, const 
 }
 
 struct SlotInfo {
-  string name, type, declarationClass;
+  grpc::string name, type, declarationClass;
 };
 
 std::vector<SlotInfo> extractSlots(const ShieldSEXP &classDef) {
-  std::unordered_map<string, SlotInfo> slotsInfos;
+  std::unordered_map<grpc::string, SlotInfo> slotsInfos;
   auto defProcessor = [&slotsInfos](const ShieldSEXP &classDef) {
     if (TYPEOF(classDef) != S4SXP) return;
     auto className = stringEltUTF8(R_do_slot(classDef, toSEXP("className")), 0);
@@ -240,7 +240,7 @@ std::vector<SlotInfo> extractSlots(const ShieldSEXP &classDef) {
   };
 
   ShieldSEXP superClassesList = R_do_slot(classDef, toSEXP("contains"));
-  std::vector<std::pair<int, string>> superClasses;
+  std::vector<std::pair<int, grpc::string>> superClasses;
   for (int i = 0; i < superClassesList.length(); ++i) {
     ShieldSEXP superClass = VECTOR_ELT(superClassesList, i);
     auto superClassName = stringEltUTF8(R_do_slot(superClass, toSEXP("superClass")), 0);
@@ -370,7 +370,7 @@ void getR6ClassInfo(const ShieldSEXP &classDef, R6ClassInfo *response) {
     for (int i = 0; i < methods.length(); ++i) {
         auto next_member = response->add_methods();
         next_member->set_name(stringEltUTF8(names, i));
-        string description = stringEltUTF8(methods, i);
+        grpc::string description = stringEltUTF8(methods, i);
         next_member->set_parameterlist(description.substr(strlen("function "), description.size() - 2));
         next_member->set_ispublic(true);
     }

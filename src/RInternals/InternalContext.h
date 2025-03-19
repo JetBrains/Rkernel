@@ -149,6 +149,42 @@ struct RInternalStructures_4_0 {
   };
 };
 
+struct RInternalStructures_4_4 {
+  struct RCNTXT {
+    struct RCNTXT *nextcontext;
+    int callflag;
+    JMP_BUF cjmpbuf;
+    int cstacktop;
+    int evaldepth;
+    SEXP promargs;
+    SEXP callfun;
+    SEXP sysparent;
+    SEXP call;
+    SEXP cloenv;
+    SEXP conexit;
+    void (*cend)(void *);
+    void *cenddata;
+    void *vmax;
+    int intsusp;
+    int gcenabled;
+    int bcintactive;
+    SEXP bcbody;
+    void* bcpc;
+    ptrdiff_t relpc; // https://github.com/r-devel/r-svn/commit/59c821d19ff741a06d0e4cea7fad9aff904eeab4
+    SEXP handlerstack;
+    SEXP restartstack;
+    struct RPRSTACK *prstack;
+    void *nodestack;
+    void *bcprottop;
+    void *bcframe; // https://github.com/r-devel/r-svn/commit/2d0a210cff318506404263f9a4814064135a686a
+    SEXP srcref;
+    int browserfinish;
+    SEXP returnValue;
+    struct RCNTXT *jumptarget;
+    int jumpmask;
+  };
+};
+
 #ifdef Win32
 extern "C" {
   LibExtern void* R_GlobalContext;

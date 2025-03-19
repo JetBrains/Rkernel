@@ -221,7 +221,7 @@ Status RPIServiceImpl::saveGlobalEnvironment(ServerContext *context, const Strin
 
 Status RPIServiceImpl::loadEnvironment(ServerContext *context, const LoadEnvironmentRequest *request, Empty*) {
   executeOnMainThread([&] {
-    const string &variableName = request->variable();
+    const grpc::string &variableName = request->variable();
     if (variableName.empty()) {
       RI->sysLoadImage(request->file());
     } else {
