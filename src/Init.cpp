@@ -67,9 +67,7 @@ void quitRWrapper() {
 }
 
 extern "C" {
-typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);
-void SET_PRIMFUN(SEXP x, CCODE f);
-void R_CleanUp(SA_TYPE, int, int);
+  void R_CleanUp(SA_TYPE, int, int);
 }
 
 static void initColoredOutput() {
@@ -90,7 +88,7 @@ static void initColoredOutput() {
 }
 
 static void initDoQuit() {
-  SET_PRIMFUN(INTERNAL(Rf_install("quit")), [](SEXP call, SEXP op, SEXP args, SEXP rho) -> SEXP {
+  setFunTabFunction(getFunTabOffset("quit"), [](SEXP call, SEXP op, SEXP args, SEXP rho) -> SEXP {
     int argsCount = Rf_length(args);
     if (argsCount != 3) {
       Rf_error("%d arguments passed to .Internal(quit) which requires 3", argsCount);

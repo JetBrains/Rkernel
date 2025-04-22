@@ -98,7 +98,7 @@ inline bool asBool(SEXP x) {
 }
 
 inline bool isScalarString(SEXP x) { return TYPEOF(x) == STRSXP && Rf_xlength(x) == 1; }
-inline bool isDataFrame(SEXP x) { return TYPEOF(x) == VECSXP && Rf_inherits(x, "data.frame"); }
+//inline bool isDataFrame(SEXP x) { return TYPEOF(x) == VECSXP && Rf_inherits(x, "data.frame"); }
 
 const char* asStringUTF8OrError(SEXP x);
 int asIntOrError(SEXP x);
