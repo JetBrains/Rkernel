@@ -25,11 +25,6 @@
 
 static const size_t BUF_SIZE = 4096;
 
-extern "C" {
-typedef SEXP (*CCODE)(SEXP, SEXP, SEXP, SEXP);
-void SET_PRIMFUN(SEXP x, CCODE f);
-}
-
 /**
  * consignals values are currently ignored, but they should be supported
  * see https://github.com/wch/r-source/commit/688f12cc9627c38ae10c4f597010da3f7142a487
@@ -137,7 +132,7 @@ DoSystemResult myDoSystemImpl(const char* cmd, int timeout,
 }
 
 void initDoSystem() {
-  SET_PRIMFUN(INTERNAL(Rf_install("system")), myDoSystem);
+  setFunTabFunction(getFunTabOffset("system"), myDoSystem);
 }
 
 void RPIServiceImpl::subprocessHandler(

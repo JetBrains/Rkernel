@@ -46,6 +46,22 @@ int getFunTabArity(int offset);
 FunTabFunction getFunTabFunction(int offset);
 void setFunTabFunction(int offset, FunTabFunction func);
 
+typedef Rboolean (*R_ToplevelCallback)(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible, void *);
+
+typedef struct _ToplevelCallback  R_ToplevelCallbackEl;
+/**
+ Linked list element for storing the top-level task callbacks.
+ */
+struct _ToplevelCallback {
+    R_ToplevelCallback cb; /* the C routine to call. */
+    void *data;            /* the user-level data to pass to the call to cb() */
+    void (*finalizer)(void *data); /* Called when the callback is removed. */
+
+    char *name;  /* a name by which to identify this element. */
+
+    R_ToplevelCallbackEl *next; /* the next element in the linked list. */
+};
+
 typedef SEXP (*R_UnwindProtect_t)
     (SEXP (*fun)(void *data), void *data, void (*cleanfun)(void *data, Rboolean jump), void *cleandata, SEXP cont);
 typedef void (*R_ContinueUnwind_t)(SEXP cont);

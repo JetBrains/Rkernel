@@ -22,8 +22,20 @@
 #include <iostream>
 #include "MySEXP.h"
 #include "Exceptions.h"
+#include "../RInternals/RInternals.h"
 
-extern "C" void SET_SYMVALUE(SEXP x, SEXP v);
+
+typedef SEXP (*R_stdGen_ptr_t)(SEXP, SEXP, SEXP);
+
+extern "C" {
+	static bool Rf_RunningToplevelHandlers;
+	static bool Rf_RemovedToplevelHandlers;
+	static bool Rf_DoRemoveCurrentToplevelHandler;
+	static R_ToplevelCallbackEl *Rf_ToplevelTaskHandlers;
+	static R_ToplevelCallbackEl *Rf_CurrentToplevelHandler;
+	static R_stdGen_ptr_t R_standardGeneric_ptr;
+	static SEXP R_MethodsNamespace;
+}
 
 struct RObjects2 {
   PrSEXP baseEnv = R_BaseEnv;
@@ -146,17 +158,98 @@ struct RObjects2 {
     return eval(parse(named("text", code)), named("envir", env));
   }
 
-  SEXP installGlobalSymbol(const char* name, SEXP value) {
-    SHIELD(value);
-    ShieldSEXP symbol = Rf_install(name);
-    SET_SYMVALUE(symbol, value);
-    return symbol;
-  }
-
   SEXP mkLang(const char* code) {
     ShieldSEXP x = parse(named("text", code));
     assert(x.type() == EXPRSXP && x.length() > 0);
     return VECTOR_ELT(x, 0);
+  }
+
+  bool R_extends(SEXP class1, SEXP class2, SEXP env) {
+      if (!isMethodsDispatchOn())
+      	return(FALSE);
+      static SEXP extends_sym = NULL;
+      if(!extends_sym) extends_sym = install("extends");
+      SEXP call = PROTECT(lang3(extends_sym, class1, class2));
+      SEXP e = PROTECT(eval(call, env));
+      // return(LOGICAL(e)[0]);
+      // more cautious:
+      bool ans = Rf_asLogical(e);
+      UNPROTECT(2); /* call, e */
+      return ans;
+  }
+
+  SEXP R_getClassDef_R(SEXP what) {
+	static SEXP s_getClassDef = NULL;
+	if(!s_getClassDef) s_getClassDef = install("getClassDef");
+	if (!isMethodsDispatchOn())
+	  Rf_error("'methods' package not yet loaded");
+	SEXP call = PROTECT(lang2(s_getClassDef, what));
+	SEXP e = eval(call, R_MethodsNamespace);
+	UNPROTECT(1);
+	return(e);
+  }
+
+  bool isMethodsDispatchOn() {
+  	int offset = getFunTabOffset(".isMethodsDispatchOn");
+  	static FunTabFunction fun = getFunTabFunction(offset);
+  	return fun(R_NilValue, R_NilValue, R_NilValue, R_NilValue);
+  }
+
+  void Rf_callToplevelHandlers(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible) {
+	R_ToplevelCallbackEl *h, *prev = NULL;
+  	bool again;
+
+  	if (Rf_RunningToplevelHandlers == TRUE)
+  	  return;
+
+  	h = Rf_ToplevelTaskHandlers;
+  	Rf_RunningToplevelHandlers = TRUE;
+  	while (h) {
+  	  Rf_RemovedToplevelHandlers = FALSE;
+  	  Rf_DoRemoveCurrentToplevelHandler = FALSE;
+  	  Rf_CurrentToplevelHandler = h;
+  	  again = (h->cb)(expr, value, succeeded, visible, h->data);
+  	  Rf_CurrentToplevelHandler = NULL;
+
+  	  if (Rf_DoRemoveCurrentToplevelHandler) {
+  		/* the handler attempted to remove itself, PR#18508 */
+  		Rf_DoRemoveCurrentToplevelHandler = FALSE;
+  		again = FALSE;
+  	  }
+  	  if (Rf_RemovedToplevelHandlers) {
+  		/* some handlers were removed, but not "h" -> recompute "prev" */
+  		prev = NULL;
+  		R_ToplevelCallbackEl *h2 = Rf_ToplevelTaskHandlers;
+  		while (h2 != h) {
+  		  prev = h2;
+  		  h2 = h2->next;
+  		  if (!h2)
+  			R_Suicide("list of toplevel callbacks was corrupted");
+  		}
+  	  }
+  	  /*if(R_CollectWarnings) {
+  	    REprintf(_("warning messages from top-level task callback '%s'\n"),
+				   h->name);
+  			PrintWarnings();
+  	  }*/
+  	  if (again) {
+  	  	prev = h;
+  		h = h->next;
+  	  } else {
+  		R_ToplevelCallbackEl *tmp;
+  		tmp = h;
+  		if (prev)
+  		  prev->next = h->next;
+  	  	h = h->next;
+  	  	if (tmp == Rf_ToplevelTaskHandlers)
+  		  Rf_ToplevelTaskHandlers = h;
+  	  	if (tmp->finalizer)
+  		  tmp->finalizer(tmp->data);
+  	  	free(tmp);
+  	  }
+  	}
+
+  	Rf_RunningToplevelHandlers = FALSE;
   }
 
   PrSEXP tibbleRowNamesToColumn = mkLang("tibble::rownames_to_column");
@@ -212,8 +305,8 @@ struct RObjects2 {
   PrSEXP jetbrainsDebuggerDisable = evalCode(
       "function() .Call(\".jetbrains_debugger_disable\")", globalEnv);
 
-  PrSEXP jetbrainsRunFunction = installGlobalSymbol(".jetbrains_runFunction",
-      evalCode("function(f, x) .Call(\".jetbrains_runFunction\", f, x)", globalEnv));
+  PrSEXP jetbrainsRunFunction = evalCode(
+  	"function(f, x) .Call(\".jetbrains_runFunction\", f, x)", globalEnv);
 
   PrSEXP printFactorSimple = evalCode(
       "function(x) {\n"

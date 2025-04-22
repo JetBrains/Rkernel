@@ -233,7 +233,7 @@ std::vector<SlotInfo> extractSlots(const ShieldSEXP &classDef) {
       auto slotName = stringEltUTF8(slotsNames, i);
       auto slotType = stringEltUTF8(VECTOR_ELT(slotsList, i), 0);
       if (slotsInfos.count(slotName) == 0 ||
-          R_extends(toSEXP(slotType), toSEXP(slotsInfos[slotName].type), RI->globalEnv) == TRUE) {
+          RI->R_extends(toSEXP(slotType), toSEXP(slotsInfos[slotName].type), RI->globalEnv) == TRUE) {
         slotsInfos[slotName] = {slotName, slotType, className};
       }
     }
@@ -289,7 +289,7 @@ Status RPIServiceImpl::getS4ClassInfoByObjectName(ServerContext* context, const 
     ShieldSEXP obj = dereference(*request);
     if (TYPEOF(obj) != S4SXP) return;
     ShieldSEXP className = Rf_getAttrib(obj, R_ClassSymbol);
-    getS4ClassInfo(R_getClassDef_R(className), response);
+    getS4ClassInfo(RI->R_getClassDef_R(className), response);
   }, context, true);
   return Status::OK;
 }

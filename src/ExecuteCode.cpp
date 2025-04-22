@@ -259,10 +259,6 @@ static SEXP cloneSrcref(SEXP srcref) {
   return newSrcref;
 }
 
-extern "C" {
-void Rf_callToplevelHandlers(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible);
-}
-
 static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
     bool withExceptionHandler, bool setLastValue, bool callToplevelHandlers) {
   ShieldSEXP exprs = _exprs;
@@ -310,10 +306,10 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
         UNPROTECT(1);
       }
       if (setLastValue) {
-        SET_SYMVALUE(R_LastvalueSymbol, value);
+        Rf_defineVar(R_LastvalueSymbol, value, R_GlobalEnv);
       }
       if (callToplevelHandlers) {
-        Rf_callToplevelHandlers(exprs[i], value, TRUE, visible ? TRUE : FALSE);
+        RI->Rf_callToplevelHandlers(exprs[i], value, TRUE, visible ? TRUE : FALSE);
       }
       UNPROTECT(2);
       R_Srcref = R_NilValue;
