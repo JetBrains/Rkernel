@@ -309,7 +309,7 @@ static void executeCodeImpl(SEXP _exprs, SEXP _env, bool withEcho, bool isDebug,
         Rf_defineVar(R_LastvalueSymbol, value, R_GlobalEnv);
       }
       if (callToplevelHandlers) {
-        RI->Rf_callToplevelHandlers(exprs[i], value, TRUE, visible ? TRUE : FALSE);
+        RI->Rf_callToplevelHandlersWrapper(exprs[i], value, TRUE, visible ? TRUE : FALSE);
       }
       UNPROTECT(2);
       R_Srcref = R_NilValue;
