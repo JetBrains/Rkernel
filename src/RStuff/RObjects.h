@@ -24,16 +24,14 @@
 #include "Exceptions.h"
 #include "../RInternals/RInternals.h"
 
+#if defined(_WIN32)
+	#include <windows.h>
+#else
+	#include <dlfcn.h>
+#endif
 
-typedef SEXP (*R_stdGen_ptr_t)(SEXP, SEXP, SEXP);
 
 extern "C" {
-	static bool Rf_RunningToplevelHandlers;
-	static bool Rf_RemovedToplevelHandlers;
-	static bool Rf_DoRemoveCurrentToplevelHandler;
-	static R_ToplevelCallbackEl *Rf_ToplevelTaskHandlers;
-	static R_ToplevelCallbackEl *Rf_CurrentToplevelHandler;
-	static R_stdGen_ptr_t R_standardGeneric_ptr;
 	static SEXP R_MethodsNamespace;
 }
 
@@ -153,6 +151,10 @@ struct RObjects2 {
   PrSEXP httpdPort = tools.getVar("httpdPort");
   PrSEXP startDynamicHelp = tools.getVar("startDynamicHelp");
 
+  using callToplevelHandlers_type = void (*)(SEXP, SEXP, Rboolean, Rboolean);
+  callToplevelHandlers_type callToplevelHandlers_ref = nullptr;
+  bool callToplevelHandlers_set = false;
+
   SEXP evalCode(std::string const& code, SEXP env) {
     SHIELD(env);
     return eval(parse(named("text", code)), named("envir", env));
@@ -195,61 +197,28 @@ struct RObjects2 {
   	return fun(R_NilValue, R_NilValue, R_NilValue, R_NilValue);
   }
 
-  void Rf_callToplevelHandlers(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible) {
-	R_ToplevelCallbackEl *h, *prev = NULL;
-  	bool again;
-
-  	if (Rf_RunningToplevelHandlers == TRUE)
-  	  return;
-
-  	h = Rf_ToplevelTaskHandlers;
-  	Rf_RunningToplevelHandlers = TRUE;
-  	while (h) {
-  	  Rf_RemovedToplevelHandlers = FALSE;
-  	  Rf_DoRemoveCurrentToplevelHandler = FALSE;
-  	  Rf_CurrentToplevelHandler = h;
-  	  again = (h->cb)(expr, value, succeeded, visible, h->data);
-  	  Rf_CurrentToplevelHandler = NULL;
-
-  	  if (Rf_DoRemoveCurrentToplevelHandler) {
-  		/* the handler attempted to remove itself, PR#18508 */
-  		Rf_DoRemoveCurrentToplevelHandler = FALSE;
-  		again = FALSE;
-  	  }
-  	  if (Rf_RemovedToplevelHandlers) {
-  		/* some handlers were removed, but not "h" -> recompute "prev" */
-  		prev = NULL;
-  		R_ToplevelCallbackEl *h2 = Rf_ToplevelTaskHandlers;
-  		while (h2 != h) {
-  		  prev = h2;
-  		  h2 = h2->next;
-  		  if (!h2)
-  			R_Suicide("list of toplevel callbacks was corrupted");
+  void Rf_callToplevelHandlersWrapper(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible) {
+  	if (!callToplevelHandlers_set) {
+#if defined(_WIN32)
+  		HMODULE handle = GetModuleHandle(nullptr);
+  		if (handle) {
+  			real_func = reinterpret_cast<FuncType>(
+				  GetProcAddress(handle, "Rf_callToplevelHandlers"));
   		}
-  	  }
-  	  /*if(R_CollectWarnings) {
-  	    REprintf(_("warning messages from top-level task callback '%s'\n"),
-				   h->name);
-  			PrintWarnings();
-  	  }*/
-  	  if (again) {
-  	  	prev = h;
-  		h = h->next;
-  	  } else {
-  		R_ToplevelCallbackEl *tmp;
-  		tmp = h;
-  		if (prev)
-  		  prev->next = h->next;
-  	  	h = h->next;
-  	  	if (tmp == Rf_ToplevelTaskHandlers)
-  		  Rf_ToplevelTaskHandlers = h;
-  	  	if (tmp->finalizer)
-  		  tmp->finalizer(tmp->data);
-  	  	free(tmp);
-  	  }
+#else
+  		void* handle = dlopen(nullptr, RTLD_LAZY);
+  		if (handle) {
+  			callToplevelHandlers_ref = reinterpret_cast<callToplevelHandlers_type>(
+				  dlsym(handle, "Rf_callToplevelHandlers"));
+  		}
+#endif
+  		callToplevelHandlers_set = true;
   	}
 
-  	Rf_RunningToplevelHandlers = FALSE;
+  	if (callToplevelHandlers_ref) {
+  		callToplevelHandlers_ref(expr, value, succeeded, visible);
+  	}
+  	// else: silently do nothing
   }
 
   PrSEXP tibbleRowNamesToColumn = mkLang("tibble::rownames_to_column");
