@@ -396,7 +396,7 @@ Status RPIServiceImpl::getR6ClassInfoByObjectName(ServerContext *context, const 
 Status RPIServiceImpl::getTableColumnsInfo(ServerContext* context, const TableColumnsInfoRequest* request, TableColumnsInfo* response) {
   executeOnMainThread([&] {
     ShieldSEXP table = dereference(request->ref());
-    if (!isDataFrame(table)) return;
+    if (!isDataFrameJb(table)) return;
     response->set_tabletype(
         Rf_inherits(table, "tbl_df") ? TableColumnsInfo_TableType_DPLYR :
         Rf_inherits(table, "data.table") ? TableColumnsInfo_TableType_DATA_TABLE :

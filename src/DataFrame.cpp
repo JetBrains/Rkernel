@@ -34,7 +34,7 @@ static bool initDplyr() {
 }
 
 bool isSupportedDataFrame(SEXP x) {
-  return Rf_isMatrix(x) || isDataFrame(x);
+  return Rf_isMatrix(x) || isDataFrameJb(x);
 }
 
 static PrSEXP& getDataFrameStorageEnv() {
@@ -73,7 +73,7 @@ static void initDataFrame(DataFrameInfo *info) {
   if (Rf_isMatrix(dataFrame)) {
     dataFrame = RI->dataFrame(dataFrame, named("stringsAsFactors", false));
   }
-  if (!isDataFrame(dataFrame)) {
+  if (!isDataFrameJb(dataFrame)) {
     RI->stop("Object is not a valid data frame");
   }
 
