@@ -25,6 +25,7 @@
 #include "../RInternals/RInternals.h"
 
 #if defined(_WIN32)
+	#define WIN32_LEAN_AND_MEAN
 	#include <windows.h>
 #else
 	#include <dlfcn.h>
@@ -200,9 +201,9 @@ struct RObjects2 {
   void Rf_callToplevelHandlersWrapper(SEXP expr, SEXP value, Rboolean succeeded, Rboolean visible) {
   	if (!callToplevelHandlers_set) {
 #if defined(_WIN32)
-  		HMODULE handle = GetModuleHandle(nullptr);
+  		HMODULE handle = GetModuleHandle("R.dll");
   		if (handle) {
-  			real_func = reinterpret_cast<FuncType>(
+  			callToplevelHandlers_ref = reinterpret_cast<callToplevelHandlers_type>(
 				  GetProcAddress(handle, "Rf_callToplevelHandlers"));
   		}
 #else
