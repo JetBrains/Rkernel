@@ -7,4 +7,7 @@ if (length(args) != 0) {
   quit(save = "no", status = 1, runLast = FALSE)
 }
 
+old <- options(cli.dynamic = TRUE)
+on.exit(options(old))
+
 devtools::test()
