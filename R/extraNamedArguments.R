@@ -32,11 +32,14 @@
 }
 
 .jetbrains$safePredicateAny <- function(list, predicate, ...) {
-  any(.jetbrains$safeSapply(list, predicate, ..., dropNull = FALSE), na.rm = TRUE)
+  tryCatch(
+    any(.jetbrains$safeSapply(list, predicate, ..., dropNull = FALSE), na.rm = TRUE),
+    error = function(e) FALSE
+  )
 }
 
 .jetbrains$isFunctionNode <- function(node) {
-  class(node) == "call" && node[[1]] == "function"
+  is.call(node) && node[[1]] == "function"
 }
 
 .jetbrains$safeFormalArgs <- function(l, package = NULL) {
@@ -77,10 +80,7 @@
 
 .jetbrains$findNodeExtraNamedArgs <- function(node, functionParams, depth, package, cache, recStack) {
   if (!is.recursive(node) || depth <= 0) return()
-  # class may return a vector like c("class_a", "class_b")
-  # and c("class_a", "class_b") != "call" results in c(TRUE, TRUE)
-  # so we use && instead of || which short circuits if we get a vector result on the lhs
-  if (!isTRUE(class(node) == "call" && length(node) >= 2)) {
+  if (!is.call(node) || length(node) < 2) {
     # Not a function/function call. Or argument list is empty.
     Reduce(c, lapply(node, .jetbrains$findNodeExtraNamedArgs, functionParams = functionParams,
                      depth = depth, package = package, cache = cache, recStack = recStack))
@@ -103,7 +103,7 @@
                               depth = depth, package = package, cache = cache, recStack = recStack))
       funName <- if (is.symbol(node[[1]])) {
         node[[1]]
-      } else if (class(node[[1]]) == "call") {
+      } else if (is.call(node[[1]])) {
         ident <- node[[1]]
         if (ident[[1]] == "::" && is.symbol(ident[[2]]) && is.symbol(ident[[3]])) {
           package <- ident[[2]]
